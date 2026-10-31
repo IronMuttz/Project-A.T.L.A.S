@@ -6145,9 +6145,10 @@ function initMap(){
     // so it can hide internal borders between annexed territories
   }
 
-  G.zoomer=d3.zoom().scaleExtent([1,14]).translateExtent([[0,0],[W,H]])
+  G.zoomer=d3.zoom().scaleExtent([1,14]).translateExtent(mapWorldBounds())
     .on('zoom',e=>g.attr('transform',e.transform));
   svg.call(G.zoomer);
+  mapHome(false);
 
   const cv=document.getElementById('animcvs');
   cv.width=W; cv.height=H;
@@ -6174,9 +6175,9 @@ function initMap(){
       computeLabelCentroids();            // labels follow the new projection
       g.select('#country-mesh').remove(); // colorMap will rebuild it
       terrainPlace();                     // terrain image follows the new projection
-      // Reset zoom to identity so positions are correct after resize
-      G.zoomer.translateExtent([[0,0],[nw,nh]]);
-      svg.call(G.zoomer.transform,d3.zoomIdentity);
+      // Back to the home view for the new shape (fold/unfold, rotation, panel opened or closed)
+      G.zoomer.translateExtent(mapWorldBounds());
+      mapHome(false);
       colorMap();
     }, 120);
   };
@@ -6280,10 +6281,12 @@ function focusPlayerCountry(){
     geom=best;
   }
   const [[x0,y0],[x1,y1]]=G.path.bounds(geom);
-  const k=Math.max(1, Math.min(10, 0.62/Math.max((x1-x0)/G.W,(y1-y0)/G.H)));
+  const kHome=mapHomeTransform().k;
+  const k=Math.max(kHome, Math.min(10, 0.62/Math.max((x1-x0)/G.W,(y1-y0)/G.H)));
   const cx=(x0+x1)/2, cy=(y0+y1)/2;
-  d3.select('#mapsvg').transition().duration(1400).ease(d3.easeCubicInOut)
-    .call(G.zoomer.transform, d3.zoomIdentity.translate(G.W/2,G.H/2).scale(k).translate(-cx,-cy));
+  let t=d3.zoomIdentity.translate(G.W/2,G.H/2).scale(k).translate(-cx,-cy);
+  try{ t=G.zoomer.constrain()(t, [[0,0],[G.W,G.H]], G.zoomer.translateExtent()); }catch(e){}
+  d3.select('#mapsvg').transition().duration(1400).ease(d3.easeCubicInOut).call(G.zoomer.transform, t);
 }
 function mobileFocusPlayer(){ focusPlayerCountry(); }
 
@@ -6491,7 +6494,28 @@ function terrainPlace(){
   img.attr('x', tx-TERRAIN.w/2*f).attr('y', ty-TERRAIN.h/2*f).attr('width', TERRAIN.w*f).attr('height', TERRAIN.h*f);
   d3.select('#sphere-clip path').attr('d', G.path({type:'Sphere'}));
 }
-function mreset(){ if(G.zoomer) d3.select('#mapsvg').transition().duration(480).call(G.zoomer.transform,d3.zoomIdentity); }
+function mreset(){ mapHome(true); }
+// The world's outline on screen (the map can be panned up to its edges, never into empty space)
+function mapWorldBounds(){
+  if(!G.path) return [[0,0],[G.W||1,G.H||1]];
+  const b=G.path.bounds({type:'Sphere'});
+  return [[b[0][0]-6,b[0][1]-6],[b[1][0]+6,b[1][1]+6]];
+}
+// Home view. On a desktop the whole world. On phones, the Fold and iPads the map fills its pane
+// (a tall, narrow pane would otherwise show the world as a thin strip), centred on the player's country.
+function mapHomeTransform(){
+  const W=G.W, H=G.H, b=mapWorldBounds(), ww=b[1][0]-b[0][0], wh=b[1][1]-b[0][1];
+  const k = document.body.classList.contains('mob') ? Math.max(1, Math.min(6, Math.max(H/wh, W/ww))) : 1;
+  let cx=W/2, cy=H/2;
+  if(k>1.01 && G.player){ const pc=G.proj([G.player.lon, G.player.lat]); if(pc && isFinite(pc[0])){ cx=pc[0]; cy=pc[1]; } }
+  const t=d3.zoomIdentity.translate(W/2,H/2).scale(k).translate(-cx,-cy);
+  try{ return G.zoomer.constrain()(t, [[0,0],[W,H]], G.zoomer.translateExtent()); }catch(e){ return t; }
+}
+function mapHome(animate){
+  if(!G.zoomer) return;
+  const sel=d3.select('#mapsvg'), t=mapHomeTransform();
+  (animate ? sel.transition().duration(700).ease(d3.easeCubicInOut) : sel.interrupt()).call(G.zoomer.transform, t);
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //   CANVAS ANIMATION — Military Radar
@@ -15387,7 +15411,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 158;
+const ATLAS_BUILD = 159;
 function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
 let _appUpdating=false;
 async function appCheckUpdate(manual){
