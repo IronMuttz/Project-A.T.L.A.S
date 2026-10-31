@@ -1,0 +1,7 @@
+{
+  "version": 158,
+  "file": "index.html",
+  "minApp": 1,
+  "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
+  "notes": "New phone and tablet layout: one-row top bar, tap a country for quick actions, MORE launcher with alerts, popups as bottom sheets."
+}
