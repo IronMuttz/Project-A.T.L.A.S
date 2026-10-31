@@ -1,7 +1,7 @@
 {
-  "version": 166,
+  "version": 167,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Start screen: the globe now fits between the title and the buttons, and the side panels no longer overlap it on any screen size."
+  "notes": "New typeface: IBM Plex Sans Condensed for all text and numbers, built into the game so it also works offline."
 }
