@@ -8077,6 +8077,7 @@ function processDailyExports(p){
   }
   if(!p.exportAlloc) p.exportAlloc = {auto:90,tech:90,aviation:90,chemical:90,pharma:90,textile:90,luxury:90,fruits:30,veggies:30,meat:30,wheat:30};
   if(!p.exportLog) p.exportLog = {}; // tracks daily revenue per good
+  if(exportBanned(p)){ p.exportLog={}; return; }                 // UN export ban: nothing leaves the country
 
   // Get all countries with active embassies (trading partners)
   const partners = CLIST.filter(ct=>{
@@ -8357,6 +8358,7 @@ function processDayTickCore(){
   checkAlliances();
   tickWars();
   tickTerritories();
+  tickTotalSanctions();
   if(G.totalDays % 30 === 15) aiUNInitiatives();
   if(G.totalDays % 30 === 10) marketShakeout();
   if(G.totalDays > 0 && G.totalDays % 365 === 0) unAnnualSession();
@@ -9460,7 +9462,7 @@ function econGrowth(c){
   let g = parts.base + parts.industry + parts.investment + parts.debt + parts.budget + parts.bloc;
   if(isP){ const pm=getMultipliers(c); if(g>0) g *= pm.gdpGrowth||1; }
   if(c.wars?.size) { parts.war = -Math.abs(g)*0.4; g += parts.war; }
-  if(isSanctioned(c)){ parts.sanctions = -SANCTION.gdpDragPerYr; g += parts.sanctions; }
+  if(isSanctioned(c)){ parts.sanctions = -(totalSanctioned(c) ? TOTAL_SANCTION.gdpDragPerYr : SANCTION.gdpDragPerYr); g += parts.sanctions; }
   g = Math.max(-0.08, Math.min(0.12, g));
   c._growthParts = parts;
   return g;
@@ -10208,6 +10210,7 @@ function renderTrade(){
   };
 
   document.getElementById('lp-trade').innerHTML=`
+    ${exportBanned(p)?`<div style="background:rgba(255,77,94,.08);border:1px solid var(--red);border-radius:3px;padding:7px 10px;margin-bottom:8px;font-size:var(--fs-sm);color:#e8fbff;">⛔ <b>UN export ban</b> (Chapter VII sanctions): nothing you produce can be sold abroad for another ${p.totalSanctions.until-G.totalDays} days. Imports from countries that voted against the sanctions still arrive.</div>`:''}
     <div class="prod-sub" style="margin-bottom:6px;">
       Factories export automatically each day to countries where you have an embassy <b>and</b> an open trade route.<br>
       Set allocation % per good below — 0% = keep all in reserve.
@@ -10358,6 +10361,7 @@ function diploCard(p, c, inline=false){
   const embNone   = d.embassyStatus === 'none';
   const embBuild  = d.embassyStatus === 'building';
   const embActive = d.embassyStatus === 'active';
+  const embSusp   = d.embassyStatus === 'suspended';
 
   const relColor  = atWar?'var(--red2)':isAlly?'var(--green)':rel>65?'var(--green)':rel<35?'var(--red2)':'var(--blue2)';
   const cardClass = atWar?'at-war':isAlly?'allied':embActive?'has-emb':'';
@@ -10369,6 +10373,7 @@ function diploCard(p, c, inline=false){
   else if(isAlly)   badge = `<span class="emb-badge ally">🤝 Ally</span>`;
   else if(embActive)badge = `<span class="emb-badge emb">🏛️ Embassy</span>`;
   else if(embBuild) badge = `<span class="emb-badge neutral" style="color:var(--teal);border-color:var(--teal2);">🏗️ Building</span>`;
+  else if(embSusp)  badge = `<span class="emb-badge war" title="Suspended under UN Chapter VII sanctions">⛔ Embassy suspended</span>`;
   else              badge = `<span class="emb-badge neutral">${rel>65?'Friendly':rel<35?'Hostile':'Neutral'}</span>`;
 
   // Embassy progress
@@ -10408,6 +10413,12 @@ function diploCard(p, c, inline=false){
       <button class="eab gold" onclick="playerProvideAid(${c.id})">🎁 Provide Aid</button>${giftTerritoryBtn(c)}
       <button class="eab" style="border-color:var(--red);color:var(--red2);background:rgba(255,77,94,.08);" onclick="denounceCountry(${c.id})">📢 Denounce</button>
       <button class="eab danger" onclick="pDiplo(${c.id},'war')">⚔️ Declare War</button>`;
+  } else if(embSusp){
+    const until=Math.max(totalSanctioned(c)?c.totalSanctions.until:0, totalSanctioned(p)?p.totalSanctions.until:0);
+    actions = `<div style="font-size:var(--fs-xs);color:var(--red2);margin-bottom:4px;">⛔ Diplomatic relations suspended under UN Chapter VII sanctions${until>G.totalDays?` · ${until-G.totalDays} days left`:''}. No envoys, trade or treaties until they end.</div>
+      <button class="eab gold" onclick="playerProvideAid(${c.id})">🎁 Provide Aid</button>
+      <button class="eab" style="border-color:var(--red);color:var(--red2);background:rgba(255,77,94,.08);" onclick="denounceCountry(${c.id})">📢 Denounce</button>
+      <button class="eab danger" style="margin-left:auto;" onclick="pDiplo(${c.id},'war')">⚔️ Declare War</button>`;
   } else if(embBuild){
     actions = `<button class="eab gold" onclick="playerProvideAid(${c.id})">🎁 Provide Aid</button>${giftTerritoryBtn(c)}
       <button class="eab" style="border-color:var(--red);color:var(--red2);background:rgba(255,77,94,.08);" onclick="denounceCountry(${c.id})">📢 Denounce</button>
@@ -10895,14 +10906,14 @@ function tickFallout(c){
 }
 // After a nuclear strike, the UN takes up sanctions at once (a friendly P5 member can still veto)
 function nuclearSanctions(att){
-  if(!att || att.annexedBy || isSanctioned(att)) return;
+  if(!att || att.annexedBy || totalSanctioned(att)) return;
   const P=unMembers().filter(x=>x!==att && x!==G.player && !x.allies.has(att.id) && (x.rels[att.id]??50)<40)
     .sort((a,b)=>(getUNCouncil().some(m=>m.permanent&&m.c===b)?1:0)-(getUNCouncil().some(m=>m.permanent&&m.c===a)?1:0) || b.gdp-a.gdp)[0];
   if(!P) return;
   G.unBlocks=(G.unBlocks||[]).filter(b=>b.target!==att.id);       // a nuclear strike overrides earlier veto cool-downs
   if(G.unLastProposal) delete G.unLastProposal[P.id];
-  addWorldEv('w','☢️ UN Emergency Session',`After ${att.flag}${att.name}'s nuclear strike, ${P.flag}${P.name} calls for sanctions.`,'🕊️','☢️');
-  proposeUNResolution('sanctions', att.id, P, 3);
+  addWorldEv('w','☢️ UN Emergency Session',`After ${att.flag}${att.name}'s nuclear strike, ${P.flag}${P.name} calls for comprehensive Chapter VII sanctions.`,'🕊️','☢️');
+  proposeUNResolution('total_sanctions', att.id, P, 3);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -11545,7 +11556,7 @@ function tourismReceipts(c){                      // $B per year
   const siteF = c.sites.length ? c.sites.reduce((s,x,i)=>s+w[i]*(1+0.2*(x.level-1)),0) : 1;
   const ti=c.minInvest?.tourism||{}, tier=c.ministries?.tourism?.tier||0;
   const minF = 1 + (ti.marketing||0)*0.03 + (ti.hotels||0)*0.02 + (ti.visa||0)*0.04 + (tier>=10?0.08:tier>=5?0.05:tier>=1?0.02:0);
-  const warF = c.wars?.size ? 0.6 : 1, sanF = isSanctioned(c) ? 0.7 : 1;
+  const warF = c.wars?.size ? 0.6 : 1, sanF = totalSanctioned(c) ? TOTAL_SANCTION.tourism : isSanctioned(c) ? 0.7 : 1;   // a travel ban all but ends tourism
   return tourismBase(c)*growth*siteF*(minF+tourismEventBoost(c))*warF*sanF;
 }
 function tourismLevyDaily(p){
@@ -11754,6 +11765,7 @@ function renderSportEventsSection(p){
 function buildEmbassy(iso3){
   const p = G.player; if(!p) return; markContact(CLIST.find(x=>x.abbr===iso3));
   const d = getDiplo(p, iso3);
+  if(d.embassyStatus === 'suspended'){ addEv('w','⛔ Embassy Suspended','Diplomatic relations are suspended under UN Chapter VII sanctions. The embassy reopens when they end.'); return; }
   if(d.embassyStatus !== 'none'){ addEv('w','🏛️','Embassy already exists or is under construction.'); return; }
   const tc = CLIST.find(c=>c.abbr===iso3);
   const travel = tc ? envoyDays(p,tc) : 1;
@@ -14306,6 +14318,8 @@ const UN_RESOLUTION_TYPES = [
   {key:'sanctions',      label:'Trade Sanctions',        ico:'🚫', needsTarget:true,  timed:true, desc:'Cuts trade with all yes-voters and drags GDP for the chosen number of years.'},
   {key:'lift_sanctions', label:'Lift Sanctions',         ico:'✅', needsTarget:true,  desc:'End sanctions on a country.'},
   {key:'arms_embargo',   label:'Arms Embargo',           ico:'⚔️', needsTarget:true,  timed:true, desc:'No new weapons for the target: it cannot build military units and its forces lose 10% strength.'},
+  {key:'total_sanctions',label:'Chapter VII Comprehensive Sanctions', ico:'⛔', needsTarget:true, timed:true,
+   desc:'The heaviest measure short of force (UN Charter, Chapter VII, Article 41). Arms embargo: no new units, forces −10%. Trade embargo by every member that votes yes or abstains. Export ban: nothing the target makes or mines can be sold abroad. Diplomatic isolation: embassies suspended, no resolutions but a repeal. Travel ban: flights halted, tourism −90%. Harder to pass than ordinary sanctions.'},
   {key:'humanitarian',   label:'Humanitarian Aid',       ico:'🏥', needsTarget:true,  desc:'Deploy international aid to a nation in crisis.'},
   {key:'climate',        label:'Climate Resolution',     ico:'🌿', needsTarget:false, timed:true, desc:'Climate accord: countries that vote yes get +2 happiness and −2% industry while it lasts.'},
   {key:'nuclear',        label:'Nuclear Non-Proliferation',ico:'☢️',needsTarget:false, desc:'International nuclear disarmament pledge.'},
@@ -14322,14 +14336,51 @@ function unRepealWait(a){ return Math.max(0, UN_REPEAL_CD-(G.totalDays-a.since))
 function endUNResolution(a){
   const T=a.target?CTRY[a.target]:null; a.ended=true;
   if(a.type==='sanctions' && T) T.sanctions=null;
-  if(a.type==='arms_embargo' && T){ T.armsEmbargo=0; calcMilStrength(T); }
+  if(a.type==='arms_embargo' && T){ T.armsEmbargo = totalSanctioned(T) ? T.totalSanctions.until : 0; calcMilStrength(T); }
+  if(a.type==='total_sanctions' && T) endTotalSanctions(T, 'been repealed');
   if(a.type==='climate') G.climateAccord=null;
 }
 function inClimateAccord(c){ const A=G.climateAccord; return !!(A && A.until>G.totalDays && A.members.includes(c.id)); }
 function armsEmbargoed(c){ return (c.armsEmbargo||0) > G.totalDays; }
 const SANCTION = { days:730, gdpDragPerYr:0.015 };
-function isSanctioned(c){ return !!(c.sanctions && G.totalDays < c.sanctions.until); }
-function tradeBlocked(a,b){ return (isSanctioned(a) && a.sanctions.by.includes(b.id)) || (isSanctioned(b) && b.sanctions.by.includes(a.id)); }
+// Chapter VII comprehensive sanctions: arms + trade + export + diplomatic + travel
+const TOTAL_SANCTION = { gdpDragPerYr:0.035, tourism:0.1, relHit:12, stability:12, mood:15 };
+const TOTAL_SANCTION_LINES = [
+  ['⚔️','Arms embargo','no new military units; forces −10%'],
+  ['🚫','Trade embargo','all trade with enforcing members cut'],
+  ['📦','Export ban','nothing made or mined can be sold abroad'],
+  ['🏛️','Diplomatic isolation','embassies suspended; only a repeal can be proposed'],
+  ['✈️','Travel ban','flights halted, tourism −90%, no world-event bids'],
+];
+function plainSanctioned(c){ return !!(c?.sanctions && G.totalDays < c.sanctions.until); }
+function totalSanctioned(c){ return !!(c?.totalSanctions && G.totalDays < c.totalSanctions.until); }
+function isSanctioned(c){ return plainSanctioned(c) || totalSanctioned(c); }
+function exportBanned(c){ return totalSanctioned(c); }
+function sanctionBy(c){ const a=plainSanctioned(c)?c.sanctions.by:[], b=totalSanctioned(c)?c.totalSanctions.by:[]; return b.length?(a.length?[...new Set([...a,...b])]:b):a; }
+function sanctionUntil(c){ return Math.max(plainSanctioned(c)?c.sanctions.until:0, totalSanctioned(c)?c.totalSanctions.until:0); }
+function sanctionSince(c){ return totalSanctioned(c) ? (c.totalSanctions.since??G.totalDays) : (c.sanctions?.since ?? (c.sanctions?.until||G.totalDays)-SANCTION.days); }
+function tradeBlocked(a,b){ return (isSanctioned(a) && sanctionBy(a).includes(b.id)) || (isSanctioned(b) && sanctionBy(b).includes(a.id)); }
+// Diplomatic isolation: embassies between the target and every enforcing member are suspended, and restored when it ends
+function suspendEmbassies(T, by){
+  const list=[];
+  by.forEach(id=>{ const o=CTRY[id]; if(!o || o===T) return;
+    [[T,o],[o,T]].forEach(([a,b])=>{ const d=a.diplomacy?.[b.abbr];
+      if(d && (d.embassyStatus==='active' || d.embassyStatus==='building')){ list.push([a.id,b.abbr,d.embassyStatus]); d.embassyStatus='suspended'; } }); });
+  return list;
+}
+function endTotalSanctions(T, why){
+  const S=T?.totalSanctions; if(!S) return;
+  (S.suspended||[]).forEach(([aid,abbr,st])=>{ const d=CTRY[aid]?.diplomacy?.[abbr]; if(d && d.embassyStatus==='suspended') d.embassyStatus=st; });
+  T.totalSanctions=null;
+  const emb=(G.unActive||[]).find(a=>a.type==='arms_embargo' && !a.ended && a.target===T.id && a.until>G.totalDays);
+  T.armsEmbargo = emb ? emb.until : 0; calcMilStrength(T);
+  if(!why) return;
+  const p=G.player;
+  if(T===p) addEv('d','⛔ Sanctions Lifted',`The comprehensive UN sanctions on you have ${why}. Embassies reopen, trade and exports can resume, and travel is restored.`);
+  else if(p && (S.by||[]).includes(p.id)) addEv('i','⛔ Sanctions Lifted',`Comprehensive UN sanctions on ${T.name} have ${why}. Your embassy there reopens.`);
+}
+// Natural expiry (daily): reopen embassies once the term is over
+function tickTotalSanctions(){ CLIST.forEach(c=>{ if(c.totalSanctions && G.totalDays>=c.totalSanctions.until) endTotalSanctions(c,'expired'); }); }
 
 // How a country votes: its relations with proposer vs target, alliances, and the target's reputation
 const UN_LOYAL_REL = 99.5;   // a country at 100 relations with the target always sides with it
@@ -14363,20 +14414,21 @@ function unVoteOf(v, res){
     const lifting = res.type==='lift_sanctions' || res.type==='humanitarian';
     let t = (v.rels[T.id]??50) - 50 + (v.allies.has(T.id)?40:0) - (T.infamy||0)*0.8 + sharedCoalitions(v,T).length*10;
     s = lifting ? s*0.5 + t : s*0.5 - t;
+    if(res.type==='total_sanctions') s -= Math.max(0, 14 - (T.infamy||0)*0.3);   // members balk at isolating a country outright, unless it is a notorious aggressor
   }
   return s > 10 ? 'yes' : s < -10 ? 'no' : 'abstain';
 }
 function unVetoOf(m, res){
   const T = res.target ? CTRY[res.target] : null;
   if(res.votes[m.c.id]!=='no') return false;
-  if(T && (m.c===T || m.c.allies.has(T.id) || (m.c.rels[T.id]??50) >= 70)) return true;
+  if(T && (m.c===T || m.c.allies.has(T.id) || (m.c.rels[T.id]??50) >= (res.type==='total_sanctions' ? 60 : 70))) return true;
   return (m.c.rels[res.proposer]??50) < 25;
 }
 const UN_PROPOSAL_CD = 30;   // days between proposals by the same country
 // After a veto, the same kind of resolution against the same target is off the table for a year,
 // and any resolution against that target waits 6 months (any proposer)
 const UN_VETO_BLOCK = 365, UN_TARGET_REST = 180, UN_VETO_BUYOUT = 10;
-const UN_HOSTILE = new Set(['sanctions','arms_embargo','invasion']);
+const UN_HOSTILE = new Set(['sanctions','arms_embargo','total_sanctions','invasion']);
 function unBlockedFor(type, targetId){
   if(!targetId || !UN_HOSTILE.has(type)) return 0;
   const B=(G.unBlocks||[]).filter(b=>b.until>G.totalDays && b.target===targetId && (b.type===type || b.type==='*'));
@@ -14399,6 +14451,7 @@ function proposeUNResolution(type, targetId, proposer, years, repealId){
   const P = proposer || G.player; if(!P || P.annexedBy) return;
   if(targetId && CTRY[targetId]?.annexedBy){ if(P===G.player) addEv('w','⚠️ No Target',`${CTRY[targetId].name} is no longer an independent state.`); return; }
   const rt = UN_RESOLUTION_TYPES.find(r=>r.key===type); if(!rt) return;
+  if(totalSanctioned(P) && type!=='repeal'){ if(P===G.player) addEv('w','⛔ Diplomatic Isolation','Under comprehensive sanctions your delegation can only petition for a repeal.'); return null; }
   const wait = unProposalWait(P);
   if(wait>0){ if(P===G.player) addEv('w','🕊️ UN Cooldown',`You can propose another resolution in ${wait} day${wait===1?'':'s'}.`); return null; }
   const T = targetId ? CTRY[targetId] : null;
@@ -14476,6 +14529,11 @@ function showUNLobby(res){
   d.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--gold3);border-radius:6px;width:520px;max-width:94vw;max-height:88vh;overflow-y:auto;padding:14px 16px;">
     <div style="font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:600;letter-spacing:.03em;color:var(--gold);font-size:var(--fs-lg);">🕊️ UN Vote ${res.thirdParty?'— General Assembly':T===p?'Against You':res.proposer===p.id?'— Your Resolution':'Concerning You'}</div>
     <div style="font-size:var(--fs-md);color:var(--text);margin:4px 0;">${res.ico} ${res.label}</div>
+    ${(()=>{ const rt=UN_RESOLUTION_TYPES.find(r=>r.key===res.type); if(!rt?.desc || res.type==='repeal') return '';
+      if(res.type==='total_sanctions') return `<div style="font-size:var(--fs-sm);color:var(--text2);line-height:1.5;margin-bottom:6px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:6px 9px;">
+        ${TOTAL_SANCTION_LINES.map(([i,h,t])=>`<div>${i} <b style="color:#e8fbff">${h}</b> · ${t}</div>`).join('')}
+        <div style="font-size:var(--fs-xs);color:var(--text3);margin-top:3px;">UN Charter, Chapter VII, Article 41. Binding on members that vote yes or abstain; only those voting no keep ties. Harder to pass than ordinary sanctions.</div></div>`;
+      return `<div style="font-size:var(--fs-xs);color:var(--text2);line-height:1.45;margin-bottom:6px;">${rt.desc}</div>`; })()}
     ${res.thirdParty ? `<div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:6px;">Proposed by ${P.name}. Your advisers lean <b style="color:var(--teal)">${(res.advice||'abstain').toUpperCase()}</b>.</div>
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:var(--fs-sm);color:var(--text2);">Your vote:
         ${voteBtn('yes','✓ Yes','var(--green)')}${voteBtn('no','✗ No','var(--red2)')}${voteBtn('abstain','— Abstain','var(--text3)')}${isP5?voteBtn('veto','🛑 Veto (P5)','var(--red2)'):''}
@@ -14581,7 +14639,7 @@ function finalizeUNResolution(res){
   // a failed mandate doesn't stop a determined government: it goes to war anyway, without UN cover
   if(p && (P===p || T===p)) addEv(passed?(T===p?'w':'d'):'i', `${res.ico} ${passed?'Resolution Passed':vetoBy?'Vetoed':'Rejected'}`, `${res.label} — ${tally}${vetoBy?' · veto by '+vetoBy.name:''}`);
   // Voting leaves memories
-  if(T && res.type==='sanctions') Object.entries(res.votes).forEach(([id,v])=>{ const o=CTRY[id]; if(v==='yes') relShift(o,T,-8); if(v==='no') relShift(o,T,+3); });
+  if(T && (res.type==='sanctions' || res.type==='total_sanctions')) Object.entries(res.votes).forEach(([id,v])=>{ const o=CTRY[id]; if(v==='yes') relShift(o,T,-8); if(v==='no') relShift(o,T,res.type==='total_sanctions'?+6:+3); });
   if(vetoBy && T) relShift(vetoBy,T,+10);
   if(document.getElementById('lp-un')?.classList.contains('on')) renderUN();
 }
@@ -14604,13 +14662,38 @@ function applyUNResolution(res, T){
   }
   if(res.type==='sanctions' && T){
     const by = Object.entries(res.votes).filter(([,v])=>v==='yes').map(([id])=>+id);
-    T.sanctions = { until:G.totalDays+days, by }; register();
+    T.sanctions = { since:G.totalDays, until:G.totalDays+days, by }; register();
     G.trades = G.trades.filter(tr=>!((tr.from===T.id&&by.includes(tr.to))||(tr.to===T.id&&by.includes(tr.from))));
     by.forEach(id=>{ T.trades.delete(id); CTRY[id]?.trades.delete(T.id); });
     T.eventModifier=(T.eventModifier||0)-10; T.stability=Math.max(0,(T.stability||50)-8);
     if(T===G.player) showCrisisPopup('🚫','UN Sanctions',`The UN has sanctioned you for ${res.years||2} year${(res.years||2)>1?'s':''}. Trade with ${by.length} countries is cut and your GDP growth is reduced. After ${UN_REPEAL_CD} days you can propose a repeal.`);
   }
-  if(res.type==='lift_sanctions' && T){ T.sanctions=null; }
+  if(res.type==='total_sanctions' && T){
+    const until=G.totalDays+days, yrs=res.years||2;
+    // Binding on every member that voted yes or abstained; only those that voted against keep dealing with the target
+    const by=unMembers().filter(c=>c!==T && res.votes[c.id]!=='no').map(c=>c.id);
+    if(T.totalSanctions) endTotalSanctions(T);                       // a renewal replaces the old term
+    T.totalSanctions={ since:G.totalDays, until, by, suspended:suspendEmbassies(T, by) };
+    T.armsEmbargo=Math.max(T.armsEmbargo||0, until); calcMilStrength(T);
+    G.trades=G.trades.filter(tr=>!((tr.from===T.id&&by.includes(tr.to))||(tr.to===T.id&&by.includes(tr.from))));
+    by.forEach(id=>{ T.trades.delete(id); CTRY[id]?.trades.delete(T.id); relShift(CTRY[id],T,-TOTAL_SANCTION.relHit); });
+    if(T.missions?.length) T.missions=T.missions.filter(m=>!by.includes(CLIST.find(x=>x.abbr===m.target)?.id));   // envoys are turned back
+    T.eventModifier=(T.eventModifier||0)-TOTAL_SANCTION.mood; T.stability=Math.max(0,(T.stability||50)-TOTAL_SANCTION.stability);
+    register();
+    const embN=T.totalSanctions.suspended.filter(([aid])=>aid===T.id).length, friends=unMembers().length-1-by.length;
+    if(T===G.player) showCrisisPopup('⛔','Chapter VII: Comprehensive Sanctions',
+      `The UN has placed you under comprehensive sanctions for ${yrs} year${yrs>1?'s':''}:<br><br>`
+      +`⚔️ <b>Arms embargo</b>: no new military units; your forces lose 10% strength.<br>`
+      +`🚫 <b>Trade embargo</b>: ${by.length} countries cut all trade with you.<br>`
+      +`📦 <b>Export ban</b>: none of your goods or resources can be sold abroad.<br>`
+      +`🏛️ <b>Diplomatic isolation</b>: ${embN} embass${embN===1?'y':'ies'} suspended; you can only propose a repeal at the UN.<br>`
+      +`✈️ <b>Travel ban</b>: flights halted, tourism down 90%, no bids to host world events.<br><br>`
+      +`${friends>0?`Only the ${friends} countr${friends===1?'y':'ies'} that voted against still deal with you. `:''}After ${UN_REPEAL_CD} days you can propose a repeal.`);
+    else if(G.player && by.includes(G.player.id)) addEv('w','⛔ Comprehensive Sanctions',`You are enforcing UN sanctions on ${T.name} for ${yrs} year${yrs>1?'s':''}: your embassy there is suspended and all trade is halted.`);
+  }
+  if(res.type==='lift_sanctions' && T){ T.sanctions=null;
+    (G.unActive||[]).filter(a=>!a.ended && a.target===T.id && (a.type==='sanctions'||a.type==='total_sanctions')).forEach(a=>{ a.ended=true; });
+    if(T.totalSanctions) endTotalSanctions(T, 'been lifted by the UN'); }
   if(res.type==='arms_embargo' && T){ T.armsEmbargo = G.totalDays+days; T.eventModifier=(T.eventModifier||0)-5; calcMilStrength(T); register();
     if(T===G.player) showCrisisPopup('⚔️','UN Arms Embargo',`For ${res.years||2} year${(res.years||2)>1?'s':''} you cannot build military units and your forces lose 10% strength. After ${UN_REPEAL_CD} days you can propose a repeal.`); }
   if(res.type==='humanitarian' && T){ T.happiness=Math.min(100,(T.happiness||50)+8); T.stability=Math.min(100,(T.stability||50)+5); relShift(P,T,5); }
@@ -14620,10 +14703,16 @@ function applyUNResolution(res, T){
 // AI diplomats: sanction aggressors, lift sanctions once reputations recover (monthly)
 function aiUNInitiatives(){
   if(G._pendingUN) return;
+  const pariah = CLIST.filter(c=>!c.annexedBy && (c.infamy||0) >= 45 && !totalSanctioned(c)).sort((a,b)=>b.infamy-a.infamy)[0];
+  if(pariah && Math.random()<0.4 && !unBlockedFor('total_sanctions',pariah.id)){
+    const P = unMembers().filter(x=>x!==pariah && x!==G.player && !x.allies.has(pariah.id) && !totalSanctioned(x) && unProposalWait(x)===0)
+                         .sort((a,b)=>(a.rels[pariah.id]??50)-(b.rels[pariah.id]??50) || b.gdp-a.gdp)[0];
+    if(P) return proposeUNResolution('total_sanctions', pariah.id, P, Math.max(2,Math.min(5,Math.round((pariah.infamy||45)/20))));
+  }
   const aggressor = CLIST.filter(c=>!c.annexedBy && (c.infamy||0) >= 15 && !isSanctioned(c))
                          .sort((a,b)=>b.infamy-a.infamy)[0];
   if(aggressor && Math.random()<0.5 && !unBlockedFor('sanctions',aggressor.id) && !unBlockedFor('arms_embargo',aggressor.id)){
-    const P = unMembers().filter(x=>x!==aggressor && x!==G.player && !x.allies.has(aggressor.id))
+    const P = unMembers().filter(x=>x!==aggressor && x!==G.player && !x.allies.has(aggressor.id) && !totalSanctioned(x))
                          .sort((a,b)=>(a.rels[aggressor.id]??50)-(b.rels[aggressor.id]??50) || b.gdp-a.gdp)[0];
     if(P) return proposeUNResolution(Math.random()<0.7?'sanctions':'arms_embargo', aggressor.id, P, Math.max(1,Math.min(3,Math.round((aggressor.infamy||15)/15))));
   }
@@ -14646,7 +14735,7 @@ function aiUNInitiatives(){
     const P=unMembers().filter(x=>x!==G.player)[Math.floor(Math.random()*12)];
     if(P && !G.climateAccord) return proposeUNResolution('climate', null, P, 2+Math.floor(Math.random()*4));
   }
-  const reformed = CLIST.find(c=>isSanctioned(c) && (c.infamy||0) < 5 && G.totalDays - (c.sanctions.until-SANCTION.days) > 365);
+  const reformed = CLIST.find(c=>isSanctioned(c) && (c.infamy||0) < 5 && G.totalDays - sanctionSince(c) > 365);
   if(reformed && Math.random()<0.3){
     const P = unMembers().filter(x=>x!==reformed && x!==G.player).sort((a,b)=>(b.rels[reformed.id]??50)-(a.rels[reformed.id]??50))[0];
     if(P) proposeUNResolution('lift_sanctions', reformed.id, P);
@@ -14712,7 +14801,7 @@ function coalitionVote(member, applicant){
   let s = (member.rels[applicant.id]??50) - (applicant.infamy||0)*0.5;
   if(member.wars.has(applicant.id)) s = 0;
   if(member.allies.has(applicant.id)) s += 10;
-  if(isSanctioned(applicant)) s -= 15;
+  if(isSanctioned(applicant)) s -= totalSanctioned(applicant) ? 40 : 15;
   return s;
 }
 function evaluateApplication(k, applicant){
@@ -15675,6 +15764,7 @@ function showCountrySheet(id){
       let trade;
       if(d.embassyStatus==='none') trade=csBtn('🏛️','EMBASSY',`buildEmbassy('${c.abbr}');setTimeout(()=>${rr()},50)`,'',false,`Build an embassy (${15+ed} days)`);
       else if(d.embassyStatus==='building') trade=csBtn('🏗️',`EMBASSY ${d.embassyDaysRemaining}d`,'','',true);
+      else if(d.embassyStatus==='suspended') trade=csBtn('⛔','SUSPENDED','','',true,'Embassy suspended under UN sanctions');
       else if(p.trades.has(c.id)) trade=csBtn('📦','TRADING',"mobGo('trade')",'ok');
       else if(pend('trade')) trade=csBtn('✉️','ENVOY','','',true);
       else trade=csBtn('📦','TRADE',`embassyAction('${c.abbr}','trade');setTimeout(()=>${rr()},50)`,'',false,`Open a trade route (${ed} days)`);
@@ -15791,7 +15881,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 167;
+const ATLAS_BUILD = 168;
 function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
 let _appUpdating=false;
 async function appCheckUpdate(manual){
@@ -15968,9 +16058,10 @@ function renderUN(){
     : `<div style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:6px;">No time-limited resolutions in force.</div>`;
   const resolutionBtns=(unWait>0?`<div style="font-size:var(--fs-sm);color:var(--gold);margin-bottom:6px;">⏳ Next proposal available in ${unWait} day${unWait===1?'':'s'} (one every ${UN_PROPOSAL_CD} days)</div>`:'')+UN_RESOLUTION_TYPES.filter(rt=>!rt.hidden).map(rt=>{
     const hasTarget = rt.needsTarget;
-    return `<button class="eab primary" ${unWait>0?'disabled style="opacity:.45;margin-bottom:4px;width:100%;text-align:left;font-size:var(--fs-sm);"':'style="margin-bottom:4px;width:100%;text-align:left;font-size:var(--fs-sm);"'} 
+    return `<button class="eab primary" title="${rt.desc.replace(/"/g,'&quot;')}" ${unWait>0?'disabled style="opacity:.45;margin-bottom:4px;width:100%;text-align:left;font-size:var(--fs-sm);"':'style="margin-bottom:4px;width:100%;text-align:left;font-size:var(--fs-sm);"'} 
       onclick="proposeUNResolution('${rt.key}',${hasTarget?'+(document.getElementById(\'un-target-sel\')?.value||0)':'null'},null,+(document.getElementById('${rt.months?'un-months':'un-years'}')?.value||${rt.months?12:2}))">
       ${rt.ico} ${rt.label}${hasTarget?' (targeted)':''}${rt.timed?' · timed':''}
+      ${rt.key==='total_sanctions'?`<div style="font-size:var(--fs-xs);opacity:.85;margin-top:2px;white-space:normal;">⚔️ Arms · 🚫 Trade · 📦 Exports · 🏛️ Diplomatic · ✈️ Travel</div>`:''}
     </button>`;
   }).join('');
 
@@ -16004,9 +16095,10 @@ function renderUN(){
 
     ${(()=>{ const s=CLIST.filter(isSanctioned); return s.length?`
     <div class="sec">🚫 Active UN Sanctions</div>
-    ${s.map(x=>`<div style="display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:var(--fs-sm);">
-      <span>${x.flag}</span><span style="flex:1;color:var(--text)">${x.name}</span>
-      <span style="font-size:var(--fs-xs);color:var(--text3)">${x.sanctions.by.length} countries · ${x.sanctions.until-G.totalDays}d left${x.sanctions.by.includes(p.id)?' · <span style="color:var(--red2)">trade blocked</span>':''}</span></div>`).join('')}`:''; })()}
+    ${s.map(x=>{ const tot=totalSanctioned(x), by=sanctionBy(x);
+      return `<div style="display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:var(--fs-sm);">
+      <span>${x.flag}</span><span style="flex:1;color:var(--text)">${x.name}${tot?' <span style="color:var(--red2);font-size:var(--fs-xs);font-weight:600;" title="Arms, trade, export, diplomatic and travel measures">⛔ CHAPTER VII</span>':''}</span>
+      <span style="font-size:var(--fs-xs);color:var(--text3)">${by.length} countries · ${sanctionUntil(x)-G.totalDays}d left${x===p?' · <span style="color:var(--red2)">you</span>':by.includes(p.id)?` · <span style="color:var(--red2)">${tot?'embassy suspended':'trade blocked'}</span>`:''}</span></div>`; }).join('')}`:''; })()}
 
     <div class="sec">🛡️ Security Council (15 seats)</div>
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:6px 8px;margin-bottom:8px;">${councilRows}</div>
