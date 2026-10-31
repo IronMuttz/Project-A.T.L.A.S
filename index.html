@@ -1435,6 +1435,7 @@ body.mob .rrow{ min-height:36px; }
       <button class="ombt cnt" onclick="closeOv('menuov');showStartTips(true)">💡 Commander's briefing</button>
       <button class="ombt cnt" onclick="mreset();closeOv('menuov')">🗺️ Reset Map</button>
       <button class="ombt cnt" onclick="toggleTerrain();closeOv('menuov')">⛰️ Terrain / Political Map</button>
+      <button class="ombt cnt" id="menu-warfx" onclick="toggleWarFx()">💥 War effects: On</button>
       <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=goods]'),'goods');closeOv('menuov')">💰 Economy</button>
       <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=resources]'),'resources');closeOv('menuov')">⚙️ Industry</button>
       <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=diplo]'),'diplo');closeOv('menuov')">🌐 Foreign Affairs</button>
@@ -7159,6 +7160,9 @@ function animFrame(ts){
     });
   }
 
+  // ── WAR STRIKES — missiles, air raids, carrier barrages ──
+  drawWarStrikes(ctx, toCP, k);
+
   // ── DIPLOMATIC ENVOYS & EMBASSIES UNDER CONSTRUCTION ──
   {
     const now=smoothNow(), P0=G.proj([p.lon,p.lat]);
@@ -8616,6 +8620,9 @@ function declareWar(a,b,log,defensive,defendingId){
     addEv('w','🏛️ Diplomatic Ties Cut',`War with ${o.name}: embassies closed, ambassadors recalled, trade routes and any alliance or pact ended.`); }
   spawnP(a.lat,a.lon,'212,53,53');
   if(log) addWorldEv('w','⚔️ War Declared',`${a.flag}${a.name} declares war on ${b.flag}${b.name}!`, a.flag, b.flag);
+  // Opening salvo on the map: the attacker strikes, the defender answers; allies joining fire a lighter volley
+  if(!defensive){ queueWarStrikes(a,b,'opening'); queueWarStrikes(b,a,'opening',2200); }
+  else queueWarStrikes(a,b,'join',1200);
   if(b===G.player) showCrisisPopup('⚔️','War Declared on You',`${a.flag}${a.name} has declared war on ${b.name}. Check your defences in the Defense tab.`);
   if(defensive){
     // Your pact partner joined a war to defend someone: it is fighting the aggressor, so it calls on you as well
@@ -10739,6 +10746,210 @@ function nuclearSanctions(att){
   addWorldEv('w','☢️ UN Emergency Session',`After ${att.flag}${att.name}'s nuclear strike, ${P.flag}${P.name} calls for sanctions.`,'🕊️','☢️');
   proposeUNResolution('sanctions', att.id, P, 3);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//   WAR STRIKES ON THE MAP — missile salvos, jet bombing runs and carrier
+//   barrages. Fired when a war is declared (attacker first, defender answers),
+//   at every offensive / battle, and as lighter bombardment while a war goes on.
+//   Each side only uses what it has: jets need fighters or bombers, carrier
+//   barrages need carrier fleets and a sea route to the enemy.
+// ═══════════════════════════════════════════════════════════════════
+const STRIKE = { maxActive:8, bombardPlayer:10, bombardAI:15 };
+G.warFx = (()=>{ try{ return localStorage.getItem('atlas_warfx')!=='0'; }catch(e){ return true; } })();
+setTimeout(()=>{ const b=document.getElementById('menu-warfx'); if(b) b.textContent=`💥 War effects: ${G.warFx?'On':'Off'}`; },0);
+function toggleWarFx(){
+  G.warFx=!G.warFx; try{ localStorage.setItem('atlas_warfx', G.warFx?'1':'0'); }catch(e){}
+  if(!G.warFx) G.strikes=[];
+  addEv('d','💥 War Effects', G.warFx ? 'Missiles, air raids and carrier barrages are shown on the map.' : 'Strike animations are off.');
+  const b=document.getElementById('menu-warfx'); if(b) b.textContent=`💥 War effects: ${G.warFx?'On':'Off'}`;
+}
+// A random spot inside a country (falls back to near its capital)
+function strikeSpot(c, spread){
+  const f=G._labelFeats?.find(x=>parseInt(x.id)===c.id);
+  const km=Math.sqrt((COUNTRY_AREA_SQMI[c.abbr]||40000)*2.59), j=Math.max(0.25, Math.min(4, km/111/3.2))*(spread||1);
+  for(let i=0;i<8;i++){
+    const pt=[c.lon+(Math.random()-0.5)*2*j, c.lat+(Math.random()-0.5)*1.5*j];
+    if(!f || d3.geoContains(f, pt)) return pt;
+  }
+  return [c.lon+(Math.random()-0.5)*0.4, c.lat+(Math.random()-0.5)*0.3];
+}
+// Where a carrier group would sit: on the sea lane, near the enemy's coast
+function strikeSeaSpot(att, def){
+  let r=null; try{ r=getTradeRoute(att, def); }catch(e){}
+  if(!r || !r.segs.some(s=>s.mode==='sea')) return null;
+  for(let t=0.97;t>=0.55;t-=0.03){ const q=rtPointAt(r,t); if(q.mode==='sea') return [rtNormLon(q.ll[0]), q.ll[1]]; }
+  return null;
+}
+function strikeSide(att, def){ const p=G.player; return att===p ? 'you' : def===p ? 'enemy' : 'ai'; }
+// kind: 'opening' | 'battle' | 'bombard' | 'join'
+function queueWarStrikes(att, def, kind, delayMs){
+  try{
+    if(!G.warFx || !att || !def || att===def || G._ff || document.visibilityState==='hidden' || !G.canvasCtx) return;
+    if(att.annexedBy || def.annexedBy || !(att.mil_strength>0)) return;
+    const now=performance.now(), involves = att===G.player || def===G.player;
+    G.strikes=(G.strikes||[]).filter(s=>now < s.t0+s.len);
+    if(G.strikes.length>=STRIKE.maxActive){
+      if(!involves) return;
+      const i=G.strikes.findIndex(s=>!s.involves); if(i<0) return; G.strikes.splice(i,1);
+    }
+    const u=att.mil_units||{}, f=Math.max(0.2, Math.min(1, Math.log10((att.mil_strength||0)+10)/6.2));
+    const light = kind==='bombard' || kind==='join';
+    const t0=now+(delayMs||0), items=[];
+    let latest=0;
+    const add=(it)=>{ items.push(it); latest=Math.max(latest, it.start+it.dur+(it.tail||0)); };
+    // 1) missile salvo from launch sites around the attacker
+    const nMis = Math.max(1, Math.round((light?0.6:1.2) + f*(light?2:4)));
+    for(let i=0;i<nMis;i++){
+      const from=strikeSpot(att,0.5), to=strikeSpot(def), km=rtKm(from,to);
+      add({ type:'missile', from, to, start:i*(180+Math.random()*260), dur:Math.min(3200, 1300+km*0.22), tail:1400, seed:Math.random()*99 });
+    }
+    // 2) air raid: jets fly in, bomb a line across the target, fly on out
+    const air=(u.fighters||0)+(u.bombers||0);
+    if(air>0 && (!light || Math.random()<0.5)){
+      const nJ=Math.max(1, Math.min(4, Math.round(1+f*3)) - (light?1:0));
+      const tgt=strikeSpot(def,0.6), base=strikeSpot(att,0.4), km=rtKm(base,tgt), dur=Math.min(4200, 2200+km*0.25);
+      for(let i=0;i<nJ;i++) add({ type:'jet', from:base, to:tgt, start:600+i*260, dur, tail:1500, lane:(i-(nJ-1)/2), bomber:(u.bombers||0)>0 && i%2===1, seed:Math.random()*99 });
+    }
+    // 3) carrier barrage from the sea lane near the enemy coast
+    if((u.carrier_fleets||0)>0 && !att.isLandlocked && !def.isLandlocked && (!light || Math.random()<0.6)){
+      const sea=strikeSeaSpot(att, def);
+      if(sea){
+        const shots=[], n=light?3:Math.min(8, 4+Math.round(f*4));
+        for(let i=0;i<n;i++){ const to=strikeSpot(def); shots.push({ to, start:900+i*(200+Math.random()*180), dur:Math.min(2200, 900+rtKm(sea,to)*0.35), seed:Math.random()*99 }); }
+        add({ type:'carrier', at:sea, to:[def.lon,def.lat], start:200, dur:900+shots[shots.length-1].start+shots[shots.length-1].dur, tail:1600, shots });
+      }
+    }
+    G.strikes.push({ att:att.id, def:def.id, side:strikeSide(att,def), involves, t0, len:latest+200, items });
+  }catch(e){ /* visuals only — never break the game */ }
+}
+// Daily: opening salvos are queued by declareWar; this adds the steady bombardment of an ongoing war
+function tickWarStrikes(){
+  if(!G.warFx || G._ff || document.visibilityState==='hidden') return;
+  const p=G.player;
+  (G.wars||[]).forEach(w=>{
+    const A=CTRY[w.a], B=CTRY[w.b]; if(!A||!B||!A.wars?.has(B.id)) return;
+    const every = (A===p||B===p) ? STRIKE.bombardPlayer : STRIKE.bombardAI;
+    const last = w._fxDay ?? w.startDay ?? 0;
+    if(G.totalDays-last < every) return;
+    w._fxDay=G.totalDays; w._fxSide=!w._fxSide;
+    const [att,def] = w._fxSide ? [A,B] : [B,A];
+    if(att===p && !(p.deployedTroops||[]).some(d=>d.targetId===def.id) && !(p.expeditions||[]).length) return;   // you only strike when you've committed forces
+    queueWarStrikes(att, def, 'bombard', Math.random()*800);
+  });
+}
+
+// ── drawing (called from animFrame; positions re-projected every frame so they follow zoom and pan) ──
+const STRIKE_COL = { you:[120,232,255], enemy:[255,96,96], ai:[255,186,110] };
+function strikeBoom(ctx, x, y, e, sz, big){
+  // e: seconds since impact
+  if(e<0 || e>1.6) return;
+  const s=sz*(big?1.5:1.15);
+  if(e<0.25){ const r=(5+e*60)*s, al=1-e/0.25; const g=ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,`rgba(255,255,235,${al})`); g.addColorStop(0.5,`rgba(255,210,120,${al*0.7})`); g.addColorStop(1,'rgba(255,140,40,0)');
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill(); }
+  if(e<1.1){ const r=Math.min(9,3+e*16)*s, al=Math.max(0,1-e/1.1); const g=ctx.createRadialGradient(x,y-e*3*s,0,x,y-e*3*s,r);
+    g.addColorStop(0,`rgba(255,${Math.round(230-e*120)},${Math.round(150-e*110)},${al})`); g.addColorStop(0.65,`rgba(220,70,25,${al*0.75})`); g.addColorStop(1,'rgba(90,20,10,0)');
+    ctx.beginPath(); ctx.arc(x,y-e*3*s,r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill(); }
+  if(e>0.15){ const se=e-0.15, r=(4+se*10)*s, al=Math.max(0,0.45*(1-se/1.45));
+    ctx.beginPath(); ctx.arc(x+se*3*s,y-6*s-se*8*s,r,0,Math.PI*2); ctx.fillStyle=`rgba(120,120,125,${al})`; ctx.fill(); }
+  if(e<0.7){ const r=(4+e*34)*s; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.strokeStyle=`rgba(255,220,180,${0.55*(1-e/0.7)})`; ctx.lineWidth=1.2; ctx.stroke(); }
+}
+function strikeArc(ctx, A, B, t, lift, col, sz, trailAl, seed){
+  const dist=Math.hypot(B[0]-A[0],B[1]-A[1]);
+  const C=[(A[0]+B[0])/2, Math.min(A[1],B[1]) - Math.max(14, dist*lift)];
+  const P=u=>{ const v=1-u; return [v*v*A[0]+2*v*u*C[0]+u*u*B[0], v*v*A[1]+2*v*u*C[1]+u*u*B[1]]; };
+  const N=22;
+  for(let i=1;i<=N;i++){
+    const ti=t*i/N, tp=t*(i-1)/N, age=t-ti, a=P(tp), b=P(ti);
+    const al=Math.max(0,(0.5-age*0.55))*trailAl;
+    if(al<=0.01) continue;
+    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]);
+    ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${al})`; ctx.lineWidth=(0.8+(1-age)*1.2)*sz; ctx.lineCap='round'; ctx.stroke();
+  }
+  return P;
+}
+function drawWarStrikes(ctx, toCP, k){
+  if(!G.strikes?.length) return;
+  const now=performance.now(), sz=Math.max(0.8, Math.min(2.2, Math.sqrt(k)*0.95));
+  const proj=ll=>{ const r=G.proj(ll); return r ? toCP(r[0],r[1]) : null; };
+  G.strikes=G.strikes.filter(pk=>{
+    if(now>pk.t0+pk.len) return false;
+    if(now<pk.t0) return true;
+    const col=STRIKE_COL[pk.side]||STRIKE_COL.ai, el=now-pk.t0;
+    pk.items.forEach(it=>{
+      const e=(el-it.start)/1000; if(e<0) return;
+      if(it.type==='missile'){
+        const A=proj(it.from), B=proj(it.to); if(!A||!B) return;
+        const D=it.dur/1000, tf=Math.min(1,e/D), t=tf<0.15 ? 0.06*(tf/0.15)**2 : 0.06+0.94*((tf-0.15)/0.85)**1.15;
+        const trailAl = e>D ? Math.max(0,1-(e-D)/1.2) : 1;
+        const P=strikeArc(ctx, A, B, t, 0.32, col, sz, trailAl, it.seed);
+        if(e<0.5){ const al=1-e/0.5; ctx.beginPath(); ctx.arc(A[0],A[1],(3+e*10)*sz,0,Math.PI*2); ctx.fillStyle=`rgba(255,235,190,${0.6*al})`; ctx.fill(); }  // launch flash
+        if(tf<1){
+          const H=P(t), H2=P(Math.min(1,t+0.02)), ang=Math.atan2(H2[1]-H[1],H2[0]-H[0]);
+          ctx.save(); ctx.translate(H[0],H[1]); ctx.rotate(ang);
+          const fl=(5+Math.random()*3)*sz, fg=ctx.createLinearGradient(0,0,-fl,0); fg.addColorStop(0,'rgba(255,250,220,.95)'); fg.addColorStop(1,'rgba(255,120,40,0)');
+          ctx.beginPath(); ctx.moveTo(-1.2*sz,-1*sz); ctx.lineTo(-fl,0); ctx.lineTo(-1.2*sz,1*sz); ctx.closePath(); ctx.fillStyle=fg; ctx.fill();
+          ctx.beginPath(); ctx.moveTo(3*sz,0); ctx.lineTo(-1.6*sz,-1*sz); ctx.lineTo(-1.6*sz,1*sz); ctx.closePath(); ctx.fillStyle='#eef3f6'; ctx.fill();
+          ctx.restore();
+        } else strikeBoom(ctx, B[0], B[1], e-D, sz, false);
+      }
+      else if(it.type==='jet'){
+        const A=proj(it.from), T=proj(it.to); if(!A||!T) return;
+        const dx=T[0]-A[0], dy=T[1]-A[1], L=Math.hypot(dx,dy)||1, ux=dx/L, uy=dy/L, nx=-uy, ny=ux;
+        const off=it.lane*7*sz, run=Math.max(22*sz, Math.min(60*sz, L*0.25));
+        const S=[A[0]+nx*off, A[1]+ny*off], E=[T[0]+ux*run*1.6+nx*off, T[1]+uy*run*1.6+ny*off];   // fly through and on past the target
+        const D=it.dur/1000, tf=e/D, fade= tf>0.85 ? Math.max(0,1-(tf-0.85)/0.15) : Math.min(1,tf/0.08);
+        const pos=u=>[S[0]+(E[0]-S[0])*u, S[1]+(E[1]-S[1])*u];
+        const reach=L/(L+run*1.6);                                    // fraction of the flight at the target
+        // bombs released across the target: entry, centre, exit
+        [-0.6,0,0.6].forEach((b,bi)=>{
+          const uRel=reach + (b*run)/(L+run*1.6), dropAt=uRel*D, fall=0.35;
+          const be=e-dropAt-fall; if(be<0 || be>1.6) return;
+          const bx=T[0]+ux*b*run+nx*off*0.5, by=T[1]+uy*b*run+ny*off*0.5;
+          strikeBoom(ctx, bx, by, be, sz, it.bomber);
+        });
+        if(tf<1 && fade>0){
+          const H=pos(Math.min(1,tf));
+          // contrails
+          for(let w=1;w<=10;w++){ const q=pos(Math.max(0,tf-w*0.012)); ctx.beginPath(); ctx.arc(q[0]-nx*1.5*sz,q[1]-ny*1.5*sz,0.7*sz,0,Math.PI*2); ctx.arc(q[0]+nx*1.5*sz,q[1]+ny*1.5*sz,0.7*sz,0,Math.PI*2);
+            ctx.fillStyle=`rgba(230,240,245,${(0.45-w*0.04)*fade})`; ctx.fill(); }
+          ctx.save(); ctx.translate(H[0],H[1]); ctx.rotate(Math.atan2(uy,ux)); ctx.globalAlpha=fade;
+          const s=sz*(it.bomber?1.25:1);
+          ctx.beginPath(); ctx.moveTo(6*s,0); ctx.lineTo(-1*s,-1*s); ctx.lineTo(-3*s,-6*s); ctx.lineTo(-5*s,-6*s); ctx.lineTo(-3.5*s,-1*s); ctx.lineTo(-5*s,-1*s);
+          ctx.lineTo(-6*s,-3*s); ctx.lineTo(-7*s,-3*s); ctx.lineTo(-6.5*s,0); ctx.lineTo(-7*s,3*s); ctx.lineTo(-6*s,3*s); ctx.lineTo(-5*s,1*s); ctx.lineTo(-3.5*s,1*s); ctx.lineTo(-5*s,6*s); ctx.lineTo(-3*s,6*s); ctx.lineTo(-1*s,1*s); ctx.closePath();
+          ctx.fillStyle=`rgb(${col[0]},${col[1]},${col[2]})`; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.65)'; ctx.lineWidth=0.6; ctx.stroke();
+          ctx.globalAlpha=1; ctx.restore();
+        }
+      }
+      else if(it.type==='carrier'){
+        const S=proj(it.at), T=proj(it.to); if(!S||!T) return;
+        const D=(it.dur+(it.tail||0))/1000, fadeIn=Math.min(1,e/0.5), fadeOut=e>D-1 ? Math.max(0,(D-e)/1) : 1, al=fadeIn*fadeOut;
+        if(al>0){
+          // wake rings
+          const ph=(e*0.8)%1; ctx.beginPath(); ctx.ellipse(S[0],S[1],(6+ph*10)*sz,(3+ph*5)*sz,0,0,Math.PI*2); ctx.strokeStyle=`rgba(200,235,255,${0.35*(1-ph)*al})`; ctx.lineWidth=1; ctx.stroke();
+          ctx.save(); ctx.translate(S[0],S[1]); ctx.rotate(Math.atan2(T[1]-S[1],T[0]-S[0])); ctx.globalAlpha=al;
+          const s=sz*1.5;   // flat-top carrier: hull, deck, island
+          ctx.beginPath(); ctx.moveTo(9*s,0); ctx.lineTo(6*s,-2.6*s); ctx.lineTo(-8*s,-2.6*s); ctx.lineTo(-9*s,0); ctx.lineTo(-8*s,2.6*s); ctx.lineTo(6*s,2.6*s); ctx.closePath();
+          ctx.fillStyle='rgb(70,84,96)'; ctx.fill(); ctx.strokeStyle=`rgb(${col[0]},${col[1]},${col[2]})`; ctx.lineWidth=0.9; ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-6*s,0); ctx.lineTo(6*s,0); ctx.strokeStyle='rgba(230,240,245,.55)'; ctx.lineWidth=0.5; ctx.setLineDash([1.5,1.5]); ctx.stroke(); ctx.setLineDash([]);
+          ctx.fillStyle='rgb(150,165,178)'; ctx.fillRect(-1*s,1.2*s,2.6*s,1.6*s);
+          ctx.globalAlpha=1; ctx.restore();
+        }
+        it.shots.forEach(sh=>{
+          const se=e-sh.start/1000; if(se<0) return;
+          const B=proj(sh.to); if(!B) return;
+          const SD=sh.dur/1000, tf=Math.min(1,se/SD);
+          if(se<0.3){ ctx.beginPath(); ctx.arc(S[0],S[1],(2+se*14)*sz,0,Math.PI*2); ctx.fillStyle=`rgba(255,230,170,${0.7*(1-se/0.3)})`; ctx.fill(); }  // launch flash on deck
+          const P=strikeArc(ctx, S, B, tf, 0.18, col, sz*0.85, se>SD ? Math.max(0,1-(se-SD)/1) : 1, sh.seed);
+          if(tf<1){ const H=P(tf); ctx.beginPath(); ctx.arc(H[0],H[1],1.6*sz,0,Math.PI*2); ctx.fillStyle='rgba(255,245,220,.95)'; ctx.fill(); }
+          else strikeBoom(ctx, B[0], B[1], se-SD, sz*0.9, false);
+        });
+      }
+    });
+    return true;
+  });
+}
+
 function nuclearStrike(att, def, quiet, aim){
   markAggression(att);
   const impactAt = aim && isFinite(aim[0]) ? aim : [def.lon, def.lat];   // where the player clicked (AI aims at the capital)
@@ -12730,6 +12941,7 @@ function payWarIndemnity(loser, winner){
   return amt;
 }
 function resolveBattle(attacker, defender, sentUnits){
+  queueWarStrikes(attacker, defender, 'battle');
   const sentStr = unitsStrength(sentUnits, attacker);
   const ratio = battleOdds(sentStr, defender);
   const won = Math.random() < ratio;
@@ -13513,6 +13725,7 @@ function availableUnits(c,k){ return Math.floor((c.mil_units?.[k]||0) * (k==='gr
 
 // ── AI BATTLES (weekly per war). Player attacks via the Deploy screen instead. ──
 function aiBattle(att, def){
+  queueWarStrikes(att, def, 'battle');
   const eA=expStrength(att,def), eD=expStrength(def,att);
   const aS=(att.mil_strength||0)+eA, dS=Math.max(1,(def.mil_strength||1)+eD);
   const ratio = winChance(aS, dS);
@@ -13549,6 +13762,7 @@ function aiBattle(att, def){
 // Weekly war simulation + AI peace-seeking
 function tickWars(){
   const p=G.player;
+  tickWarStrikes();
   // Armies that have arrived, or whose war ended, leave the map
   if(G.aiMoves?.length) G.aiMoves=G.aiMoves.filter(m=>G.totalDays < m.depart+m.days+1 && CTRY[m.from]?.wars?.has(m.to));
   // UN mandates running out: warn the player, then fighting on counts as aggression
@@ -15203,7 +15417,7 @@ function renderLauncher(){
   const fsOk=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
   const tiles=MOB_SECTIONS.map(([k,ico,l])=>`<button class="mtile" onclick="mobGo('${k}')">${B[k]?`<em class="${B[k][1]}">${B[k][0]}</em>`:''}<i>${ico}</i><span>${l}</span></button>`).join('');
   const sys=[['news','📰','NEWS',"mobOpenNews()"],['save','💾','SAVE / LOAD',"openSaveModal()"],['terrain','⛰️','TERRAIN',"toggleTerrain();renderLauncher()",G.terrain],
-             ['auto','📅','AUTO-PAUSE',"toggleAutoPauseMonthly();renderLauncher()",G.autoPauseMonthly],['ui','🔠','TEXT SIZE',"toggleUIPanel()"],
+             ['auto','📅','AUTO-PAUSE',"toggleAutoPauseMonthly();renderLauncher()",G.autoPauseMonthly],['fx','💥','WAR EFFECTS',"toggleWarFx();renderLauncher()",G.warFx],['ui','🔠','TEXT SIZE',"toggleUIPanel()"],
              ['brief','💡','BRIEFING',"showStartTips(true)"]].concat(fsOk?[['fs','⛶','FULL SCREEN',"toggleFullscreen()"]]:[])
     .map(([k,ico,l,fn,on])=>`<button class="mtile sys${on?' on':''}" data-act="${k}" onclick="${fn}"><i>${ico}</i><span>${l}</span></button>`).join('');
   const al=A.length ? A.map(a=>`<button class="ml-al ${a.lvl}" onclick="mobGo('${a.tab}')"><i>${a.ico}</i><span>${a.t}<small>${a.s}</small></span><b>›</b></button>`).join('')
@@ -15411,7 +15625,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 159;
+const ATLAS_BUILD = 160;
 function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
 let _appUpdating=false;
 async function appCheckUpdate(manual){
@@ -15428,6 +15642,8 @@ async function appCheckUpdate(manual){
       const html=await (await fetch(info.updateBase+(v.file||'atlas.html')+'?t='+Date.now(),{cache:'no-store'})).text();
       if(!AtlasApp.installUpdate(v.version, html)) throw new Error('bad file');
     }
+    if(!manual && _appPrompted[v.version]) return;     // asked once already; it installs itself on the next start anyway
+    _appPrompted[v.version]=true;
     hudConfirm('📲 Update ready',`A.T.L.A.S v${v.version} is ready (you have v${ATLAS_BUILD}).${v.notes?'<br><br>'+v.notes:''}<br><br>Restart now? Your game is saved first. Otherwise it starts next time you open the app.`,'Restart now',async()=>{
       try{ if(G.player) await saveGame('auto', true); }catch(e){}
       AtlasApp.restart(); },false);
@@ -15442,8 +15658,14 @@ function appSetup(){
   const ver=document.createElement('div'); ver.style.cssText='font-size:11px;color:var(--text3);text-align:center;margin-top:2px;';
   const info=appInfo(); ver.textContent=`A.T.L.A.S v${ATLAS_BUILD} · app ${info?.app||''}`;
   col.insertBefore(b, col.lastElementChild); col.appendChild(ver);
-  setTimeout(()=>appCheckUpdate(false), 8000);
+  setTimeout(appAutoCheck, 8000);
+  // Android keeps the game running in the background, so check again whenever it comes back to the front
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') setTimeout(appAutoCheck, 1500); });
+  setInterval(()=>{ if(document.visibilityState==='visible') appAutoCheck(); }, 30*60*1000);
 }
+let _appLastCheck=0;
+function appAutoCheck(){ if(Date.now()-_appLastCheck < 20*60*1000) return; _appLastCheck=Date.now(); appCheckUpdate(false); }
+const _appPrompted={};
 setTimeout(appSetup, 0);
 
 // ── autosave on the 1st of every month ──

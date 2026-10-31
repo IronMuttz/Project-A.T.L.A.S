@@ -1,7 +1,7 @@
 {
-  "version": 159,
+  "version": 160,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "The map now fills the screen on phones, the Fold and iPads, centred on your country."
+  "notes": "War effects: missile salvos, jet bombing runs and carrier barrages on the map. The app now checks for updates whenever you return to it."
 }
