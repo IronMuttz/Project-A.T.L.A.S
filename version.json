@@ -1,7 +1,7 @@
 {
-  "version": 162,
+  "version": 163,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "War strikes now continue for the whole war and stop the moment it ends or a side is annexed. Includes the new Radar map style."
+  "notes": "Updates now show on the start screen, so you can update before entering the game."
 }

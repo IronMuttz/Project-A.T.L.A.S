@@ -628,6 +628,25 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
   .wl-saves{flex-direction:row;flex-wrap:wrap;justify-content:center;} .wl-cont-meta{display:none;} .wl-alt{padding:8px 16px;font-size:13px;}
   .wl-foot{bottom:6px;} .wl-greet{font-size:17px;} .wl-sub{display:none;} .wl-go{padding:8px 24px;font-size:14px;}
 }
+/* App update card on the start screen */
+.wl-upd{ position:absolute; left:0; right:0; margin:0 auto; width:max-content; top:calc(122px + env(safe-area-inset-top,0px)); z-index:5; display:flex; align-items:center; gap:12px;
+  max-width:min(92vw,520px); box-sizing:border-box; padding:8px 8px 8px 16px; border-radius:18px; background:rgba(4,20,32,.88); border:1px solid rgba(56,225,255,.45);
+  box-shadow:0 0 24px rgba(56,225,255,.22); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  font:600 15px/1.25 'Rajdhani',sans-serif; letter-spacing:.04em; color:#e8fbff; animation:wlupdin .45s ease both; }
+.wl-upd[hidden]{ display:none; }
+.wl-upd.checking{ color:#7fc9dc; padding-right:16px; }
+.wl-upd.current{ color:#9fffd0; border-color:rgba(93,255,176,.45); box-shadow:0 0 20px rgba(93,255,176,.18); padding-right:16px; }
+.wl-upd.ready, .wl-upd.newapp{ border-color:#ffb347; box-shadow:0 0 30px rgba(255,179,71,.32); }
+.wl-upd.downloading{ padding-right:16px; }
+.wl-upd small{ display:block; margin-top:2px; font:500 12.5px/1.3 system-ui,-apple-system,'Segoe UI',sans-serif; letter-spacing:0; color:#9fdcec;
+  overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.wl-upd-b{ flex:0 0 auto; font:700 14px 'Rajdhani',sans-serif; letter-spacing:.1em; color:#1a0d00; background:#ffb347; border:none; border-radius:12px;
+  padding:11px 16px; cursor:pointer; box-shadow:0 0 18px rgba(255,179,71,.45); text-transform:uppercase; }
+.wl-upd-b:disabled{ opacity:.6; }
+@keyframes wlupdin{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:none; } }
+.wl-upd-t{ min-width:0; flex:1 1 auto; }
+@media (max-width: 420px){ .wl-upd{ font-size:14px; gap:8px; padding-left:12px; } .wl-upd-b{ padding:10px 12px; font-size:13px; } }
+@media (max-width: 900px) and (orientation: landscape){ .wl-upd{ top:calc(74px + env(safe-area-inset-top,0px)); padding-top:5px; padding-bottom:5px; } .wl-upd small{ -webkit-line-clamp:1; } }
 @media (prefers-reduced-motion: reduce){ #welcome *{animation:none !important;transition:none !important;} .wl-draw{stroke-dashoffset:0;} .wl-log div{opacity:1;} .wl-go{opacity:1;transform:none;} }
 
 /* ══════════════ HUD THEME — matches the ATLAS welcome screen ══════════════ */
@@ -1228,6 +1247,7 @@ body.mob .rrow{ min-height:36px; }
   <button class="wl-voice" id="wl-voice" onclick="toggleWelcomeVoice()" aria-label="Mute voice" title="Voice greeting">🔈</button>
   <button class="wl-voice" id="wl-fs" onclick="toggleFullscreen()" aria-label="Full screen" title="Full screen" style="right:62px;">⛶</button>
   <div class="wl-brand"><h1>A.T.L.A.S</h1><div class="wl-full">Advanced Tactical Leadership &amp; Administration System</div><p>ATLAS Command Intelligence</p></div>
+  <div class="wl-upd" id="wl-upd" hidden aria-live="polite"><span class="wl-upd-t" id="wl-upd-t"></span><button class="wl-upd-b" id="wl-upd-b" hidden onclick="appUpdateNow()">Update now</button></div>
   <aside class="wl-side l"><h3>System check</h3><div class="wl-log" id="wl-log"></div></aside>
   <div class="wl-core"><svg id="wl-rings" viewBox="0 0 600 600" aria-hidden="true"></svg><canvas id="wl-globe" aria-hidden="true"></canvas></div>
   <aside class="wl-side r"><h3 id="wl-gp-h">Global picture · 1 Jan 2010</h3><div class="wl-read" id="wl-read"></div></aside>
@@ -5599,6 +5619,7 @@ function dayPart(){ const hr=new Date().getHours(); return hr<5?'evening':hr<12?
 function showWelcome(){
   document.getElementById('loading').style.display='none';
   const W=document.getElementById('welcome'); W.classList.add('on');
+  try{ wlUpdRender(); }catch(e){}
   const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const hr=new Date().getHours(), part=hr<5?'evening':hr<12?'morning':hr<17?'afternoon':'evening';
   const greet=`Good ${part}, Commander.`;
@@ -15701,7 +15722,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 162;
+const ATLAS_BUILD = 163;
 function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
 let _appUpdating=false;
 async function appCheckUpdate(manual){
@@ -15710,21 +15731,50 @@ async function appCheckUpdate(manual){
   _appUpdating=true;
   try{
     const v=await (await fetch(info.updateBase+'version.json?t='+Date.now(),{cache:'no-store'})).json();
+    const onStart = !G.player;                         // still on the start screen: show it there instead of a pop-up
     if(v.minApp && (info.appCode||1) < v.minApp){
+      if(onStart){ wlUpd('newapp', v); return; }
       hudConfirm('📲 New app version',`Version ${v.version} needs a newer app. Download it and install it over this one; your saves are kept.`,'Download',()=>AtlasApp.openUrl(v.apk||info.updateBase),false); return; }
-    if(!(v.version > ATLAS_BUILD)){ if(manual) addEv('d','📲 Up to date',`You have the latest version (v${ATLAS_BUILD}).`); return; }
+    if(!(v.version > ATLAS_BUILD)){ if(onStart) wlUpd('current'); if(manual) addEv('d','📲 Up to date',`You have the latest version (v${ATLAS_BUILD}).`); return; }
     if(!(info.installed >= v.version)){
+      if(onStart) wlUpd('downloading', v);
       if(manual) addEv('d','📲 Downloading',`Downloading v${v.version}…`);
       const html=await (await fetch(info.updateBase+(v.file||'atlas.html')+'?t='+Date.now(),{cache:'no-store'})).text();
       if(!AtlasApp.installUpdate(v.version, html)) throw new Error('bad file');
     }
+    if(!G.player){ wlUpd('ready', v); return; }       // start screen: one tap restarts into the new version
     if(!manual && _appPrompted[v.version]) return;     // asked once already; it installs itself on the next start anyway
     _appPrompted[v.version]=true;
     hudConfirm('📲 Update ready',`A.T.L.A.S v${v.version} is ready (you have v${ATLAS_BUILD}).${v.notes?'<br><br>'+v.notes:''}<br><br>Restart now? Your game is saved first. Otherwise it starts next time you open the app.`,'Restart now',async()=>{
       try{ if(G.player) await saveGame('auto', true); }catch(e){}
       AtlasApp.restart(); },false);
-  }catch(e){ if(manual) addEv('w','📲 Update check failed','Could not reach the update server. Check your internet connection.'); }
+  }catch(e){ if(!G.player) wlUpd(''); if(manual) addEv('w','📲 Update check failed','Could not reach the update server. Check your internet connection.'); }
   finally{ _appUpdating=false; }
+}
+// Start-screen update card. The state is kept so it shows as soon as the start screen appears.
+let _wlUpd={ state:'', v:null };
+function wlUpd(state, v){ _wlUpd={ state, v:v||_wlUpd.v }; wlUpdRender(); }
+function wlUpdRender(){
+  const box=document.getElementById('wl-upd'), t=document.getElementById('wl-upd-t'), b=document.getElementById('wl-upd-b'); if(!box||!t||!b) return;
+  const { state, v }=_wlUpd, notes = v?.notes ? `<small>${mEsc(v.notes)}</small>` : '';
+  b.hidden=true; b.disabled=false;
+  if(!state || G.player){ box.hidden=true; return; }
+  box.className='wl-upd '+state; box.hidden=false;
+  const br=document.querySelector('#welcome .wl-brand')?.getBoundingClientRect();     // sit just under the title on every screen
+  if(br && br.bottom>0) box.style.top=Math.round(br.bottom+10)+'px';
+  if(state==='checking') t.innerHTML='📲 Checking for updates…';
+  else if(state==='downloading') t.innerHTML=`📲 Downloading v${v.version}…${notes}`;
+  else if(state==='ready'){ t.innerHTML=`📲 v${v.version} is ready <span style="color:#7fc9dc;font-weight:500">· you have v${ATLAS_BUILD}</span>${notes}`; b.hidden=false; b.textContent='Update now'; }
+  else if(state==='newapp'){ t.innerHTML=`📲 v${v.version} needs the new app<small>Install it over this one; your saves are kept.</small>`; b.hidden=false; b.textContent='Download'; }
+  else if(state==='current'){ t.innerHTML=`✓ Up to date · v${ATLAS_BUILD}`;
+    clearTimeout(wlUpdRender._t); wlUpdRender._t=setTimeout(()=>{ if(_wlUpd.state==='current'){ _wlUpd.state=''; wlUpdRender(); } }, 4000); }
+}
+window.addEventListener('resize', ()=>{ if(_wlUpd.state) wlUpdRender(); });
+function appUpdateNow(){
+  const { state, v }=_wlUpd, info=appInfo(); if(!window.AtlasApp) return;
+  if(state==='newapp'){ AtlasApp.openUrl(v?.apk || info?.updateBase || ''); return; }
+  const b=document.getElementById('wl-upd-b'); if(b){ b.disabled=true; b.textContent='Restarting…'; }
+  setTimeout(()=>AtlasApp.restart(), 150);
 }
 function appSetup(){
   if(!window.AtlasApp) return;
@@ -15734,7 +15784,8 @@ function appSetup(){
   const ver=document.createElement('div'); ver.style.cssText='font-size:11px;color:var(--text3);text-align:center;margin-top:2px;';
   const info=appInfo(); ver.textContent=`A.T.L.A.S v${ATLAS_BUILD} · app ${info?.app||''}`;
   col.insertBefore(b, col.lastElementChild); col.appendChild(ver);
-  setTimeout(appAutoCheck, 8000);
+  if(appInfo()?.updateBase?.indexOf('http')===0) wlUpd('checking');
+  setTimeout(appAutoCheck, 300);
   // Android keeps the game running in the background, so check again whenever it comes back to the front
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') setTimeout(appAutoCheck, 1500); });
   setInterval(()=>{ if(document.visibilityState==='visible') appAutoCheck(); }, 30*60*1000);
