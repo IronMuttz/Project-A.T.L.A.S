@@ -1514,6 +1514,7 @@ body.mob .rrow{ min-height:36px; }
   };
   const desc=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
   const pending=new Map();   // id → typed state for boxes a nested panel fills in a moment later
+  const keepScroll=new Map();   // scroll container → position to restore once a multi-step re-render finishes
   const put=(el,st)=>{ if(el.readOnly || el.disabled) return;
     el.value=st.v; el.dataset.typed='1';
     if(el.id && typeof moneyPreview==='function' && document.getElementById(el.id+'-prev')) try{ moneyPreview(el.id); }catch(e){}
@@ -1524,16 +1525,24 @@ body.mob .rrow{ min-height:36px; }
   Object.defineProperty(Element.prototype,'innerHTML',{
     configurable:true, enumerable:desc.enumerable, get:desc.get,
     set(v){
-      // Keep the reader's place: re-rendering a panel must not jump it back to the top
+      // Keep the reader's place: re-rendering a panel must not jump it back to the top.
+      // A panel often re-renders in steps (outer panel, then sections inside it). While the outer step's
+      // content is still short the scroll position is briefly clamped, so the inner steps must reuse the
+      // position saved by the first step instead of saving the clamped one.
       const scr=[];
       if(this.isConnected){
-        for(let el=this; el && el!==document.documentElement; el=el.parentElement) if(el.scrollTop>0) scr.push([el,el.scrollTop,el.scrollLeft]);
-        if(this.querySelectorAll) this.querySelectorAll('[id]').forEach(el=>{ if(el.scrollTop>0) scr.push([el.id,el.scrollTop,el.scrollLeft]); });
+        const save=(key,el)=>{ if(keepScroll.has(key)) scr.push([key,...keepScroll.get(key)]); else if(el.scrollTop>0) scr.push([key,el.scrollTop,el.scrollLeft]); };
+        for(let el=this; el && el!==document.documentElement; el=el.parentElement) save(el,el);
+        if(this.querySelectorAll) this.querySelectorAll('[id]').forEach(el=>save(el.id,el));
       }
       setInner.call(this,v);
       if(scr.length){
+        scr.forEach(([k,t,l])=>keepScroll.set(k,[t,l]));
         const restore=()=>scr.forEach(([el,t,l])=>{ const n=typeof el==='string'?document.getElementById(el):el; if(n && n.isConnected){ if(Math.abs(n.scrollTop-t)>1) n.scrollTop=t; if(l) n.scrollLeft=l; } });
-        restore(); requestAnimationFrame(restore);       // again after nested panels have filled in
+        restore();
+        if(!keepScroll._raf) keepScroll._raf=requestAnimationFrame(()=>{ keepScroll._raf=0;    // once every step has filled in
+          keepScroll.forEach(([t,l],k)=>{ const n=typeof k==='string'?document.getElementById(k):k; if(n && n.isConnected){ if(Math.abs(n.scrollTop-t)>1) n.scrollTop=t; if(l) n.scrollLeft=l; } });
+          keepScroll.clear(); });
       }
     }
   });
@@ -8598,16 +8607,21 @@ function processDayTickCore(){
 }
 // Every tab is live: the open panel redraws each game day (typed values, focus and scroll are kept),
 // except while the player is mid-gesture — an open dropdown, a slider being dragged, or a pressed button
-let _lpPointerDown=false, _lpLastLive=0;
-document.addEventListener('pointerdown', e=>{ if(e.target.closest?.('#lp')) _lpPointerDown=true; }, true);
+let _lpPointerDown=false, _lpLastLive=0, _lpTouchAt=0;
+document.addEventListener('pointerdown', e=>{ if(e.target.closest?.('#lp')){ _lpPointerDown=true; _lpTouchAt=performance.now(); } }, true);
+// Scrolling (finger, wheel, keys) counts as interacting: the panel waits until the player has been still for a moment,
+// so nothing moves under a finger that is about to tap
+['touchstart','touchmove','wheel','keydown'].forEach(t=>document.addEventListener(t, e=>{ if(e.target?.closest?.('#lp')) _lpTouchAt=performance.now(); }, {capture:true, passive:true}));
 document.addEventListener('pointerup', ()=>{ _lpPointerDown=false; }, true);
 document.addEventListener('pointercancel', ()=>{ _lpPointerDown=false; }, true);
 function liveRefreshPane(){
   const pane=document.querySelector('.lppane.on'); if(!pane) return;
   const ae=document.activeElement;
   if(_lpPointerDown) return;
-  if(ae && pane.contains(ae) && (ae.tagName==='SELECT' || (ae.tagName==='INPUT' && ae.type==='range'))) return;
+  // typing in a box (or a dropdown / slider in use): leave the panel alone until the player is done
+  if(ae && pane.contains(ae) && (ae.tagName==='SELECT' || ae.tagName==='TEXTAREA' || ae.isContentEditable || (ae.tagName==='INPUT' && !['button','submit','checkbox','radio'].includes(ae.type)))) return;
   const now=performance.now(); if(now-_lpLastLive<250) return;            // at most four redraws a second at high speed
+  if(now-_lpTouchAt<1500) return;                                          // touched or scrolled in the last 1.5 s
   _lpLastLive=now;
   try{ lpRender(); }catch(e){ console.warn('[live]', e); }
 }
@@ -9550,10 +9564,22 @@ function showLP(el,pane){
   lpRender();
   if(document.body.classList.contains('mob')){ try{ el.scrollIntoView({inline:'center',block:'nearest'}); }catch(e){} mobNavSync(); }
 }
+// Each tab remembers where you were: switching tabs saves the old tab's scroll position and returns to the new tab's
+let _lpCur=null; const _lpPos={};
 function lpRender(){
   const active=document.querySelector('.lppane.on');
   if(!active) return;
   const nm=active.id.replace('lp-','');
+  const sc=active.closest('.lpbody');
+  if(sc && !sc._posWatch){ sc._posWatch=true; sc.addEventListener('scroll', ()=>{ if(_lpCur) _lpPos[_lpCur]=sc.scrollTop; }, {passive:true}); }   // the position is tracked as you scroll (by the time a tab switches, the old one is already hidden)
+  if(sc && _lpCur!==nm){
+    _lpCur=nm; sc.scrollTop=0;
+    const want=_lpPos[nm]||0;
+    if(want){ requestAnimationFrame(()=>{ if(_lpCur===nm) sc.scrollTop=want; requestAnimationFrame(()=>{ if(_lpCur===nm && Math.abs(sc.scrollTop-want)>1) sc.scrollTop=want; }); }); }
+  }
+  lpRenderPane(nm);
+}
+function lpRenderPane(nm){
   if(nm==='nation') renderNation();
   else if(nm==='govern') renderGovPanelInline();
   else if(nm==='goods') renderGoods();
@@ -15881,7 +15907,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 168;
+const ATLAS_BUILD = 169;
 function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
 let _appUpdating=false;
 async function appCheckUpdate(manual){
