@@ -1,7 +1,7 @@
 {
-  "version": 160,
+  "version": 161,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "War effects: missile salvos, jet bombing runs and carrier barrages on the map. The app now checks for updates whenever you return to it."
+  "notes": "New Radar map style: tap the map-style button to cycle Political, Terrain and Radar."
 }
