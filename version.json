@@ -1,7 +1,7 @@
 {
-  "version": 161,
+  "version": 162,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "New Radar map style: tap the map-style button to cycle Political, Terrain and Radar."
+  "notes": "War strikes now continue for the whole war and stop the moment it ends or a side is annexed. Includes the new Radar map style."
 }

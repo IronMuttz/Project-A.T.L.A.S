@@ -7228,7 +7228,8 @@ function animFrame(ts){
     });
   }
 
-  // ── WAR STRIKES — missiles, air raids, carrier barrages ──
+  // ── WAR STRIKES — missiles, air raids, carrier barrages (continuous while a war lasts) ──
+  warFxScheduler(toCP, W, H);
   drawWarStrikes(ctx, toCP, k);
 
   // ── DIPLOMATIC ENVOYS & EMBASSIES UNDER CONSTRUCTION ──
@@ -10890,22 +10891,30 @@ function queueWarStrikes(att, def, kind, delayMs){
     G.strikes.push({ att:att.id, def:def.id, side:strikeSide(att,def), involves, t0, len:latest+200, items });
   }catch(e){ /* visuals only — never break the game */ }
 }
-// Daily: opening salvos are queued by declareWar; this adds the steady bombardment of an ongoing war
-function tickWarStrikes(){
+// Continuous fire: every war keeps exchanging strikes until it ends or a side is annexed. Runs on real
+// time from the animation loop, so it never stops mid-war. Each war launches its next package as soon as its
+// last one has landed, the two sides taking turns. Your wars always play; AI wars play while they are on screen.
+function warFxActive(aId, bId){ const A=CTRY[aId], B=CTRY[bId]; return !!(A && B && !A.annexedBy && !B.annexedBy && A.wars?.has(bId)); }
+let _fxSchedT=0;
+function warFxScheduler(toCP, W, H){
+  const now=performance.now(); if(now-_fxSchedT<400) return; _fxSchedT=now;
   if(!G.warFx || G._ff || document.visibilityState==='hidden') return;
-  const p=G.player;
-  (G.wars||[]).forEach(w=>{
-    const A=CTRY[w.a], B=CTRY[w.b]; if(!A||!B||!A.wars?.has(B.id)) return;
-    const every = (A===p||B===p) ? STRIKE.bombardPlayer : STRIKE.bombardAI;
-    const last = w._fxDay ?? w.startDay ?? 0;
-    if(G.totalDays-last < every) return;
-    w._fxDay=G.totalDays; w._fxSide=!w._fxSide;
-    const [att,def] = w._fxSide ? [A,B] : [B,A];
-    if(att===p && !(p.deployedTroops||[]).some(d=>d.targetId===def.id) && !(p.expeditions||[]).length) return;   // you only strike when you've committed forces
-    queueWarStrikes(att, def, 'bombard', Math.random()*800);
+  const p=G.player, onScreen=c=>{ const r=G.proj([c.lon,c.lat]); if(!r) return false; const [x,y]=toCP(r[0],r[1]); return x>-60 && y>-60 && x<W+60 && y<H+60; };
+  const wars=(G.wars||[]).filter(w=>warFxActive(w.a,w.b))
+    .map(w=>({ w, mine: w.a===p?.id || w.b===p?.id }))
+    .filter(x=>x.mine || onScreen(CTRY[x.w.a]) || onScreen(CTRY[x.w.b]))
+    .sort((x,y)=>(y.mine?1:0)-(x.mine?1:0));
+  wars.forEach(({w})=>{
+    if(w._fxNext && now<w._fxNext) return;
+    if((G.strikes||[]).some(s=>((s.att===w.a&&s.def===w.b)||(s.att===w.b&&s.def===w.a)) && now<s.t0+s.len-600)) return;   // previous volley still in the air
+    w._fxSide=!w._fxSide;
+    const A=CTRY[w.a], B=CTRY[w.b], [att,def]= w._fxSide ? [A,B] : [B,A];
+    const before=(G.strikes||[]).length;
+    queueWarStrikes(att, def, Math.random()<0.3 ? 'battle' : 'bombard', 300+Math.random()*900);
+    const pk=G.strikes?.length>before ? G.strikes[G.strikes.length-1] : null;
+    w._fxNext = now + (pk ? (pk.t0-now)+pk.len*0.7 : 2500);
   });
 }
-
 // ── drawing (called from animFrame; positions re-projected every frame so they follow zoom and pan) ──
 const STRIKE_COL = { you:[120,232,255], enemy:[255,96,96], ai:[255,186,110] };
 function strikeBoom(ctx, x, y, e, sz, big){
@@ -10941,7 +10950,7 @@ function drawWarStrikes(ctx, toCP, k){
   const now=performance.now(), sz=Math.max(0.8, Math.min(2.2, Math.sqrt(k)*0.95));
   const proj=ll=>{ const r=G.proj(ll); return r ? toCP(r[0],r[1]) : null; };
   G.strikes=G.strikes.filter(pk=>{
-    if(now>pk.t0+pk.len) return false;
+    if(now>pk.t0+pk.len || !warFxActive(pk.att,pk.def)) return false;   // war over or a side annexed: the fire stops
     if(now<pk.t0) return true;
     const col=STRIKE_COL[pk.side]||STRIKE_COL.ai, el=now-pk.t0;
     pk.items.forEach(it=>{
@@ -13830,7 +13839,6 @@ function aiBattle(att, def){
 // Weekly war simulation + AI peace-seeking
 function tickWars(){
   const p=G.player;
-  tickWarStrikes();
   // Armies that have arrived, or whose war ended, leave the map
   if(G.aiMoves?.length) G.aiMoves=G.aiMoves.filter(m=>G.totalDays < m.depart+m.days+1 && CTRY[m.from]?.wars?.has(m.to));
   // UN mandates running out: warn the player, then fighting on counts as aggression
@@ -15693,7 +15701,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 161;
+const ATLAS_BUILD = 162;
 function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
 let _appUpdating=false;
 async function appCheckUpdate(manual){
