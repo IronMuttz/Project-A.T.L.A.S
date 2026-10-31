@@ -1,7 +1,7 @@
 {
-  "version": 164,
+  "version": 165,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Smaller jet symbols in air raids."
+  "notes": "Info panel now shows live military strength and troops (with units still building). The Draft button now really adds troops."
 }

@@ -5937,7 +5937,7 @@ function introHov(ev, d){
       <div class="itt-stat"><div class="itt-sl">Population</div><div class="itt-sv">${Math.round(FISCAL_2010[c.abbr]?.pop10 ?? c.pop)}M</div></div>
       <div class="itt-stat"><div class="itt-sl">Treasury</div><div class="itt-sv">${fmtShort(c.treasury||0)}</div></div>
       <div class="itt-stat"><div class="itt-sl">Debt</div><div class="itt-sv" style="color:${(fd?.debt||0)>90?'var(--red2)':(fd?.debt||0)>60?'var(--gold)':'#e8fbff'}">${debt>0?fmtShort(debt):'None'}${fd?` <small>(${Math.round(fd.debt)}% GDP)</small>`:''}</div></div>
-      <div class="itt-stat"><div class="itt-sl">Military</div><div class="itt-sv">${c.mil}K</div></div>
+      <div class="itt-stat"><div class="itt-sl">Troops</div><div class="itt-sv">${fmtNum(startTroopsK(c))}K</div></div>
       <div class="itt-stat"><div class="itt-sl">Difficulty</div><div class="itt-sv" style="color:${diffCol}">${diff}</div></div>
     </div>
     ${bal!=null?`<div class="itt-line">Budget in 2010: <b style="color:${bal>=0?'var(--green)':bal>-4?'var(--gold)':'var(--red2)'}">${bal>=0?'surplus':'deficit'} ${Math.abs(bal).toFixed(1)}% of GDP</b></div>`:''}
@@ -5987,7 +5987,7 @@ function introClk(ev, d){
   document.getElementById('isel-stats').innerHTML  = `
     <div class="isel-s"><div class="isel-sl">GDP</div><div class="isel-sv y">${gs}</div></div>
     <div class="isel-s"><div class="isel-sl">Population</div><div class="isel-sv">${Math.round(FISCAL_2010[c.abbr]?.pop10 ?? c.pop)}M</div></div>
-    <div class="isel-s"><div class="isel-sl">Military</div><div class="isel-sv">${c.mil}K</div></div>
+    <div class="isel-s"><div class="isel-sl">Troops</div><div class="isel-sv">${fmtNum(startTroopsK(c))}K</div></div>
     <div class="isel-s"><div class="isel-sl">Approval</div><div class="isel-sv">${Math.round(FISCAL_2010[c.abbr]?.appr ?? c.appr)}%</div></div>
   `;
   document.getElementById('intro-sel').style.display = 'flex';
@@ -9514,6 +9514,20 @@ function lpRender(){
 }
 
 // ── NATION PANEL ──
+// Live military figures for the info panel: overall strength (with world rank) and troops under arms.
+// For your own nation, units still in production are shown as a pending gain.
+function startTroopsK(c){ const popM=(WB2010?.pop?.[c.abbr] || c.pop*1e6)/1e6; return GROUND_TROOPS_2010_K[c.abbr] || Math.round(popM*4); }
+function milInfoCells(c, isP){
+  const str=c.mil_strength||0, troops=c.mil_units?.ground_troops||0;
+  const rank=1+CLIST.filter(x=>!x.annexedBy && x!==c && (x.mil_strength||0)>str).length;
+  let addStr=0, addTroops=0;
+  if(isP) (c.mil_queue||[]).forEach(q=>{ if(!VET_UNITS.includes(q.unit)) return; const n=q.addCount||MILITARY_UNITS[q.unit]?.addCount||0;
+    addStr+=n*(MIL_STRENGTH_PER[q.unit]||0)*vetStr(c,q.unit); if(q.unit==='ground_troops') addTroops+=n; });
+  if(addStr) addStr*=(getMultipliers(c).milStrength||1);
+  const pend=(v,what)=>v>0?`<div style="font-size:var(--fs-xs);color:var(--green);font-family:'Rajdhani',sans-serif;" title="${what}">+${fmtShort2(v)} building</div>`:'';
+  return `<div class="sg-i" title="Overall military strength: every unit, its experience level and readiness"><div class="sg-l">⚔️ Mil. Strength</div><div class="sg-v" style="font-size:var(--fs-lg);">${fmtShort2(str)} <span style="font-size:var(--fs-xs);color:var(--text3);font-family:'Rajdhani',sans-serif;">#${rank}</span></div>${pend(Math.round(addStr),'Strength added when the units in your production queue are finished')}</div>
+      <div class="sg-i" title="Ground troops under arms"><div class="sg-l">🪖 Troops</div><div class="sg-v" style="font-size:var(--fs-lg);">${fmtShort2(troops)}</div>${pend(addTroops,'Troops in training in your military factories')}</div>`;
+}
 function renderNation(){
   const c=holderOf(G.selectedCid?(CTRY[G.selectedCid]||G.player):G.player);
   if(!c) return;
@@ -9530,7 +9544,7 @@ function renderNation(){
     <div class="sg">
       <div class="sg-i"><div class="sg-l">GDP ${gdpArrow(c)}</div><div class="sg-v" style="font-size:var(--fs-lg);">$${fmtM(c.gdp)}</div></div>
       <div class="sg-i"><div class="sg-l">Population</div><div class="sg-v" style="font-size:var(--fs-lg);">${Math.round(c.pop).toLocaleString()}M</div></div>
-      <div class="sg-i"><div class="sg-l">Military</div><div class="sg-v">${c.mil}K</div></div>
+      ${milInfoCells(c, isP)}
       <div class="sg-i"><div class="sg-l">Approval</div><div class="sg-v ${c.appr>60?'g':c.appr<30?'r':''}">${Math.round(c.appr)}% <span style="font-size:var(--fs-xs);font-family:'Rajdhani',sans-serif;color:${c.appr>=80?'var(--green)':c.appr>=65?'var(--teal)':c.appr>=45?'var(--text3)':c.appr>=30?'var(--gold)':c.appr>=15?'var(--red2)':'var(--red)'}">${c.appr>=80?'ELITE':c.appr>=65?'HIGH':c.appr>=45?'NEUTRAL':c.appr>=30?'BELOW AVG':c.appr>=15?'LOW':'⚠️ CRITICAL'}</span></div></div>
       ${isP && c.apprEffects && Object.keys(c.apprEffects).length>0 ? `<div class="sg-i" style="flex-direction:column;align-items:flex-start;"><div class="sg-l">Approval Effects</div>${Object.values(c.apprEffects).map(fx=>`<div style="font-size:var(--fs-xs);color:${fx.mult>1?'var(--green)':'var(--red2)'}">${fx.type==='prod'?'⚙️ Prod':fx.type==='trade'?'📦 Trade':fx.type==='mil'?'⚔️ Mil':fx.type==='build'?'🏗️ Build':''} ${Math.round((fx.mult-1)*100)>0?'+':''}${Math.round((fx.mult-1)*100)}% · ${fx.days}d left</div>`).join('')}</div>` : ''}
       ${isP && c.apprTempBoosts?.length > 0 ? `<div class="sg-i" style="flex-direction:column;align-items:flex-start;"><div class="sg-l">📈 Active Approval Boosts</div>${c.apprTempBoosts.map(b=>`<div style="font-size:var(--fs-xs);color:var(--green)">✦ ${b.label} · +${(b.dailyAmount*b.daysLeft).toFixed(1)}% remaining · ${b.daysLeft}d left</div>`).join('')}</div>` : ''}
@@ -9603,7 +9617,7 @@ function renderNation(){
     <div id="tax-panel-inner"></div>
     <div class="sec">Actions</div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;">
-      <button class="dab g" style="padding:5px 10px;" onclick="pAct('recruit')">🪖 Recruit 10K ($5B)</button>
+      <button class="dab g" style="padding:5px 10px;" onclick="pAct('recruit')" title="Instant: 10,000 ground troops without a factory (factory-built troops are cheaper but take 30 days)">🪖 Draft 10K troops (${fmtShort(DRAFT.usd)})</button>
       <button class="dab y" style="padding:5px 10px;" onclick="showLP(document.querySelector('.lpt[data-p=\'finance\']'),'finance')">🏦 Loans (Finance)</button>
     </div>` : `
     <div class="sec">Resource Deposits</div>
@@ -15723,7 +15737,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 164;
+const ATLAS_BUILD = 165;
 function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
 let _appUpdating=false;
 async function appCheckUpdate(manual){
@@ -16166,9 +16180,14 @@ function fe(flag){
 // For backwards compat — applyTwemoji is now a no-op (handled inline via fe())
 function applyTwemoji(el){}
 
+const DRAFT = { troops:10000, usd:0.5 };
 function pAct(a){
   const p=G.player;
-  if(a==='recruit'){ if(p.treasury<5){addEv('w','⚠️ Funds','Need $5B.');return;} p.treasury-=5;p.mil+=10; addEv('n','🪖 Recruited','10K troops.'); topbarUpdate(); renderNation(); }
+  if(a==='recruit'){   // emergency draft: 10,000 troops at once, no factory needed, at 2.5× the factory price
+    if(p.treasury<DRAFT.usd){ addEv('w','⚠️ Funds',`An emergency draft costs ${fmtShort(DRAFT.usd)}. Treasury: ${fmtShort(p.treasury)}.`); return; }
+    p.treasury-=DRAFT.usd; p.mil_units.ground_troops=(p.mil_units.ground_troops||0)+DRAFT.troops; calcMilStrength(p);
+    addEv('n','🪖 Troops Drafted',`${fmtNum(DRAFT.troops)} troops join the army (${fmtShort(DRAFT.usd)}). Military strength: ${fmtNum(p.mil_strength)}.`);
+    topbarUpdate(); lpRender(); }
   if(a==='loan'){ p.treasury+=50;p.debt=(p.debt||0)+50; addEv('i','💳 Loan','$50B loan taken.'); topbarUpdate(); renderNation(); }
 }
 function pDiplo(tid,action){
