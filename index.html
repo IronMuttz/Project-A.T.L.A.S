@@ -591,7 +591,9 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .wl-side{position:absolute;top:50%;transform:translateY(-50%);width:min(24vw,300px);z-index:2;font-size:14px;}
 .wl-side.l{left:clamp(14px,3vw,48px);} .wl-side.r{right:clamp(14px,3vw,48px);text-align:right;}
 .wl-side h3{margin:0 0 8px;font-weight:600;font-size:13px;letter-spacing:.18em;color:var(--holo);opacity:.8;border-bottom:1px solid rgba(56,225,255,.25);padding-bottom:5px;}
-.wl-log div{font-family:'Share Tech Mono',monospace;font-size:12.5px;line-height:1.75;color:#9fdcec;white-space:nowrap;overflow:hidden;opacity:0;}
+.wl-log div{font-family:'Share Tech Mono',monospace;font-size:12.5px;line-height:1.5;margin-bottom:4px;color:#9fdcec;padding-left:1.1em;text-indent:-1.1em;overflow-wrap:anywhere;opacity:0;}
+#welcome.wl-nosides .wl-side{display:none;}
+#welcome.wl-laid .wl-core{transition:width .35s ease, top .35s ease;}
 .wl-log div.in{opacity:1;}
 .wl-log b{color:#5dffb0;font-weight:400;} .wl-log i{color:var(--amber);font-style:normal;}
 .wl-read{display:grid;gap:9px;}
@@ -862,6 +864,8 @@ body{ font-weight:500; }
 .wl-fp-label{ font-size:14px; letter-spacing:.12em; color:#e8fbff; margin-top:4px; opacity:0; transition:opacity .5s; }
 .wl-fp-label.ready{ opacity:1; }
 .wl-fp-label b{ color:var(--holo,#38e1ff); font-weight:600; letter-spacing:.06em; }
+/* Short screens (small laptops, tablets in landscape): a more compact bottom block leaves the globe more room */
+@media (max-height: 800px) and (min-width: 600px){ .wl-fp{ width:80px; height:80px; padding:7px; } .wl-greet{ font-size:clamp(20px,2vw,26px); } .wl-sub{ margin:2px 0 10px; } .wl-saves{ gap:6px; } .wl-foot{ bottom:calc(16px + env(safe-area-inset-bottom,0px)); } }
 @media (max-width: 900px) and (orientation: landscape){ .wl-fp{ width:62px; height:62px; padding:8px; } }
 /* Save/load window sits above the welcome screen too */
 .hud-modal-wrap{ z-index:9900 !important; }
@@ -5616,10 +5620,46 @@ function fillVoicePicker(){
 function setVoicePref(k,v){ ATLAS_VOICE[k]=v; saveVoicePrefs(); if(k==='on' && !v){ try{ speechSynthesis.cancel(); }catch(e){} ATLAS_VOICE.queue=[]; voiceMeter(false); } }
 function testAtlasVoice(){ atlasSay(`Good ${dayPart()}, Commander. All systems are online.${G.player?' '+G.player.name+' awaits your orders.':''}`); }
 function dayPart(){ const hr=new Date().getHours(); return hr<5?'evening':hr<12?'morning':hr<17?'afternoon':'evening'; }
+// Fit the globe between the title (and the update card) and the bottom block, and keep the side panels
+// beside it rather than over it. Recomputed on resize and whenever the title or bottom block changes size.
+function wlLayout(){
+  const W=document.getElementById('welcome'); if(!W || !W.classList.contains('on')) return;
+  const core=W.querySelector('.wl-core'), foot=W.querySelector('.wl-foot'), brand=W.querySelector('.wl-brand'), upd=document.getElementById('wl-upd');
+  const sides=[...W.querySelectorAll('.wl-side')], wr=W.getBoundingClientRect(), vw=wr.width, vh=wr.height;
+  if(!core || !foot || !brand || !vw || !vh) return;
+  const bb=brand.getBoundingClientRect().bottom-wr.top;
+  if(upd && !upd.hidden){ const r=upd.getBoundingClientRect(); if(r.height) W._updH=Math.max(W._updH||0, r.bottom-wr.top-bb); }
+  const top=bb+(W._updH||0);                                  // once the update card has shown, its space stays reserved (no jumping)
+  const bot=foot.getBoundingClientRect().top-wr.top;
+  const pad=Math.max(8, Math.min(28, (bot-top)*0.05)), avail=bot-top-2*pad;
+  const m=Math.max(14, Math.min(48, vw*0.03)), gap=18, sw=Math.max(220, Math.min(300, vw*0.24));
+  const canSides=!window.matchMedia('(max-width: 900px)').matches;
+  const withSides=Math.min(520, avail, vw-2*(m+sw+gap));
+  const useSides=canSides && withSides>=Math.min(300, avail*0.8);
+  const size=Math.round(Math.max(120, useSides ? withSides : Math.min(520, avail, vw-24)));
+  const cy=Math.round(top+(bot-top)/2);
+  const was=core.offsetWidth;
+  core.style.width=size+'px'; core.style.top=cy+'px'; core.style.transform='translate(-50%,-50%)';
+  core.style.visibility = avail>=110 ? '' : 'hidden';           // no room at all (landscape phone with the update card): drop the globe rather than overlap
+  W.classList.toggle('wl-nosides', canSides && !useSides);
+  if(useSides) sides.forEach(sd=>{
+    sd.style.width=Math.round(sw)+'px'; sd.style.transform='none';
+    const h=sd.offsetHeight; let t=cy-h/2;
+    t=Math.min(t, bot-8-h); t=Math.max(t, top+4);              // stay between the title and the bottom block where possible
+    sd.style.top=Math.round(t)+'px';
+  });
+  if(Math.abs(was-size)>2) setTimeout(()=>W._resizeGlobe?.(), W.classList.contains('wl-laid')?380:0);   // sharp globe at the new size
+  requestAnimationFrame(()=>W.classList.add('wl-laid'));
+}
+(()=>{ const W=document.getElementById('welcome'); if(!W) return;
+  window.addEventListener('resize', ()=>wlLayout());
+  if(window.ResizeObserver){ const ro=new ResizeObserver(()=>wlLayout()); ['.wl-brand','.wl-foot','.wl-side.l','.wl-side.r'].forEach(q=>{ const e=W.querySelector(q); if(e) ro.observe(e); }); }
+})();
 function showWelcome(){
   document.getElementById('loading').style.display='none';
   const W=document.getElementById('welcome'); W.classList.add('on');
   try{ wlUpdRender(); }catch(e){}
+  wlLayout();
   const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const hr=new Date().getHours(), part=hr<5?'evening':hr<12?'morning':hr<17?'afternoon':'evening';
   const greet=`Good ${part}, Commander.`;
@@ -5666,7 +5706,8 @@ function showWelcome(){
     if(!reduce) _wlRAF=requestAnimationFrame(draw);
   };
   _wlRAF=requestAnimationFrame(draw);
-  window.addEventListener('resize', ()=>{ if(W.classList.contains('on')) [cw,ch]=size(); });
+  W._resizeGlobe=()=>{ if(W.classList.contains('on')) [cw,ch]=size(); };
+  window.addEventListener('resize', W._resizeGlobe);
 
   // Boot log (a real sequence: what the game loads)
   const log=[
@@ -15737,7 +15778,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 165;
+const ATLAS_BUILD = 166;
 function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
 let _appUpdating=false;
 async function appCheckUpdate(manual){
@@ -15783,6 +15824,7 @@ function wlUpdRender(){
   else if(state==='newapp'){ t.innerHTML=`📲 v${v.version} needs the new app<small>Install it over this one; your saves are kept.</small>`; b.hidden=false; b.textContent='Download'; }
   else if(state==='current'){ t.innerHTML=`✓ Up to date · v${ATLAS_BUILD}`;
     clearTimeout(wlUpdRender._t); wlUpdRender._t=setTimeout(()=>{ if(_wlUpd.state==='current'){ _wlUpd.state=''; wlUpdRender(); } }, 4000); }
+  if(typeof wlLayout==='function') wlLayout();
 }
 window.addEventListener('resize', ()=>{ if(_wlUpd.state) wlUpdRender(); });
 function appUpdateNow(){

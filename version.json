@@ -1,7 +1,7 @@
 {
-  "version": 165,
+  "version": 166,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Info panel now shows live military strength and troops (with units still building). The Draft button now really adds troops."
+  "notes": "Start screen: the globe now fits between the title and the buttons, and the side panels no longer overlap it on any screen size."
 }
