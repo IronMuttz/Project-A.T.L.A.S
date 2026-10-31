@@ -10994,7 +10994,8 @@ function drawWarStrikes(ctx, toCP, k){
       else if(it.type==='jet'){
         const A=proj(it.from), T=proj(it.to); if(!A||!T) return;
         const dx=T[0]-A[0], dy=T[1]-A[1], L=Math.hypot(dx,dy)||1, ux=dx/L, uy=dy/L, nx=-uy, ny=ux;
-        const off=it.lane*7*sz, run=Math.max(22*sz, Math.min(60*sz, L*0.25));
+        const js=Math.min(sz,1.5)*0.55*(it.bomber?1.25:1);            // jet symbol scale: kept small so the raid doesn't hide the map
+        const off=it.lane*8*js, run=Math.max(22*sz, Math.min(60*sz, L*0.25));
         const S=[A[0]+nx*off, A[1]+ny*off], E=[T[0]+ux*run*1.6+nx*off, T[1]+uy*run*1.6+ny*off];   // fly through and on past the target
         const D=it.dur/1000, tf=e/D, fade= tf>0.85 ? Math.max(0,1-(tf-0.85)/0.15) : Math.min(1,tf/0.08);
         const pos=u=>[S[0]+(E[0]-S[0])*u, S[1]+(E[1]-S[1])*u];
@@ -11009,13 +11010,13 @@ function drawWarStrikes(ctx, toCP, k){
         if(tf<1 && fade>0){
           const H=pos(Math.min(1,tf));
           // contrails
-          for(let w=1;w<=10;w++){ const q=pos(Math.max(0,tf-w*0.012)); ctx.beginPath(); ctx.arc(q[0]-nx*1.5*sz,q[1]-ny*1.5*sz,0.7*sz,0,Math.PI*2); ctx.arc(q[0]+nx*1.5*sz,q[1]+ny*1.5*sz,0.7*sz,0,Math.PI*2);
-            ctx.fillStyle=`rgba(230,240,245,${(0.45-w*0.04)*fade})`; ctx.fill(); }
+          for(let w=1;w<=10;w++){ const q=pos(Math.max(0,tf-w*0.012)); ctx.beginPath(); ctx.arc(q[0]-nx*1.6*js,q[1]-ny*1.6*js,Math.max(0.45,0.7*js),0,Math.PI*2); ctx.arc(q[0]+nx*1.6*js,q[1]+ny*1.6*js,Math.max(0.45,0.7*js),0,Math.PI*2);
+            ctx.fillStyle=`rgba(230,240,245,${(0.4-w*0.035)*fade})`; ctx.fill(); }
           ctx.save(); ctx.translate(H[0],H[1]); ctx.rotate(Math.atan2(uy,ux)); ctx.globalAlpha=fade;
-          const s=sz*(it.bomber?1.25:1);
+          const s=js;
           ctx.beginPath(); ctx.moveTo(6*s,0); ctx.lineTo(-1*s,-1*s); ctx.lineTo(-3*s,-6*s); ctx.lineTo(-5*s,-6*s); ctx.lineTo(-3.5*s,-1*s); ctx.lineTo(-5*s,-1*s);
           ctx.lineTo(-6*s,-3*s); ctx.lineTo(-7*s,-3*s); ctx.lineTo(-6.5*s,0); ctx.lineTo(-7*s,3*s); ctx.lineTo(-6*s,3*s); ctx.lineTo(-5*s,1*s); ctx.lineTo(-3.5*s,1*s); ctx.lineTo(-5*s,6*s); ctx.lineTo(-3*s,6*s); ctx.lineTo(-1*s,1*s); ctx.closePath();
-          ctx.fillStyle=`rgb(${col[0]},${col[1]},${col[2]})`; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.65)'; ctx.lineWidth=0.6; ctx.stroke();
+          ctx.fillStyle=`rgb(${col[0]},${col[1]},${col[2]})`; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=0.4; ctx.stroke();
           ctx.globalAlpha=1; ctx.restore();
         }
       }
@@ -15722,7 +15723,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 163;
+const ATLAS_BUILD = 164;
 function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
 let _appUpdating=false;
 async function appCheckUpdate(manual){

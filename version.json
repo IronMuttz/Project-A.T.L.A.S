@@ -1,7 +1,7 @@
 {
-  "version": 163,
+  "version": 164,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Updates now show on the start screen, so you can update before entering the game."
+  "notes": "Smaller jet symbols in air raids."
 }
