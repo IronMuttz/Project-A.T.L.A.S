@@ -744,6 +744,12 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .wl-saves{ display:flex; flex-direction:column; align-items:center; gap:8px; }
 .wl-saves .wl-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
 .install-app-btn[hidden]{ display:none !important; }
+/* Broker Peace war picker */
+.pp-list{ display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto; }
+.pp-row{ background:var(--bg3); border:1px solid var(--border2); border-radius:6px; padding:9px 11px; display:grid; gap:5px; }
+.pp-row.you{ border-color:var(--gold3,#8a7230); background:rgba(200,168,75,.07); }
+.pp-sides{ display:flex; align-items:center; gap:8px; font-size:15px; color:#e8fbff; font-weight:600; flex-wrap:wrap; } .pp-sides i{ font-style:normal; color:#ff4d5e; }
+.pp-meta{ font-size:12.5px; color:var(--text2); } .pp-row .hud-btn{ justify-self:start; }
 /* Nuclear launch alert */
 #nuke-banner{ position:fixed; left:0; right:0; margin:0 auto; width:max-content; top:calc(74px + env(safe-area-inset-top,0px)); z-index:9960; display:flex; align-items:center; gap:12px;
   max-width:min(calc(100vw - 24px),560px); box-sizing:border-box; padding:10px 18px 10px 14px; border-radius:10px; background:rgba(40,4,8,.92); border:1px solid #ff4d5e; color:#ffe3e6;
@@ -8854,7 +8860,8 @@ function declareWar(a,b,log,defensive,defendingId){
   if(a.wars.has(b.id)) return;
   // Annexed land can't be attacked on its own. Vassals: only the player may attack another power's vassal (its overlord defends it)
   if(b.annexedBy) return;
-  if(b.vassalOf && !(a===G.player && b.vassalOf!==a.abbr)) return;
+  if(b.vassalOf && !(a===G.player && b.vassalOf!==a.abbr) && !unMandate(a,b)) return;
+  if(a!==G.player && ceasefireBetween(a,b)) return;                 // the AI keeps a UN ceasefire
   if(a.annexedBy||a.vassalOf) return;
   a.wars.add(b.id); b.wars.add(a.id);
   a.allies.delete(b.id); b.allies.delete(a.id);
@@ -13090,6 +13097,9 @@ function tickDeployedTroops(p){
   arrived.forEach(dt=>{
     p.deployedTroops.splice(p.deployedTroops.indexOf(dt),1);
     const enemy=CTRY[dt.targetId]; if(!enemy) return;
+    if(!p.wars.has(enemy.id) || enemy.annexedBy){                  // the war ended while they were on the way: they come home
+      Object.entries(dt.units||{}).forEach(([k,n])=>{ p.mil_units[k]=(p.mil_units[k]||0)+n; }); calcMilStrength(p);
+      addEv('i','🪖 Troops Home',`The war with ${enemy.name} is over: the force sent there has returned home.`); return; }
     // Battle resolution on arrival
     resolveBattle(p, enemy, dt.units);
   });
@@ -14464,12 +14474,20 @@ const UN_RESOLUTION_TYPES = [
   {key:'total_sanctions',label:'Chapter VII Comprehensive Sanctions', ico:'⛔', needsTarget:true, timed:true,
    desc:'The heaviest measure short of force (UN Charter, Chapter VII, Article 41). Arms embargo: no new units, forces −10%. Trade embargo by every member that votes yes or abstains. Export ban: nothing the target makes or mines can be sold abroad. Diplomatic isolation: embassies suspended, no resolutions but a repeal. Travel ban: flights halted, tourism −90%. Harder to pass than ordinary sanctions.'},
   {key:'humanitarian',   label:'Humanitarian Aid',       ico:'🏥', needsTarget:true,  desc:'Deploy international aid to a nation in crisis.'},
+  {key:'peace',          label:'Broker Peace',           ico:'🤝', needsTarget:false, pair:true, desc:'Call a UN ceasefire in a war you pick: the fighting stops at once and neither side may attack the other for a year. The side that is winning (and its friends) will resist; breaking the ceasefire later costs infamy and world standing.'},
   {key:'climate',        label:'Climate Resolution',     ico:'🌿', needsTarget:false, timed:true, desc:'Climate accord: countries that vote yes get +2 happiness and −2% industry while it lasts.'},
   {key:'nuclear',        label:'Nuclear Non-Proliferation',ico:'☢️',needsTarget:false, desc:'International nuclear disarmament pledge.'},
   {key:'invasion',       label:'Authorise Military Action',ico:'🎖️', needsTarget:true, months:true, desc:'UN mandate for the proposer to invade the target for 6 months to 3 years. Declaring that war costs no infamy and no world backlash; fighting on after the mandate ends does.'},
   {key:'repeal',         label:'Repeal Resolution',      ico:'↩️', needsTarget:false, hidden:true, desc:'Vote to end an active resolution early.'},
 ];
 const UN_REPEAL_CD = 180;
+// UN-brokered ceasefires: neither side may attack the other while one holds (the player can, at a heavy price)
+const UN_CEASEFIRE_DAYS = 365, CEASEFIRE_BREAK = { infamy:25, rel:15 };
+function ceasefireBetween(a,b){ if(!a||!b) return null; G.ceasefires=(G.ceasefires||[]).filter(x=>x.until>G.totalDays);
+  return G.ceasefires.find(x=>(x.a===a.id&&x.b===b.id)||(x.a===b.id&&x.b===a.id)) || null; }
+// Who is ahead in a war: battles won and military strength (−1 … +1, positive = a is winning)
+function warLead(a,b){ const wa=a.battleWins?.[b.id]||0, wb=b.battleWins?.[a.id]||0, sa=a.mil_strength||0, sb=b.mil_strength||0;
+  return 0.6*(wa-wb)/(wa+wb+1) + 0.4*((sa-sb)/Math.max(1,sa+sb)); }
 function mandateLen(m){ return m%12===0 ? `${m/12} year${m>12?'s':''}` : m>12 ? `${Math.floor(m/12)} yr ${m%12} mo` : `${m} months`; }
 // An active UN mandate letting `a` invade `b`
 function unMandate(a,b){ return (G.unActive||[]).find(x=>x.type==='invasion' && !x.ended && x.until>G.totalDays && x.proposer===a.id && x.target===b.id); }   // a resolution must have been in force this long before it can be repealed
@@ -14482,6 +14500,7 @@ function endUNResolution(a){
   if(a.type==='arms_embargo' && T){ T.armsEmbargo = totalSanctioned(T) ? T.totalSanctions.until : 0; calcMilStrength(T); }
   if(a.type==='total_sanctions' && T) endTotalSanctions(T, 'been repealed');
   if(a.type==='climate') G.climateAccord=null;
+  if(a.type==='peace') G.ceasefires=(G.ceasefires||[]).filter(x=>!((x.a===a.target&&x.b===a.target2)||(x.a===a.target2&&x.b===a.target)));
 }
 function inClimateAccord(c){ const A=G.climateAccord; return !!(A && A.until>G.totalDays && A.members.includes(c.id)); }
 function armsEmbargoed(c){ return (c.armsEmbargo||0) > G.totalDays; }
@@ -14531,6 +14550,18 @@ function unAllied(a,b){ return !!(a.allies?.has(b.id) || a.diplomacy?.[b.abbr]?.
 function unVoteOf(v, res){
   const P=CTRY[res.proposer], T=res.target?CTRY[res.target]:null;
   if(v===P) return 'yes';
+  if(res.type==='peace'){
+    const A=T, B=CTRY[res.target2]; if(!A||!B) return 'abstain';
+    const lead=warLead(A,B);                                              // > 0: A is winning
+    if(v===A) return lead>0.15 ? 'no' : lead<-0.15 ? 'yes' : 'abstain';   // whoever is losing wants the war stopped
+    if(v===B) return lead<-0.15 ? 'no' : lead>0.15 ? 'yes' : 'abstain';
+    const fA=unAllied(v,A)||v.pacts?.has(A.id), fB=unAllied(v,B)||v.pacts?.has(B.id);
+    if(fA && !fB) return lead>0.15 ? 'no' : 'yes';                        // friends back their side: no peace while it is winning
+    if(fB && !fA) return lead<-0.15 ? 'no' : 'yes';
+    const ra=v.rels[A.id]??50, rb=v.rels[B.id]??50;
+    if(Math.min(ra,rb)<20 && Math.abs(ra-rb)>30){ const hatedLosing = ra<rb ? lead<-0.15 : lead>0.15; if(hatedLosing) return 'abstain'; }   // happy to watch a rival lose
+    return 'yes';                                                          // otherwise peace is popular
+  }
   if(T && v!==T && (v.rels[T.id]??50) >= UN_LOYAL_REL){
     const helps = ['lift_sanctions','humanitarian','repeal'].includes(res.type);   // repeals of measures on T help T
     return helps ? 'yes' : 'no';
@@ -14564,6 +14595,7 @@ function unVoteOf(v, res){
 function unVetoOf(m, res){
   const T = res.target ? CTRY[res.target] : null;
   if(res.votes[m.c.id]!=='no') return false;
+  if(res.type==='peace'){ const B=CTRY[res.target2]; if(m.c===T || m.c===B || (T && m.c.allies.has(T.id)) || (B && m.c.allies.has(B.id))) return true; }
   if(T && (m.c===T || m.c.allies.has(T.id) || (m.c.rels[T.id]??50) >= (res.type==='total_sanctions' ? 60 : 70))) return true;
   return (m.c.rels[res.proposer]??50) < 25;
 }
@@ -14583,6 +14615,7 @@ function unResStale(res){
   const P=CTRY[res.proposer], T=res.target?CTRY[res.target]:null;
   if(P?.annexedBy) return `${P.name} no longer exists as an independent state`;
   if(T?.annexedBy){ const o=CLIST.find(x=>x.abbr===T.annexedBy); return `${T.name} is now part of ${o?o.name:'another country'}`; }
+  if(res.type==='peace'){ const B=CTRY[res.target2]; if(!B || B.annexedBy) return `${B?.name||'one side'} no longer exists as an independent state`; if(T && !T.wars.has(B.id)) return `the war between ${T.name} and ${B.name} has already ended`; }
   return null;
 }
 function withdrawUNResolution(res, why){
@@ -14590,7 +14623,7 @@ function withdrawUNResolution(res, why){
   const P=CTRY[res.proposer]; if(P?.warPlan && P.warPlan.target===res.target) P.warPlan=null;
   addEv('i','🕊️ Resolution Withdrawn',`"${res.label}" was dropped: ${why}.`);
 }
-function proposeUNResolution(type, targetId, proposer, years, repealId){
+function proposeUNResolution(type, targetId, proposer, years, repealId, target2Id){
   const P = proposer || G.player; if(!P || P.annexedBy) return;
   if(targetId && CTRY[targetId]?.annexedBy){ if(P===G.player) addEv('w','⚠️ No Target',`${CTRY[targetId].name} is no longer an independent state.`); return; }
   const rt = UN_RESOLUTION_TYPES.find(r=>r.key===type); if(!rt) return;
@@ -14609,16 +14642,21 @@ function proposeUNResolution(type, targetId, proposer, years, repealId){
     if(unRepealWait(rp)>0){ if(P===G.player) addEv('w','↩️ Repeal',`It can be repealed in ${unRepealWait(rp)} days.`); return; }
   }
   if(type==='invasion' && T===P){ return; }
+  const T2 = type==='peace' ? CTRY[target2Id] : null;
+  if(type==='peace' && (!T || !T2 || !T.wars.has(T2.id))){ if(P===G.player) addEv('w','🤝 Broker Peace','Pick a war that is still being fought.'); delete G.unLastProposal[P.id]; return null; }
   const yrs = rt.timed ? Math.max(1,Math.min(5, Math.round(years||2))) : 0;
   const mos = rt.months ? Math.max(6,Math.min(36, Math.round(years||12))) : 0;     // invasion mandates: 6 months – 3 years
   const res = { day:G.totalDays, type, ico:rt.ico, proposer:P.id, target:(rp?rp.target:T?.id)||null, years:yrs, months:mos, repealOf:rp?.id,
+    target2: T2?.id || null,
     label: type==='repeal' ? `Repeal: ${rp.label}`
          : type==='invasion' ? `Authorise ${P.name} to invade ${T.name} (${mandateLen(mos)})`
+         : type==='peace' ? `Broker Peace: ${T.name} ⇄ ${T2.name}`
          : rt.label + (yrs?` (${yrs} yr${yrs>1?'s':''})`:'') + (T?` → ${T.name}`:''), votes:{} };
   unMembers().forEach(v=>{ if(v!==G.player) res.votes[v.id]=unVoteOf(v,res); });
   const p=G.player;
   if(p && p!==P && !p.annexedBy){
-    if(T===p){ res.votes[p.id]='no'; showUNLobby(res); }          // a vote about you: pause and let you lobby
+    if(type==='peace' && (T===p || T2===p)){ res.votes[p.id]=unWanted(res); showUNLobby(res); }   // a ceasefire in your own war
+    else if(T===p){ res.votes[p.id]='no'; showUNLobby(res); }          // a vote about you: pause and let you lobby
     else showUNVoteModal(res);
   } else if(p && P===p){ res.votes[p.id]='yes'; showUNLobby(res); } // your own resolution: lobby before the vote
   else finalizeUNResolution(res);
@@ -14630,6 +14668,7 @@ function unWanted(res){
   if(res.playerWant) return res.playerWant;                        // third-party votes: what the player chose
   const p=G.player, T=res.target?CTRY[res.target]:null;
   if(res.proposer===p.id) return 'yes';
+  if(res.type==='peace'){ const B=CTRY[res.target2], lead = T===p ? warLead(p,B) : warLead(p,T); return lead<=0 ? 'yes' : 'no'; }   // in the war: you want peace when you're not winning
   return ['lift_sanctions','humanitarian','repeal'].includes(res.type) && T===p ? 'yes' : 'no';
 }
 function unTally(res){
@@ -14670,7 +14709,7 @@ function showUNLobby(res){
   const d=document.createElement('div'); d.id='un-lobby';
   d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9450;display:flex;align-items:center;justify-content:center;';
   d.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--gold3);border-radius:6px;width:520px;max-width:94vw;max-height:88vh;overflow-y:auto;padding:14px 16px;">
-    <div style="font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:600;letter-spacing:.03em;color:var(--gold);font-size:var(--fs-lg);">🕊️ UN Vote ${res.thirdParty?'— General Assembly':T===p?'Against You':res.proposer===p.id?'— Your Resolution':'Concerning You'}</div>
+    <div style="font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:600;letter-spacing:.03em;color:var(--gold);font-size:var(--fs-lg);">🕊️ UN Vote ${res.thirdParty?'— General Assembly':res.type==='peace'&&res.proposer!==p.id?'— Ceasefire in Your War':T===p?'Against You':res.proposer===p.id?'— Your Resolution':'Concerning You'}</div>
     <div style="font-size:var(--fs-md);color:var(--text);margin:4px 0;">${res.ico} ${res.label}</div>
     ${(()=>{ const rt=UN_RESOLUTION_TYPES.find(r=>r.key===res.type); if(!rt?.desc || res.type==='repeal') return '';
       if(res.type==='total_sanctions') return `<div style="font-size:var(--fs-sm);color:var(--text2);line-height:1.5;margin-bottom:6px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:6px 9px;">
@@ -14795,7 +14834,8 @@ function applyUNResolution(res, T){
     const until=fmtDateIn(days);
     if(T===G.player) showCrisisPopup('🎖️','UN Authorises Invasion',`The UN has authorised ${P.name} to invade you for ${mandateLen(res.months)} (until ${until}). It can attack without diplomatic backlash. Strengthen your defences, find allies, or lobby for a repeal after ${UN_REPEAL_CD} days.`);
     else if(P===G.player) addEv('d','🎖️ UN Mandate Granted',`You may invade ${T.name} until ${until} without infamy or world backlash. Declare war from the Foreign tab. Keep fighting past that date and it counts as aggression.`);
-    else { P.warPlan=null; if(!P.wars.has(T.id) && !T.annexedBy) declareWar(P,T,true); }
+    else { P.warPlan=null; if(!P.wars.has(T.id) && !T.annexedBy){ declareWar(P,T,true);
+      const lord=T.vassalOf?CLIST.find(x=>x.abbr===T.vassalOf && !x.annexedBy):null; if(lord && lord!==P && P.wars.has(T.id) && !lord.wars.has(P.id)) declareWar(lord,P,true,true,T.id); } }
     return;
   }
   if(res.type==='repeal'){
@@ -14839,6 +14879,18 @@ function applyUNResolution(res, T){
     if(T.totalSanctions) endTotalSanctions(T, 'been lifted by the UN'); }
   if(res.type==='arms_embargo' && T){ T.armsEmbargo = G.totalDays+days; T.eventModifier=(T.eventModifier||0)-5; calcMilStrength(T); register();
     if(T===G.player) showCrisisPopup('⚔️','UN Arms Embargo',`For ${res.years||2} year${(res.years||2)>1?'s':''} you cannot build military units and your forces lose 10% strength. After ${UN_REPEAL_CD} days you can propose a repeal.`); }
+  if(res.type==='peace' && T){
+    const B=CTRY[res.target2]; if(!B) return;
+    if(T.wars.has(B.id)) endWar(T,B);
+    (G.ceasefires=G.ceasefires||[]).push({ a:T.id, b:B.id, until:G.totalDays+UN_CEASEFIRE_DAYS });
+    (G.unActive=G.unActive||[]).push({ id:'u'+G.totalDays+'_'+Math.floor(Math.random()*1e4), type:'peace', ico:res.ico, label:res.label, target:T.id, target2:B.id, proposer:res.proposer, since:G.totalDays, until:G.totalDays+UN_CEASEFIRE_DAYS, votes:{...res.votes} });
+    relShift(T,B,10); if(P && P!==T && P!==B){ relShift(P,T,5); relShift(P,B,5); }
+    addWorldEv('d','🤝 UN Ceasefire',`${T.flag}${T.name} and ${B.flag}${B.name} agree to a UN-brokered ceasefire.`,T.flag,B.flag);
+    const p=G.player;
+    if(T===p || B===p){ const o=T===p?B:T; addEv('d','🤝 UN Ceasefire',`The UN has brokered peace with ${o.name}. For a year neither side may attack the other; breaking the ceasefire costs ${CEASEFIRE_BREAK.infamy} infamy and relations with everyone.`); }
+    else if(P===p) addEv('d','🤝 Peace Brokered',`Your resolution ended the war between ${T.name} and ${B.name}. Both think better of you (+5).`);
+    return;
+  }
   if(res.type==='humanitarian' && T){ T.happiness=Math.min(100,(T.happiness||50)+8); T.stability=Math.min(100,(T.stability||50)+5); relShift(P,T,5); }
   if(res.type==='climate'){ P.eventModifier=(P.eventModifier||0)+3;
     G.climateAccord={ until:G.totalDays+days, members:Object.entries(res.votes).filter(([,v])=>v==='yes').map(([id])=>+id) }; register(); }
@@ -14868,6 +14920,13 @@ function aiUNInitiatives(){
     if(friend){ a.lastRepealTry=G.totalDays; return proposeUNResolution('repeal', null, friend, 0, a.id); }
   }
   // Long wars draw humanitarian resolutions; climate comes up now and then
+  const oldWar=(G.wars||[]).find(w=>G.totalDays-(w.startDay??G.totalDays)>240 && G.totalDays-(w.unPeace??-1e9)>365);
+  if(oldWar && Math.random()<0.2){
+    oldWar.unPeace=G.totalDays; const A=CTRY[oldWar.a], B=CTRY[oldWar.b];
+    const P=A&&B ? unMembers().filter(x=>x!==G.player && x!==A && x!==B && !totalSanctioned(x) && unProposalWait(x)===0 && !x.allies.has(A.id) && !x.allies.has(B.id))
+      .sort((x,y)=>(y.rels[A.id]??50)+(y.rels[B.id]??50)-(x.rels[A.id]??50)-(x.rels[B.id]??50))[0] : null;
+    if(P && !A.annexedBy && !B.annexedBy && A.wars.has(B.id)) return proposeUNResolution('peace', A.id, P, 0, null, B.id);
+  }
   const longWar=(G.wars||[]).find(w=>G.totalDays-(w.startDay??G.totalDays)>90 && G.totalDays-(w.unHum??-1e9)>365);   // at most one per war per year
   if(longWar && Math.random()<0.25){
     longWar.unHum=G.totalDays;
@@ -16143,7 +16202,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 177;
+const ATLAS_BUILD = 178;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -16405,6 +16464,28 @@ async function renderSaveModal(){
   </div>`;
 }
 
+// Broker Peace: pick one of the wars being fought
+function openPeacePicker(){
+  const p=G.player; if(!p) return;
+  const wait=unProposalWait(p); if(wait>0){ addEv('w','🕊️ UN Cooldown',`You can propose another resolution in ${wait} day${wait===1?'':'s'}.`); return; }
+  const seen=new Set(), wars=(G.wars||[]).filter(w=>{ const A=CTRY[w.a], B=CTRY[w.b], k=Math.min(w.a,w.b)+'-'+Math.max(w.a,w.b);
+    if(!A||!B||A.annexedBy||B.annexedBy||!A.wars.has(B.id)||seen.has(k)) return false; seen.add(k); return true; })
+    .sort((x,y)=>((y.a===p.id||y.b===p.id)?1:0)-((x.a===p.id||x.b===p.id)?1:0) || (x.startDay??0)-(y.startDay??0));
+  document.getElementById('peace-picker')?.remove(); pauseForModal();
+  const m=document.createElement('div'); m.id='peace-picker'; m.className='hud-modal-wrap'; m.onclick=e=>{ if(e.target===m) closePeacePicker(); };
+  const row=w=>{ const A=CTRY[w.a], B=CTRY[w.b], lead=warLead(A,B), days=G.totalDays-(w.startDay??G.totalDays), you=A===p||B===p, cf=ceasefireBetween(A,B);
+    const lw=Math.abs(lead)<0.15 ? 'evenly matched' : `${(lead>0?A:B).name} is winning`;
+    const wa=A.battleWins?.[B.id]||0, wb=B.battleWins?.[A.id]||0;
+    return `<div class="pp-row${you?' you':''}">
+      <div class="pp-sides"><span><span class="fe">${A.flag}</span> ${mEsc(A.name)}</span><i>⚔</i><span><span class="fe">${B.flag}</span> ${mEsc(B.name)}</span></div>
+      <div class="pp-meta">${days} day${days===1?'':'s'} · battles ${wa}–${wb} · strength ${mNum(A.mil_strength||0)} vs ${mNum(B.mil_strength||0)} · ${lw}${you?' · <b>your war</b>':''}${cf?' · ceasefire broken':''}</div>
+      <button class="hud-btn pri" onclick="closePeacePicker();proposeUNResolution('peace',${A.id},null,0,null,${B.id})">🤝 Propose ceasefire</button></div>`; };
+  m.innerHTML=`<div class="hud-modal" style="width:500px;"><div class="hud-modal-h"><span>🤝 Broker Peace</span><button class="hud-x" onclick="closePeacePicker()" aria-label="Close">✕</button></div>
+    <div class="hud-note">Choose a war. If the resolution passes, the fighting stops and neither side may attack the other for a year. The side that is winning, and its allies, will vote against it — and a permanent member among them can veto.</div>
+    ${wars.length ? `<div class="pp-list">${wars.map(row).join('')}</div>` : `<div class="hud-note" style="text-align:center;padding:16px 0;">No wars are being fought right now.</div>`}</div>`;
+  document.body.appendChild(m); stripFlagsIn?.(m);
+}
+function closePeacePicker(){ document.getElementById('peace-picker')?.remove(); resumeFromModal(); }
 function renderUN(){
   const p=G.player; if(!p) return;
   const el=document.getElementById('lp-un'); if(!el) return;
@@ -16439,12 +16520,18 @@ function renderUN(){
     </div>`).join('');
 
   // Target country selector for targeted resolutions
-  const targetableCList = CLIST.filter(c=>c.id!==p.id&&!c.annexedBy&&!c.vassalOf).sort((a,b)=>a.name.localeCompare(b.name));
+  const targetableCList = CLIST.filter(c=>c.id!==p.id&&!c.annexedBy&&c.vassalOf!==p.abbr).sort((a,b)=>a.name.localeCompare(b.name));
+  const tTag = ct => [ totalSanctioned(ct)?'⛔ Chapter VII' : plainSanctioned(ct)?'🚫 sanctioned':'', armsEmbargoed(ct)&&!totalSanctioned(ct)?'⚔️ arms embargo':'',
+    p.wars.has(ct.id)?'at war with you':ct.wars?.size?'at war':'', ct.vassalOf?`vassal of ${CLIST.find(x=>x.abbr===ct.vassalOf)?.name||''}`:'' ].filter(Boolean).join(' · ');
+  const tOpt = ct => { const t=tTag(ct); return `<option value="${ct.id}">${ct.flag} ${ct.name}${t?' — '+t:''}</option>`; };
+  const underUN = targetableCList.filter(ct=>isSanctioned(ct)||armsEmbargoed(ct)), warring = targetableCList.filter(ct=>ct.wars?.size && !underUN.includes(ct));
   const targetSelect = `<div style="margin-bottom:8px;">
-    <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:3px;">Target Country (for Sanctions/Embargo/Aid)</div>
+    <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:3px;">Target Country (sanctions, embargoes, aid, military action)</div>
     <select id="un-target-sel" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:var(--fs-sm);padding:4px 6px;border-radius:3px;">
       <option value="">— Select target —</option>
-      ${targetableCList.map(ct=>`<option value="${ct.id}">${ct.flag} ${ct.name}</option>`).join('')}
+      ${underUN.length?`<optgroup label="Under UN measures (${underUN.length})">${underUN.map(tOpt).join('')}</optgroup>`:''}
+      ${warring.length?`<optgroup label="At war (${warring.length})">${warring.map(tOpt).join('')}</optgroup>`:''}
+      <optgroup label="All countries">${targetableCList.map(tOpt).join('')}</optgroup>
     </select>
   </div>`;
 
@@ -16464,8 +16551,8 @@ function renderUN(){
   const resolutionBtns=(unWait>0?`<div style="font-size:var(--fs-sm);color:var(--gold);margin-bottom:6px;">⏳ Next proposal available in ${unWait} day${unWait===1?'':'s'} (one every ${UN_PROPOSAL_CD} days)</div>`:'')+UN_RESOLUTION_TYPES.filter(rt=>!rt.hidden).map(rt=>{
     const hasTarget = rt.needsTarget;
     return `<button class="eab primary" title="${rt.desc.replace(/"/g,'&quot;')}" ${unWait>0?'disabled style="opacity:.45;margin-bottom:4px;width:100%;text-align:left;font-size:var(--fs-sm);"':'style="margin-bottom:4px;width:100%;text-align:left;font-size:var(--fs-sm);"'} 
-      onclick="proposeUNResolution('${rt.key}',${hasTarget?'+(document.getElementById(\'un-target-sel\')?.value||0)':'null'},null,+(document.getElementById('${rt.months?'un-months':'un-years'}')?.value||${rt.months?12:2}))">
-      ${rt.ico} ${rt.label}${hasTarget?' (targeted)':''}${rt.timed?' · timed':''}
+      onclick="${rt.pair?'openPeacePicker()':`proposeUNResolution('${rt.key}',${hasTarget?'+(document.getElementById(\'un-target-sel\')?.value||0)':'null'},null,+(document.getElementById('${rt.months?'un-months':'un-years'}')?.value||${rt.months?12:2}))`}">
+      ${rt.ico} ${rt.label}${hasTarget?' (targeted)':''}${rt.timed?' · timed':''}${rt.pair?` <span style="opacity:.75">· ${(G.wars||[]).length} war${(G.wars||[]).length===1?'':'s'} going on</span>`:''}
       ${rt.key==='total_sanctions'?`<div style="font-size:var(--fs-xs);opacity:.85;margin-top:2px;white-space:normal;">⚔️ Arms · 🚫 Trade · 📦 Exports · 🏛️ Diplomatic · ✈️ Travel</div>`:''}
     </button>`;
   }).join('');
@@ -16748,13 +16835,22 @@ function pDiplo(tid,action,confirmed){
   } else if(action==='war'){
     if(c.annexedBy){ const o=CLIST.find(x=>x.abbr===c.annexedBy); addEv('w','⚠️',`${c.name} is part of ${o?.name||'another country'} now. Declare war on ${o?.name||'its owner'} to fight over it.`); return; }
     if(c.vassalOf===p.abbr){ addEv('w','⛓️ Your Vassal',`${c.name} is your vassal. Free it in the UN tab first if you want to fight it.`); return; }
+    const cf = ceasefireBetween(p,c);
+    if(cf && confirmed!=='cf' && confirmed!==true){
+      hudConfirm('🤝 Break the UN ceasefire?',`A UN-brokered ceasefire with ${mEsc(c.name)} holds for another ${cf.until-G.totalDays} days. Breaking it costs <b>${CEASEFIRE_BREAK.infamy} infamy</b> and <b>−${CEASEFIRE_BREAK.rel} relations with every country</b>.`,
+        'Break it and attack', ()=>pDiplo(tid,'war','cf'), true);
+      return;
+    }
     const lord = c.vassalOf ? CLIST.find(x=>x.abbr===c.vassalOf && !x.annexedBy) : null;
-    if(lord && !confirmed){
+    if(lord && confirmed!==true){
       hudConfirm(`⚔️ Attack ${mEsc(c.name)}?`, `${mEsc(c.name)} is a vassal of <b>${mEsc(lord.name)}</b>. Attacking it means war with ${mEsc(lord.name)} too: it will defend its vassal.<br><br>Strength: ${mEsc(c.name)} <b>${fmtNum(c.mil_strength||0)}</b> + ${mEsc(lord.name)} <b>${fmtNum(lord.mil_strength||0)}</b> vs yours <b>${fmtNum(p.mil_strength||0)}</b>.${hasNukes(lord)?` <b style="color:var(--red2)">${mEsc(lord.name)} has nuclear weapons.</b>`:''}<br><br>Win, and you can annex ${mEsc(c.name)}, make it your vassal, or set it free.`,
         'Declare war', ()=>{ pDiplo(tid,'war',true); try{ if(document.getElementById('csheet')?.classList.contains('on')) showCountrySheet(tid); }catch(e){} }, true);
       return;
     }
     const um=unMandate(p,c);
+    if(cf){ p.infamy=(p.infamy||0)+CEASEFIRE_BREAK.infamy; CLIST.forEach(x=>{ if(x!==p && !x.annexedBy) relShift(x,p,-CEASEFIRE_BREAK.rel); });
+      G.ceasefires=G.ceasefires.filter(x=>x!==cf); (G.unActive||[]).forEach(a=>{ if(a.type==='peace' && ((a.target===p.id&&a.target2===c.id)||(a.target===c.id&&a.target2===p.id))) a.ended=true; });
+      addWorldEv('w','💥 Ceasefire Broken',`${p.flag}${p.name} broke the UN ceasefire with ${c.flag}${c.name}.`,p.flag,'💥'); }
     declareWar(p,c,true);
     if(lord && lord!==p && !lord.wars.has(p.id)) declareWar(lord, p, true, true, c.id);      // the overlord defends its vassal
     addEv('w','⚔️ War',`Declared on ${c.flag}${c.name}!${um?' (UN-authorised)':''}${lord?` ${lord.flag}${lord.name}, its overlord, joins the war to defend it.`:''}`);
