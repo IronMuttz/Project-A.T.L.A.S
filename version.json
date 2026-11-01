@@ -1,7 +1,7 @@
 {
-  "version": 176,
+  "version": 177,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "You can now declare war on another country's vassal: its overlord joins to defend it. Beat it and release it to set it free."
+  "notes": "Credit ratings now count your cash (treasury + State Bank) against debt; no more IMF rescue offers when you can pay everyone off."
 }
