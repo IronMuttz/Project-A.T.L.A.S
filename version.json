@@ -1,7 +1,7 @@
 {
-  "version": 174,
+  "version": 175,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Sending troops: every unit type has a slider and an exact number box, plus None / 25% / Half / All buttons (pact calls and war deployments)."
+  "notes": "Every nuclear launch, AI or player, now takes the camera: launch alert with countdown, the map frames the strike, then returns to your view."
 }
