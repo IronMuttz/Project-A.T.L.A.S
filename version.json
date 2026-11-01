@@ -1,7 +1,7 @@
 {
-  "version": 178,
+  "version": 179,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "UN: new Broker Peace resolution (pick any war; a ceasefire holds for a year). Target list now groups sanctioned and warring countries and includes other powers' vassals."
+  "notes": "Aid can no longer balloon an economy: countries put at most ~15% of GDP a year of aid to work, big spending has diminishing returns, and economies inflated by huge gifts are corrected when you load."
 }

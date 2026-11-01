@@ -1776,7 +1776,7 @@ function refundQueued(p, item, n){
   }
   p.treasury+=R.usd; p.mats.wood+=Math.round(R.wood); p.mats.iron_ore+=Math.round(R.iron_ore); p.mats.copper+=Math.round(R.copper);
   if(R.aluminum) p.nr_stock.aluminum=(p.nr_stock.aluminum||0)+Math.round(R.aluminum);
-  if(R.inv>0){ p.gdp=Math.max(0.1,p.gdp-R.inv*0.3); p.pubInvest=Math.max(0,(p.pubInvest||0)-R.inv); }
+  if(R.inv>0){ p.gdp=Math.max(0.1,p.gdp-Math.min(R.inv*0.3, investBoost(p.gdp,R.inv))); p.pubInvest=Math.max(0,(p.pubInvest||0)-R.inv); }
   const bits=[]; if(R.usd>0) bits.push(fmtShort(R.usd));
   [['wood','🪵'],['iron_ore','⚙️'],['copper','🟠'],['aluminum','🔩']].forEach(([k,i])=>{ if(Math.round(R[k])>0) bits.push(`${fmtNum(Math.round(R[k]))} ${i}`); });
   return bits.join(' + ');
@@ -8452,7 +8452,7 @@ function processDayTickCore(){
   if(G.totalDays%7===0 || p._gYr==null) p._gYr = econGrowth(p);          // the budget part needs a full budget calc: weekly is plenty
   const gdpGrowthRate = p._gYr/365;
   p.gdpGrowthRate = gdpGrowthRate;
-  p.gdp = Math.max(1, p.gdp * (1 + gdpGrowthRate));
+  p.gdp = Math.max(0.05, p.gdp * (1 + gdpGrowthRate));
   p.pubInvest = (p.pubInvest||0) * (1 - 0.15/365);
 
   // ── TROOP DEPLOYMENTS TICK ──
@@ -8765,7 +8765,7 @@ function aiDay(c){
   const aiGdpRate = c._gYr/365;
   if(c.pubInvest) c.pubInvest *= 1 - 0.15/365;
   c.gdpGrowthRate = aiGdpRate;
-  c.gdp = Math.max(1, c.gdp*(1+aiGdpRate));
+  c.gdp = Math.max(0.05, c.gdp*(1+aiGdpRate));               // floor $50M (a $1B floor quintupled the smallest economies overnight)
   // Happiness + Approval linked — AI
   calcHappiness(c);
   c.eventModifier = (c.eventModifier || 0) * 0.95;
@@ -9554,10 +9554,13 @@ function fmtShort(b){
 const GROWTH_TREND_2010 = { CHN:0.095, IND:0.075, ETH:0.085, VNM:0.064, IDN:0.060, BGD:0.060, PHL:0.055, NGA:0.060, MMR:0.070, LAO:0.075,
   KHM:0.065, UZB:0.075, TZA:0.065, RWA:0.075, GHA:0.070, MOZ:0.070, KAZ:0.060, TUR:0.050, PAK:0.040, EGY:0.045, SAU:0.040, QAT:0.090, PER:0.060,
   USA:0.022, JPN:0.010, GRC:0.005, PRT:0.008, IRL:0.015, DEU:0.015, FRA:0.013, GBR:0.017, ITA:0.006, ESP:0.012, CAN:0.022, AUS:0.027, KOR:0.032, RUS:0.030, BRA:0.035, MEX:0.030, ZAF:0.025 };
+// ~30 cents of GDP per dollar while spending is small next to the economy, flattening out when it is huge
+// (pouring 100× an economy's size into it can't make it 30× bigger overnight)
+function investBoost(gdp, usd){ const g=Math.max(0.1,gdp); return g*0.3*Math.log(1+usd/g); }
 function publicInvest(c, usd, weight){
   if(!c || !(usd>0)) return;
   const w=weight??1;
-  c.gdp += usd * 0.3 * w;                                  // spending multiplier: builders, suppliers, jobs (the rest shows up as growth)
+  c.gdp += investBoost(c.gdp, usd*w);                      // spending multiplier: builders, suppliers, jobs (the rest shows up as growth)
   c.pubInvest = (c.pubInvest||0) + usd * w;                // stock that keeps lifting growth for years
 }
 function econGrowth(c){
@@ -13816,8 +13819,12 @@ function aidPriority(c){
   if((c.happiness??50) < 45 || (c.stability??50) < 45) return 'welfare';
   return 'industry';
 }
+// Absorption: a country can only put so much money to work. Builders, engineers, land and permits run out, so aid
+// is spent at most at ~15% of the economy a year; the rest waits in the development fund.
+const AID_ABSORB_YR = 0.15;
 function spendAid(c){
-  const budget = Math.min(c.aidFund, Math.max(0.2, c.aidFund*0.35)); if(budget<=0) return;
+  const absorb = Math.max(0.0005, c.gdp*AID_ABSORB_YR/52);        // one week's worth of capacity
+  const budget = Math.min(c.aidFund, c.aidFund*0.35, absorb); if(!(budget>0.0002)) return;
   c.aidFund -= budget; if(c.aidFund<0.005) c.aidFund=0;
   const kind = aidPriority(c), did=[];
   if(kind==='military'){
@@ -13956,7 +13963,8 @@ function playerProvideAid(tid){
 }
 function aidPreview(tid){
   const c=CTRY[tid], v=readMoney('aid-amt'), el=document.getElementById('aid-info'); if(!el) return;
-  el.innerHTML = v>0 ? `Relations with ${c.name}: <b style="color:var(--green)">+${aidRelGain(c,v).toFixed(1)}</b> (now ${Math.round(c.rels[G.player.id]??50)})${v>G.player.treasury?'<br><span style="color:var(--red2)">More than your treasury holds.</span>':''}` : '';
+  const yrCap=c.gdp*AID_ABSORB_YR, waiting=(c.aidFund||0)+v;
+  el.innerHTML = v>0 ? `Relations with ${c.name}: <b style="color:var(--green)">+${aidRelGain(c,v).toFixed(1)}</b> (now ${Math.round(c.rels[G.player.id]??50)})${waiting>yrCap*2?`<br><span style="color:var(--gold)">${c.name} can only put about ${fmtShort(yrCap)} of aid to work a year: the rest waits in its development fund${(c.aidFund||0)>0.01?` (already ${fmtShort(c.aidFund)})`:''}.</span>`:''}${v>G.player.treasury?'<br><span style="color:var(--red2)">More than your treasury holds.</span>':''}` : '';
 }
 function sendAid(tid){
   const p=G.player, c=CTRY[tid], amt=readMoney('aid-amt');
@@ -15851,7 +15859,13 @@ async function loadGame(slot, fromObj){
   startGame();
   const byId = Object.fromEntries(CLIST.map(c=>[c.id,c]));
   st.countries.forEach(o=>{ const c=byId[o.id]; if(c){ Object.keys(c).forEach(k=>{ if(!(k in o) && !COUNTRY_SKIP.has(k)) delete c[k]; }); Object.assign(c,o); delete c._ports; delete c._port; } });
-  { const LL=Object.fromEntries(RAW.map(r=>[r[0],[r[4],r[5]]])); CLIST.forEach(c=>{ const ll=LL[c.id]; if(ll){ c.lat=ll[0]; c.lon=ll[1]; } }); }   // capitals from the current data (older saves had a few map centres)
+  { const LL=Object.fromEntries(RAW.map(r=>[r[0],[r[4],r[5]]])); CLIST.forEach(c=>{ const ll=LL[c.id]; if(ll){ c.lat=ll[0]; c.lon=ll[1]; } }); }
+  if(!G._aidGdpFix){ G._aidGdpFix=true;
+    const base=Object.fromEntries(RAW.map(r=>[r[0],r[7]])), yrs=Math.max(0,G.totalDays/365), fixed=[];
+    CLIST.forEach(c=>{ if(c.id===st.player || !base[c.id]) return;
+      const sane=base[c.id]*Math.pow(1.12,yrs);                        // even a boom economy grows ~12% a year at most
+      if(c.gdp > sane*3){ fixed.push(`${c.name} ${fmtShort(c.gdp)} → ${fmtShort(sane)}`); c.gdp=sane; } });
+    if(fixed.length) setTimeout(()=>addEv('i','📊 Economies Corrected',`Aid had inflated some economies far beyond what they could absorb: ${fixed.slice(0,6).join(', ')}${fixed.length>6?` and ${fixed.length-6} more`:''}.`),1200); }   // capitals from the current data (older saves had a few map centres)
   Object.assign(G, st.g);
   ['CSTO'].forEach(k=>{ if(G.coalitions) delete G.coalitions[k]; if(G.coalitionApps) delete G.coalitionApps[k]; });   // retired organisations
   // Older saves: states freed before the fresh-start rule lose their old army, nukes and P5 seat once
@@ -16202,7 +16216,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 178;
+const ATLAS_BUILD = 179;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
