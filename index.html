@@ -744,6 +744,27 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .wl-saves{ display:flex; flex-direction:column; align-items:center; gap:8px; }
 .wl-saves .wl-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
 .install-app-btn[hidden]{ display:none !important; }
+/* Account chip (start screen) and account window */
+.wl-acct{ position:absolute; top:calc(18px + env(safe-area-inset-top,0px)); left:18px; z-index:6; display:flex; align-items:center; gap:7px; max-width:46vw;
+  background:rgba(4,20,32,.75); border:1px solid rgba(56,225,255,.4); color:#bff3ff; border-radius:999px; padding:6px 14px 6px 10px; cursor:pointer;
+  font:600 14px/1.1 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.04em; }
+.wl-acct span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .wl-acct i{ font-style:normal; }
+.wl-acct.in{ border-color:rgba(93,255,176,.5); color:#c9ffe6; }
+.wl-acct[hidden], #menu-acct[hidden]{ display:none !important; }
+.hud-modal.acct .acct-tabs{ display:flex; gap:4px; margin-bottom:12px; background:rgba(0,0,0,.25); padding:3px; border-radius:6px; }
+.hud-modal.acct .acct-tabs button{ flex:1; padding:8px; border:none; background:none; color:var(--text2); font:600 14px 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.05em; border-radius:4px; cursor:pointer; }
+.hud-modal.acct .acct-tabs button.on{ background:rgba(56,225,255,.16); color:#e8fbff; }
+.acct-f{ display:block; margin-bottom:10px; } .acct-f span{ display:block; font-size:12.5px; color:var(--text2); margin-bottom:4px; letter-spacing:.04em; }
+.acct-f input{ width:100%; box-sizing:border-box; background:var(--bg4,#06131f); border:1px solid var(--border2); color:#e8fbff; padding:10px 11px; border-radius:6px; font:500 16px 'IBM Plex Sans Condensed',sans-serif; }
+.acct-f input:focus{ outline:none; border-color:var(--holo,#38e1ff); box-shadow:0 0 0 3px rgba(56,225,255,.15); }
+.acct-go{ width:100%; padding:11px !important; font-size:15px !important; }
+.acct-msg{ font-size:13.5px; margin:0 0 10px; padding:7px 10px; border-radius:5px; } .acct-msg.bad{ color:#ffb3b8; background:rgba(255,77,94,.1); border:1px solid rgba(255,77,94,.35); }
+.acct-msg.ok{ color:#b9ffd9; background:rgba(93,255,176,.08); border:1px solid rgba(93,255,176,.3); }
+.acct-who{ display:flex; align-items:center; gap:10px; } .acct-who b{ display:block; font-size:17px; color:#e8fbff; } .acct-who small{ color:var(--text2); font-size:12.5px; }
+.acct-av{ width:40px; height:40px; border-radius:50%; display:grid; place-items:center; background:rgba(56,225,255,.15); border:1px solid rgba(56,225,255,.45); color:#e8fbff; font:700 18px 'IBM Plex Sans Condensed',sans-serif; }
+.acct-box{ margin-top:10px; padding:10px; border:1px solid var(--border2); border-radius:6px; background:rgba(0,0,0,.2); font-size:13px; color:var(--text2); }
+.acct-box.bad{ border-color:rgba(255,77,94,.4); } .acct-box .acct-f{ margin-top:8px; }
+.acct-danger{ margin-top:10px; color:#ff9aa3 !important; border-color:rgba(255,77,94,.35) !important; }
 .wl-alt{ font-family:'IBM Plex Sans Condensed',sans-serif; font-weight:600; font-size:15px; letter-spacing:.08em; color:var(--holo,#38e1ff); background:rgba(56,225,255,.06);
   border:1px solid rgba(56,225,255,.45); padding:10px 22px; cursor:pointer; clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%); opacity:0; transition:opacity .5s; }
 .wl-alt.ready{ opacity:1; } .wl-alt:hover{ background:rgba(56,225,255,.16); }
@@ -1264,6 +1285,7 @@ body.mob .rrow{ min-height:36px; }
 <div id="welcome" role="dialog" aria-label="Welcome">
   <button class="wl-voice" id="wl-voice" onclick="toggleWelcomeVoice()" aria-label="Mute voice" title="Voice greeting">🔈</button>
   <button class="wl-voice" id="wl-fs" onclick="toggleFullscreen()" aria-label="Full screen" title="Full screen" style="right:62px;">⛶</button>
+  <button class="wl-acct" id="wl-acct" hidden onclick="openAccount()"></button>
   <div class="wl-brand"><h1>A.T.L.A.S</h1><div class="wl-full">Advanced Tactical Leadership &amp; Administration System</div><p>ATLAS Command Intelligence</p></div>
   <div class="wl-upd" id="wl-upd" hidden aria-live="polite"><span class="wl-upd-t" id="wl-upd-t"></span><button class="wl-upd-b" id="wl-upd-b" hidden onclick="appUpdateNow()">Update now</button></div>
   <aside class="wl-side l"><h3>System check</h3><div class="wl-log" id="wl-log"></div></aside>
@@ -1487,6 +1509,7 @@ body.mob .rrow{ min-height:36px; }
     <div style="display:flex;flex-direction:column;gap:6px;">
       <button class="ombt cnt" onclick="saveGame('slot1');closeOv('menuov')">💾 Quick Save (Slot 1)</button>
       <button class="ombt cnt" onclick="openSaveModal()">📂 Save / Load…</button>
+      <button class="ombt cnt" id="menu-acct" hidden onclick="closeOv('menuov');openAccount()">☁️ Sign in for cloud saves</button>
       <button class="ombt cnt" onclick="closeOv('menuov');showStartTips(true)">💡 Commander's briefing</button>
       <button class="ombt cnt" onclick="mreset();closeOv('menuov')">🗺️ Reset Map</button>
       <button class="ombt cnt" id="menu-mapstyle" onclick="toggleTerrain()">🗺️ Map style: Political</button>
@@ -1698,6 +1721,29 @@ function deductBuildCost(p, costObj, label){
   p.mats.iron_ore -= (costObj.iron_ore||0);
   p.mats.copper   -= (costObj.copper  ||0);
   if(costObj.aluminum) p.nr_stock.aluminum = (p.nr_stock.aluminum||0) - costObj.aluminum;
+}
+// What a queued build actually cost (prices change, e.g. each extra military factory costs more),
+// so cancelling refunds exactly that. The spending's one-off boost to GDP is taken back too.
+const PAID_KEYS=['usd','wood','iron_ore','copper','aluminum'];
+function notePaid(item, cost, label){
+  const P=item.paid=item.paid||{usd:0,wood:0,iron_ore:0,copper:0,aluminum:0,inv:0};
+  PAID_KEYS.forEach(k=>P[k]+=(cost[k]||0)); P.inv+=(cost.usd||0)*(/military/i.test(label||'')?0.4:1);
+}
+// Refund n not-yet-finished units of a construction item in full; returns a short label of what came back
+function refundQueued(p, item, n){
+  const left=item.count-item.completed; n=Math.max(0,Math.min(n,left)); if(!n) return '';
+  let R;
+  if(item.paid){ const f=n/Math.max(1,item.count); R={}; PAID_KEYS.concat('inv').forEach(k=>{ R[k]=(item.paid[k]||0)*f; item.paid[k]-=R[k]; }); }
+  else {                                                         // queued before costs were recorded: list price
+    const base=(item.type==='mil_fac'?milFacCost(p):item.type==='nr'?NR_BUILD_COST[item.key]:GD_BUILD_COST[item.key])||{};
+    R={}; PAID_KEYS.forEach(k=>R[k]=(base[k]||0)*n); R.inv=R.usd*(item.type==='mil_fac'?0.4:1);
+  }
+  p.treasury+=R.usd; p.mats.wood+=Math.round(R.wood); p.mats.iron_ore+=Math.round(R.iron_ore); p.mats.copper+=Math.round(R.copper);
+  if(R.aluminum) p.nr_stock.aluminum=(p.nr_stock.aluminum||0)+Math.round(R.aluminum);
+  if(R.inv>0){ p.gdp=Math.max(0.1,p.gdp-R.inv*0.3); p.pubInvest=Math.max(0,(p.pubInvest||0)-R.inv); }
+  const bits=[]; if(R.usd>0) bits.push(fmtShort(R.usd));
+  [['wood','🪵'],['iron_ore','⚙️'],['copper','🟠'],['aluminum','🔩']].forEach(([k,i])=>{ if(Math.round(R[k])>0) bits.push(`${fmtNum(Math.round(R[k]))} ${i}`); });
+  return bits.join(' + ');
 }
 function buildShortfall(p, costObj){
   const s=[];
@@ -9107,14 +9153,10 @@ function generateWorldEvents(){
 function cancelConstruction(idx){
   const p=G.player; if(!p) return;
   const item = p.construction[idx]; if(!item) return;
-  p.construction.splice(idx,1);
   const remaining = item.count - item.completed;
-  const costTable = item.type==='nr' ? NR_BUILD_COST : item.type==='gd' ? GD_BUILD_COST : {'mil_fac': MIL_FAC_COST};
-  const cost = (item.type==='mil_fac' ? MIL_FAC_COST : costTable[item.key]) || {};
-  p.mats.wood     += Math.floor((cost.wood    ||0) * 0.75 * remaining);
-  p.mats.iron_ore += Math.floor((cost.iron_ore||0) * 0.75 * remaining);
-  p.mats.copper   += Math.floor((cost.copper  ||0) * 0.75 * remaining);
-  addEv('n','🏗️ Cancelled',`${item.name} ×${remaining} cancelled. 75% materials refunded.`);
+  const back = refundQueued(p, item, remaining);
+  p.construction.splice(idx,1);
+  addEv('n','🏗️ Cancelled',`${item.name} ×${remaining} cancelled. Fully refunded${back?': '+back:''}.`);
   topbarUpdate(); lpRender();
 }
 
@@ -9294,13 +9336,14 @@ function buildMilFac(){
     addEv('w','⚠️ Build Failed',`Military Factory: ${buildShortfall(p, cost)} Needs ${buildCostLabel(cost)}`); return;
   }
   deductBuildCost(p, cost, 'Military Factory');
-  const existing = p.construction.find(x=>x.type==='mil_fac');
+  let existing = p.construction.find(x=>x.type==='mil_fac');
   if(existing){
     existing.count += 1;
     existing.buildTimeDays = existing.count * existing.perUnitDays;
   } else {
-    p.construction.push({ type:'mil_fac', key:'mil_fac', progress:0, perUnitDays:MIL_FAC_BUILD_TIME, buildTimeDays:MIL_FAC_BUILD_TIME, count:1, completed:0, name:'Military Factory', ico:'🏭' });
+    p.construction.push(existing={ type:'mil_fac', key:'mil_fac', progress:0, perUnitDays:MIL_FAC_BUILD_TIME, buildTimeDays:MIL_FAC_BUILD_TIME, count:1, completed:0, name:'Military Factory', ico:'🏭' });
   }
+  notePaid(existing, cost, 'Military Factory');
   spawnP(p.lat, p.lon, '212,53,53');
   addEv('t','🏭 Queued',`Military Factory queued (${MIL_FAC_BUILD_TIME}d)`);
   topbarUpdate(); renderMilitary();
@@ -9349,15 +9392,16 @@ function cancelMilOrder(idx){
   const p = G.player;
   const item = p.mil_queue[idx]; if(!item) return;
   const R = UNIT_RECIPE[item.unit]; ensureParts(p);
-  // Refund 75% of what the batch cost: its parts, uranium and cash
+  // Full refund of what the batch cost: its parts, uranium and cash
   const bits=[];
   if(R){
-    Object.entries(R.parts||{}).forEach(([k,q])=>{ const n=Math.floor(q*0.75); if(n>0){ p.mil_parts[k]=(p.mil_parts[k]||0)+n; bits.push(`${n} ${MIL_COMPONENTS[k].ico} ${MIL_COMPONENTS[k].name}`); } });
-    if(R.uranium){ const n=Math.floor(R.uranium*0.75); p.nr_stock.uranium=(p.nr_stock.uranium||0)+n; bits.push(`${n} ☢️ uranium`); }
-    if(R.usd){ p.treasury+=R.usd*0.75; bits.push(fmtShort(R.usd*0.75)); }
+    Object.entries(R.parts||{}).forEach(([k,q])=>{ if(q>0){ p.mil_parts[k]=(p.mil_parts[k]||0)+q; bits.push(`${q} ${MIL_COMPONENTS[k].ico} ${MIL_COMPONENTS[k].name}`); } });
+    if(R.uranium){ p.nr_stock.uranium=(p.nr_stock.uranium||0)+R.uranium; bits.push(`${R.uranium} ☢️ uranium`); }
+    if(R.usd){ p.treasury+=R.usd; bits.push(fmtShort(R.usd)); }
   }
   p.mil_queue.splice(idx,1);
-  addEv('n','⚔️ Order Cancelled',`${item.name} cancelled.${bits.length?' Refunded 75%: '+bits.join(' + ')+'.':''}`);
+  if(imfActive(p) && p.imfOrders?.length) p.imfOrders.pop();          // the cancelled order no longer counts against the IMF cap
+  addEv('n','⚔️ Order Cancelled',`${item.name} cancelled.${bits.length?' Fully refunded: '+bits.join(' + ')+'.':''}`);
   renderMilitary(); topbarUpdate();
 }
 
@@ -15435,18 +15479,92 @@ const G_SAVE_KEYS = ['unBlocks','sport','unActive','climateAccord','year','month
   'goodsMarket','monthStart','autoPauseMonthly','_budgetPeriod','intelTargetId'];
 const COUNTRY_SKIP = new Set(['_ports']);           // rebuilt on demand
 
-// Cloud store (published page only): db + user capabilities; null elsewhere
+// ═══ A.T.L.A.S ACCOUNTS — username + password, saves kept in the cloud (Supabase) so a game moves
+//     between phone, PC and browser. The game only calls the atlas_* database functions (see cloud/atlas-cloud.sql). ═══
+const CLOUD_CFG = { url:'', key:'' };                 // the game's Supabase project: Project URL + publishable (anon) key
+function cloudOn(){ return !!(CLOUD_CFG.url && CLOUD_CFG.key); }
+let ACCOUNT = (()=>{ try{ const a=JSON.parse(localStorage.getItem('atlas_account')||'null'); return a?.u && a?.t ? a : null; }catch(e){ return null; } })();
+function setAccount(a){
+  ACCOUNT=a;
+  try{ if(a) localStorage.setItem('atlas_account', JSON.stringify(a)); else localStorage.removeItem('atlas_account'); }catch(e){}
+  try{ accountUI(); }catch(e){}
+}
+const CLOUD_ERR = {
+  bad_username:'Usernames are 3–20 characters: letters, numbers or _.', bad_password:'Passwords need 6 to 72 characters.',
+  taken:'That username is already taken.', bad_login:'Wrong username or password.', locked:'Too many wrong passwords. Try again in 10 minutes.',
+  session:'You were signed out on this device. Sign in again.', busy:'Too many new accounts right now. Try again later.',
+  too_big:'This save is too large for the cloud.', too_many:'Your account has too many saves.', bad_slot:'That save slot is not allowed.',
+  network:'Can’t reach the cloud. Check your internet connection.', off:'Cloud accounts aren’t switched on in this version yet.', mismatch:'The two passwords don’t match.' };
+function cloudErrText(e){ return CLOUD_ERR[e?.code] || `Something went wrong (${e?.code||e?.message||'error'}).`; }
+function deviceLabel(){ return window.AtlasApp ? 'Android app' : (typeof IS_INSTALLED!=='undefined' && IS_INSTALLED) ? 'PC app' : /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone / iPad' : 'Browser'; }
+async function cloudRpc(fn, args){
+  if(!cloudOn()) throw Object.assign(new Error('off'),{code:'off'});
+  const h={ 'Content-Type':'application/json', apikey:CLOUD_CFG.key };
+  if(/^eyJ/.test(CLOUD_CFG.key)) h.Authorization='Bearer '+CLOUD_CFG.key;      // legacy anon keys are JWTs; new publishable keys go in apikey only
+  let r;
+  try{ r=await fetch(CLOUD_CFG.url.replace(/\/+$/,'')+'/rest/v1/rpc/'+fn, { method:'POST', headers:h, body:JSON.stringify(args||{}) }); }
+  catch(e){ throw Object.assign(new Error('network'),{code:'network'}); }
+  const txt=await r.text(); let j=null; try{ j=txt?JSON.parse(txt):null; }catch(e){}
+  if(!r.ok){
+    const code=String(j?.message||'').trim() || ('http_'+r.status);
+    if(code==='session' && ACCOUNT){ setAccount(null); try{ addEv('w','☁️ Signed Out', CLOUD_ERR.session); }catch(e){} }
+    throw Object.assign(new Error(code),{code});
+  }
+  if(j && j.error) throw Object.assign(new Error(j.error),{code:j.error});
+  return j;
+}
+const accountStore = {
+  kind:'account',
+  put:(slot,meta,data)=>cloudRpc('atlas_put_save',{ p_token:ACCOUNT.t, p_slot:slot, p_meta:meta, p_data:data }),
+  async list(){ const rows=await cloudRpc('atlas_list_saves',{ p_token:ACCOUNT.t })||[]; const o={}; rows.forEach(r=>{ if(r?.meta) o[r.slot]=r.meta; }); return o; },
+  async get(slot){ const r=await cloudRpc('atlas_get_save',{ p_token:ACCOUNT.t, p_slot:slot }); return r?.data ? { meta:r.meta, data:r.data } : null; },
+  del:(slot)=>cloudRpc('atlas_delete_save',{ p_token:ACCOUNT.t, p_slot:slot }),
+};
+// The claude.ai page's own per-user storage (used when no A.T.L.A.S account is signed in)
+function claudeStore(db, base){
+  return { kind:'claude',
+    async put(slot,meta,data){
+      const parts=[]; for(let i=0;i<data.length;i+=CLOUD_CHUNK) parts.push(data.slice(i,i+CLOUD_CHUNK));
+      for(let i=0;i<parts.length;i++) await db.doc(`${base}/save_${slot}_${i}`).set({ d:parts[i] });
+      await db.doc(`${base}/save_${slot}`).set({ ...meta, parts:parts.length });
+    },
+    async list(){ const o={}; await Promise.all(SAVE_SLOTS.map(async s=>{ try{ const snap=await db.doc(`${base}/save_${s}`).get(); if(snap.exists) o[s]=snap.data(); }catch(e){} })); return o; },
+    async get(slot){ const snap=await db.doc(`${base}/save_${slot}`).get(); if(!snap.exists) return null; const m=snap.data();
+      let d=''; for(let i=0;i<m.parts;i++){ const s=await db.doc(`${base}/save_${slot}_${i}`).get(); d+=s.data().d; } return { meta:m, data:d }; },
+    async del(slot){ const s=await db.doc(`${base}/save_${slot}`).get(); const n=s.exists?s.data().parts:0;
+      for(let i=0;i<n;i++) await db.doc(`${base}/save_${slot}_${i}`).delete(); await db.doc(`${base}/save_${slot}`).delete(); },
+  };
+}
 let _cloud = null, _cloudTried = false;
 async function cloudStore(){
+  if(ACCOUNT && cloudOn()) return accountStore;
   if(_cloudTried) return _cloud;
   _cloudTried = true;
   try{
     if(!window.claude?.use) return null;
     const [db,user] = await Promise.all([claude.use('db'), claude.use('user')]);
     const id = db && user ? await user.id() : null;
-    if(db && id) _cloud = { db, base:`data/users/${id}` };
+    if(db && id) _cloud = claudeStore(db, `data/users/${id}`);
   }catch(e){ _cloud=null; }
   return _cloud;
+}
+// Saves made while signed in but offline are marked and uploaded the next time the cloud is reachable
+const PENDING_KEY='atlas_cloud_pending';
+function pendingSlots(){ try{ return JSON.parse(localStorage.getItem(PENDING_KEY)||'[]'); }catch(e){ return []; } }
+function setPending(slot, on){ try{ const a=new Set(pendingSlots()); on?a.add(slot):a.delete(slot); localStorage.setItem(PENDING_KEY, JSON.stringify([...a])); }catch(e){} }
+// firstSignIn: this device's saves fill cloud slots that are still empty (the cloud copy wins where both exist)
+async function cloudSyncUp(firstSignIn){
+  if(!(ACCOUNT && cloudOn())) return 0;
+  let cl; try{ cl=await accountStore.list(); }catch(e){ return 0; }
+  const pend=new Set(pendingSlots()); let n=0;
+  for(const s of SAVE_SLOTS){
+    let r=null; try{ r=JSON.parse(localStorage.getItem(LS_PREFIX+s)||'null'); }catch(e){}
+    if(!r?.meta || !r.data) continue;
+    const up = !cl[s] ? (firstSignIn || pend.has(s)) : (pend.has(s) && r.meta.savedAt > (cl[s].savedAt||0));
+    if(up){ try{ await accountStore.put(s, r.meta, r.data); setPending(s,false); n++; }catch(e){ if(e.code==='session') return n; } }
+    else if(pend.has(s)) setPending(s,false);
+  }
+  return n;
 }
 
 // ── encoding: JSON → gzip → base64 (falls back to plain JSON) ──
@@ -15496,15 +15614,13 @@ async function saveGame(slot, quiet){
   try{ localStorage.setItem(LS_PREFIX+slot, JSON.stringify({meta,data})); local=true; }catch(e){}
   const cs=await cloudStore();
   if(cs){
-    try{
-      const parts=[]; for(let i=0;i<data.length;i+=CLOUD_CHUNK) parts.push(data.slice(i,i+CLOUD_CHUNK));
-      for(let i=0;i<parts.length;i++) await cs.db.doc(`${cs.base}/save_${slot}_${i}`).set({ d:parts[i] });
-      await cs.db.doc(`${cs.base}/save_${slot}`).set({ ...meta, parts:parts.length });
-      cloud=true;
-    }catch(e){ console.warn('[save] cloud failed', e); }
+    try{ await cs.put(slot, meta, data); cloud=true; }catch(e){ console.warn('[save] cloud failed', e); }
+    if(cs.kind==='account') setPending(slot, !cloud);             // upload it later if the cloud couldn't be reached
   }
+  const where = cloud ? (cs.kind==='account' ? ` · ☁️ synced to ${ACCOUNT?.u||'your account'}` : ' · synced to your account')
+              : cs?.kind==='account' ? ' · saved here; it uploads when you are back online' : ' · this device only';
   if(!quiet) addEv(local||cloud?'d':'w','💾 '+(local||cloud?'Game Saved':'Save Failed'),
-    local||cloud ? `${SAVE_SLOT_NAME[slot]} · ${p.flag}${p.name} · ${meta.date}${cloud?' · synced to your account':' · this device only'}`
+    local||cloud ? `${SAVE_SLOT_NAME[slot]} · ${p.flag}${p.name} · ${meta.date}${where}`
                  : 'Could not write the save. Storage may be full or disabled.');
   if(document.getElementById('save-modal')) renderSaveModal();
   return local||cloud;
@@ -15515,11 +15631,10 @@ async function listSaves(){
   SAVE_SLOTS.forEach(s=>{ try{ const r=JSON.parse(localStorage.getItem(LS_PREFIX+s)||'null'); if(r?.meta) out[s]={...r.meta, where:'local'}; }catch(e){} });
   const cs=await cloudStore();
   if(cs){
-    await Promise.all(SAVE_SLOTS.map(async s=>{
-      try{ const snap=await cs.db.doc(`${cs.base}/save_${s}`).get(); if(!snap.exists) return;
-        const m=snap.data(); if(!out[s] || m.savedAt>out[s].savedAt) out[s]={...m, where:'cloud'}; else if(out[s]) out[s].where='both';
-      }catch(e){}
-    }));
+    try{ const cl=await cs.list();
+      SAVE_SLOTS.forEach(s=>{ const m=cl[s]; if(!m) return;
+        if(!out[s] || m.savedAt>out[s].savedAt) out[s]={...m, where:'cloud'}; else out[s].where='both'; });
+    }catch(e){}
   }
   return out;
 }
@@ -15527,23 +15642,17 @@ async function readSave(slot){
   const local=(()=>{ try{ return JSON.parse(localStorage.getItem(LS_PREFIX+slot)||'null'); }catch(e){ return null; } })();
   const cs=await cloudStore();
   if(cs){
-    try{
-      const snap=await cs.db.doc(`${cs.base}/save_${slot}`).get();
-      if(snap.exists){ const m=snap.data();
-        if(!local || m.savedAt>local.meta.savedAt){
-          let d=''; for(let i=0;i<m.parts;i++){ const s=await cs.db.doc(`${cs.base}/save_${slot}_${i}`).get(); d+=s.data().d; }
-          return { meta:m, data:d };
-        } }
+    try{ const m=(await cs.list())[slot];
+      if(m && (!local || m.savedAt>local.meta.savedAt)){ const r=await cs.get(slot); if(r?.data) return r; }
     }catch(e){}
   }
   return local;
 }
 async function deleteSave(slot){
   try{ localStorage.removeItem(LS_PREFIX+slot); }catch(e){}
+  setPending(slot,false);
   const cs=await cloudStore();
-  if(cs){ try{ const s=await cs.db.doc(`${cs.base}/save_${slot}`).get(); const n=s.exists?s.data().parts:0;
-    for(let i=0;i<n;i++) await cs.db.doc(`${cs.base}/save_${slot}_${i}`).delete();
-    await cs.db.doc(`${cs.base}/save_${slot}`).delete(); }catch(e){} }
+  if(cs){ try{ await cs.del(slot); }catch(e){} }
   if(document.getElementById('save-modal')) renderSaveModal();
   refreshWelcomeSaves();
 }
@@ -15910,7 +16019,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 170;
+const ATLAS_BUILD = 171;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -16028,6 +16137,124 @@ setInterval(()=>{ try{
 // ── Save / Load modal ──
 function openSaveModal(){ closeOv('menuov'); pauseForModal(); renderSaveModal(); }
 function closeSaveModal(){ document.getElementById('save-modal')?.remove(); resumeFromModal(); }
+// ── Account window: sign in / create account, and manage a signed-in account ──
+let _acct={ tab:'in', busy:false, msg:'', ok:'', pw:false, del:false };
+function openAccount(tab){
+  if(!cloudOn()){ hudConfirm('☁️ Cloud saves','Cloud accounts aren’t switched on in this version yet.','OK',()=>{},false); return; }
+  _acct={ tab:tab||'in', busy:false, msg:'', ok:'', pw:false, del:false };
+  if(G.player) pauseForModal();
+  renderAccount();
+}
+function closeAccount(){ document.getElementById('acct-modal')?.remove(); if(G.player) resumeFromModal(); }
+function renderAccount(){
+  let el=document.getElementById('acct-modal');
+  if(!el){ el=document.createElement('div'); el.id='acct-modal'; el.className='hud-modal-wrap'; el.onclick=e=>{ if(e.target===el) closeAccount(); }; document.body.appendChild(el); }
+  const A=_acct, f=(id,type,label,ac,ph)=>`<label class="acct-f"><span>${label}</span><input id="${id}" type="${type}" autocomplete="${ac}" ${ph?`placeholder="${ph}"`:''} autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')acctSubmit()"></label>`;
+  const msg = A.msg ? `<div class="acct-msg bad">${mEsc(A.msg)}</div>` : A.ok ? `<div class="acct-msg ok">${mEsc(A.ok)}</div>` : '';
+  let body;
+  if(!ACCOUNT){
+    const neu=A.tab==='new';
+    body=`<div class="acct-tabs"><button class="${neu?'':'on'}" onclick="_acct.tab='in';_acct.msg='';renderAccount()">Sign in</button><button class="${neu?'on':''}" onclick="_acct.tab='new';_acct.msg='';renderAccount()">Create account</button></div>
+      ${f('acct-u','text','Username','username', neu?'3–20 letters, numbers or _':'')}
+      ${f('acct-p','password','Password', neu?'new-password':'current-password', neu?'at least 6 characters':'')}
+      ${neu?f('acct-p2','password','Repeat password','new-password',''):''}
+      ${msg}
+      <button class="hud-btn pri acct-go" ${A.busy?'disabled':''} onclick="acctSubmit()">${A.busy?'Please wait…':neu?'Create account':'Sign in'}</button>
+      <div class="hud-note" style="margin:10px 0 0;">${neu?'Your saves will follow you to your phone, PC and browser. There’s no email, so there’s no password reset: keep your password somewhere safe.':'Sign in with the same username on every device to carry on where you left off.'}</div>
+      <button class="hud-btn ghost" style="width:100%;margin-top:8px;" onclick="closeAccount()">Continue without an account</button>`;
+  } else {
+    body=`<div class="acct-who"><div class="acct-av">${mEsc(ACCOUNT.u[0]||'?').toUpperCase()}</div><div><b>${mEsc(ACCOUNT.u)}</b><small>Signed in on this ${mEsc(deviceLabel().toLowerCase())} · saves sync automatically</small></div></div>
+      <div id="acct-saves" class="hud-note" style="margin:8px 0;">Checking your cloud saves…</div>
+      ${msg}
+      <div class="hud-row" style="margin-top:4px;">
+        <button class="hud-btn pri" ${A.busy?'disabled':''} onclick="acctSync()">⟳ Sync now</button>
+        <button class="hud-btn" onclick="_acct.pw=!_acct.pw;_acct.del=false;_acct.msg='';_acct.ok='';renderAccount()">Change password</button>
+        <button class="hud-btn" onclick="acctSignOut()">Sign out</button>
+      </div>
+      ${A.pw?`<div class="acct-box">${f('acct-old','password','Current password','current-password','')}${f('acct-new','password','New password','new-password','at least 6 characters')}
+        <button class="hud-btn pri" ${A.busy?'disabled':''} onclick="acctChangePw()">Save new password</button><div class="hud-note" style="margin:6px 0 0;">Other devices will be signed out.</div></div>`:''}
+      <button class="hud-btn ghost acct-danger" onclick="_acct.del=!_acct.del;_acct.pw=false;_acct.msg='';_acct.ok='';renderAccount()">Delete account…</button>
+      ${A.del?`<div class="acct-box bad">This deletes the account and every cloud save for good. Saves on this device stay.${f('acct-delpw','password','Password to confirm','current-password','')}
+        <button class="hud-btn" style="background:var(--red2);border-color:var(--red2);color:#fff;" ${A.busy?'disabled':''} onclick="acctDelete()">Delete my account</button></div>`:''}`;
+  }
+  el.innerHTML=`<div class="hud-modal acct" style="width:400px;"><div class="hud-modal-h"><span>☁️ A.T.L.A.S account</span><button class="hud-x" onclick="closeAccount()" aria-label="Close">✕</button></div>${body}</div>`;
+  if(!ACCOUNT){ const u=document.getElementById('acct-u'); if(u && !u.value && !A.busy) setTimeout(()=>{ try{ u.focus({preventScroll:true}); }catch(e){} },50); }
+  else acctListSaves();
+}
+async function acctListSaves(){
+  const box=document.getElementById('acct-saves'); if(!box) return;
+  try{ const cl=await accountStore.list(), n=Object.keys(cl).length;
+    const latest=Object.entries(cl).sort((a,b)=>(b[1].savedAt||0)-(a[1].savedAt||0))[0];
+    box.innerHTML = n ? `${n} save${n>1?'s':''} in the cloud. Latest: <b style="color:#e8fbff">${mEsc(SAVE_SLOT_NAME[latest[0]]||latest[0])} · ${mEsc(latest[1].flag||'')} ${mEsc(latest[1].name||'')} · ${mEsc(latest[1].date||'')}</b>` : 'No saves in the cloud yet. Your next save uploads automatically.';
+    stripFlagsIn?.(box);
+  }catch(e){ box.textContent=cloudErrText(e); }
+}
+const acctVal=id=>(document.getElementById(id)?.value||'');
+async function acctSubmit(){
+  if(_acct.busy) return;
+  const neu=_acct.tab==='new', u=acctVal('acct-u').trim(), pw=acctVal('acct-p');
+  _acct.msg=''; _acct.ok='';
+  if(!/^[A-Za-z0-9_]{3,20}$/.test(u)){ _acct.msg=CLOUD_ERR.bad_username; return renderAccount(); }
+  if(pw.length<6 || pw.length>72){ _acct.msg=CLOUD_ERR.bad_password; return renderAccount(); }
+  if(neu && pw!==acctVal('acct-p2')){ _acct.msg=CLOUD_ERR.mismatch; return renderAccount(); }
+  _acct.busy=true; renderAccount();
+  try{
+    const r=await cloudRpc(neu?'atlas_signup':'atlas_login', { p_username:u, p_password:pw, p_device:deviceLabel() });
+    setAccount({ u:r.username, t:r.token });
+    const up=await cloudSyncUp(true);
+    _acct={ tab:'in', busy:false, msg:'', ok: neu ? `Welcome, ${r.username}! Your account is ready${up?` and ${up} save${up>1?'s':''} from this device ${up>1?'are':'is'} now in the cloud`:''}.`
+                                                 : `Signed in as ${r.username}.${up?` ${up} save${up>1?'s':''} from this device uploaded.`:''}`, pw:false, del:false };
+    afterAccountChange();
+  }catch(e){ _acct.busy=false; _acct.msg=cloudErrText(e); }
+  renderAccount();
+}
+async function acctSync(){
+  _acct.busy=true; _acct.msg=''; _acct.ok=''; renderAccount();
+  const n=await cloudSyncUp(false);
+  _acct.busy=false; _acct.ok = n ? `Uploaded ${n} save${n>1?'s':''}.` : 'Everything is in sync.';
+  afterAccountChange(); if(ACCOUNT) renderAccount(); else { _acct.msg=CLOUD_ERR.session; renderAccount(); }
+}
+async function acctSignOut(){
+  const t=ACCOUNT?.t; setAccount(null);
+  try{ await cloudRpc('atlas_logout',{ p_token:t }); }catch(e){}
+  _acct={ tab:'in', busy:false, msg:'', ok:'Signed out. Your saves on this device are still here.', pw:false, del:false };
+  afterAccountChange(); renderAccount();
+}
+async function acctChangePw(){
+  const o=acctVal('acct-old'), n=acctVal('acct-new');
+  if(n.length<6 || n.length>72){ _acct.msg=CLOUD_ERR.bad_password; return renderAccount(); }
+  _acct.busy=true; renderAccount();
+  try{ await cloudRpc('atlas_change_password',{ p_token:ACCOUNT.t, p_old:o, p_new:n }); _acct.ok='Password changed. Other devices have been signed out.'; _acct.pw=false; }
+  catch(e){ _acct.msg=e.code==='bad_login'?'The current password is wrong.':cloudErrText(e); }
+  _acct.busy=false; renderAccount();
+}
+async function acctDelete(){
+  const pw=acctVal('acct-delpw'); if(!pw){ _acct.msg='Enter your password to confirm.'; return renderAccount(); }
+  _acct.busy=true; renderAccount();
+  try{ await cloudRpc('atlas_delete_account',{ p_token:ACCOUNT.t, p_password:pw }); setAccount(null);
+       _acct={ tab:'new', busy:false, msg:'', ok:'Your account and its cloud saves have been deleted.', pw:false, del:false }; afterAccountChange(); }
+  catch(e){ _acct.busy=false; _acct.msg=e.code==='bad_login'?'Wrong password.':cloudErrText(e); }
+  renderAccount();
+}
+// Refresh whatever shows saves after signing in or out
+function afterAccountChange(){
+  try{ refreshWelcomeSaves(); }catch(e){}
+  if(document.getElementById('save-modal')) try{ renderSaveModal(); }catch(e){}
+  accountUI();
+}
+// The account chip on the start screen and the menu entry
+function accountUI(){
+  const on=cloudOn();
+  const chip=document.getElementById('wl-acct');
+  if(chip){ chip.hidden=!on; chip.innerHTML = ACCOUNT ? `<i>☁️</i><span>${mEsc(ACCOUNT.u)}</span>` : `<i>👤</i><span>Sign in</span>`; chip.classList.toggle('in', !!ACCOUNT);
+    chip.title = ACCOUNT ? `Signed in as ${ACCOUNT.u}: saves sync between devices` : 'Sign in or create an account to keep your saves in the cloud'; }
+  const mb=document.getElementById('menu-acct');
+  if(mb){ mb.hidden=!on; mb.textContent = ACCOUNT ? `☁️ Account: ${ACCOUNT.u}` : '☁️ Sign in for cloud saves'; }
+}
+// Signed in: upload anything saved while offline, a moment after start-up
+setTimeout(async ()=>{ accountUI(); if(ACCOUNT && cloudOn()){ const n=await cloudSyncUp(false); if(n) afterAccountChange(); } }, 1500);
+window.addEventListener('online', ()=>{ if(ACCOUNT && cloudOn()) cloudSyncUp(false); });
+
 async function renderSaveModal(){
   let el=document.getElementById('save-modal');
   if(!el){ el=document.createElement('div'); el.id='save-modal'; el.className='hud-modal-wrap'; document.body.appendChild(el); }
@@ -16035,7 +16262,8 @@ async function renderSaveModal(){
   const ago=t=>{ const m=Math.round((Date.now()-t)/60000); return m<1?'just now':m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`; };
   el.innerHTML=`<div class="hud-modal" style="width:480px;">
     <div class="hud-modal-h"><span>💾 Saved games</span><button class="hud-x" onclick="closeSaveModal()" aria-label="Close">✕</button></div>
-    <div class="hud-note">${cs?'Saves sync to your account: open this game on another device and they’ll be there.':'Saves are kept on this device. Open the game from its published link to sync between phone and PC, or use Export / Import.'}</div>
+    ${cloudOn()?`<div class="hud-note" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ACCOUNT?`☁️ Signed in as <b style="color:#e8fbff">${mEsc(ACCOUNT.u)}</b>: saves sync between phone, PC and browser.`:'Sign in to keep your saves in the cloud and carry on from any device.'}<button class="hud-btn" style="margin-left:auto" onclick="openAccount()">${ACCOUNT?'Account':'☁️ Sign in'}</button></div>`:''}
+    ${cs?.kind==='account'?'':`<div class="hud-note">${cs?'Saves sync to your account: open this game on another device and they’ll be there.':cloudOn()?'Without an account, saves stay on this device (or use Export / Import).':'Saves are kept on this device. Open the game from its published link to sync between phone and PC, or use Export / Import.'}</div>`}
     ${SAVE_SLOTS.map(s=>{ const m=saves[s];
       return `<div class="hud-slot">
         <div class="hud-slot-i">${m?'💾':'◇'}</div>
@@ -16273,13 +16501,14 @@ function buildGoods(key, qty){
   const days = GD_BUILD_TIME[key] || 3;
   const g = GOODS[key];
   // Merge into existing entry for this key, or create new one
-  const existing = p.construction.find(x=>x.type==='gd'&&x.key===key);
+  let existing = p.construction.find(x=>x.type==='gd'&&x.key===key);
   if(existing){
     existing.count += qty;
     existing.buildTimeDays = existing.count * existing.perUnitDays;
   } else {
-    p.construction.push({ type:'gd', key, progress:0, perUnitDays:days, buildTimeDays:days*qty, count:qty, completed:0, name:g.name, ico:g.ico });
+    p.construction.push(existing={ type:'gd', key, progress:0, perUnitDays:days, buildTimeDays:days*qty, count:qty, completed:0, name:g.name, ico:g.ico });
   }
+  notePaid(existing, scaledCost, g.name);
   spawnP(p.lat,p.lon,'0,200,200');
   addEv('t',`${g.ico} Queued`, qty>1 ? `${qty}× ${g.name} queued (${days}d each, ${days*qty}d total)` : `${g.name} queued (${days}d)`);
   topbarUpdate(); renderGoods();
@@ -16289,15 +16518,12 @@ function sellGoods(key){
   const cost = GD_BUILD_COST[key]||{};
   // Decrement 1 from queue if any in construction
   const existing = p.construction.find(x=>x.type==='gd'&&x.key===key);
-  if(existing){
+  if(existing && existing.count>existing.completed){
+    const back = refundQueued(p, existing, 1);
     existing.count = Math.max(0, existing.count - 1);
-    p.mats.wood     += Math.floor((cost.wood    ||0)*0.75);
-    p.mats.iron_ore += Math.floor((cost.iron_ore||0)*0.75);
-    p.mats.copper   += Math.floor((cost.copper  ||0)*0.75);
-    p.treasury      += (cost.usd||0)*0.75;
-    if(existing.count <= 0) p.construction.splice(p.construction.indexOf(existing),1);
+    if(existing.count <= existing.completed) p.construction.splice(p.construction.indexOf(existing),1);
     else existing.buildTimeDays = existing.count * existing.perUnitDays;
-    addEv('n','🏗️ Cancelled','1× '+GOODS[key].name+' removed from queue. 75% refunded.');
+    addEv('n','🏗️ Cancelled','1× '+GOODS[key].name+' removed from queue. Fully refunded'+(back?': '+back:'')+'.');
     topbarUpdate(); renderGoods(); return;
   }
   if(!p.gd_fac[key]||p.gd_fac[key]<=0) return;
@@ -16331,13 +16557,14 @@ function buildNR(key, qty){
   deductBuildCost(p, scaledCost, `${qty}× ${NR[key].name}`);
   const days = NR_BUILD_TIME[key] || 5;
   const nr = NR[key];
-  const existing = p.construction.find(x=>x.type==='nr'&&x.key===key);
+  let existing = p.construction.find(x=>x.type==='nr'&&x.key===key);
   if(existing){
     existing.count += qty;
     existing.buildTimeDays = existing.count * existing.perUnitDays;
   } else {
-    p.construction.push({ type:'nr', key, progress:0, perUnitDays:days, buildTimeDays:days*qty, count:qty, completed:0, name:nr.name, ico:nr.ico });
+    p.construction.push(existing={ type:'nr', key, progress:0, perUnitDays:days, buildTimeDays:days*qty, count:qty, completed:0, name:nr.name, ico:nr.ico });
   }
+  notePaid(existing, scaledCost, nr.name);
   spawnP(p.lat,p.lon,'200,168,75');
   addEv('t',`${nr.ico} Queued`, qty>1 ? `${qty}× ${nr.name} queued (${days}d each, ${days*qty}d total)` : `${nr.name} queued (${days}d)`);
   topbarUpdate(); renderResources();
@@ -16347,15 +16574,12 @@ function sellNR(key){
   const cost = NR_BUILD_COST[key]||{};
   // Decrement 1 from queue if any in construction
   const existing = p.construction.find(x=>x.type==='nr'&&x.key===key);
-  if(existing){
+  if(existing && existing.count>existing.completed){
+    const back = refundQueued(p, existing, 1);
     existing.count = Math.max(0, existing.count - 1);
-    p.mats.wood     += Math.floor((cost.wood    ||0)*0.75);
-    p.mats.iron_ore += Math.floor((cost.iron_ore||0)*0.75);
-    p.mats.copper   += Math.floor((cost.copper  ||0)*0.75);
-    p.treasury      += (cost.usd||0)*0.75;
-    if(existing.count <= 0) p.construction.splice(p.construction.indexOf(existing),1);
+    if(existing.count <= existing.completed) p.construction.splice(p.construction.indexOf(existing),1);
     else existing.buildTimeDays = existing.count * existing.perUnitDays;
-    addEv('n','🏗️ Cancelled','1× '+NR[key].name+' removed from queue. 75% refunded.');
+    addEv('n','🏗️ Cancelled','1× '+NR[key].name+' removed from queue. Fully refunded'+(back?': '+back:'')+'.');
     topbarUpdate(); renderResources(); return;
   }
   if(!p.nr_fac[key]||p.nr_fac[key]<=0) return;

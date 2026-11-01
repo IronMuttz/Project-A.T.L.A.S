@@ -1,7 +1,7 @@
 {
-  "version": 170,
+  "version": 171,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "PC app: install A.T.L.A.S on Windows or Mac from Chrome or Edge \u2014 its own window, works offline, updates itself."
+  "notes": "Cancelling a build or a military order now refunds everything: money, materials and parts."
 }
