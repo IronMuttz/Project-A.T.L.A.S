@@ -744,6 +744,8 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .wl-saves{ display:flex; flex-direction:column; align-items:center; gap:8px; }
 .wl-saves .wl-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
 .install-app-btn[hidden]{ display:none !important; }
+#spdNext.pending{ color:#ffb347; box-shadow:0 0 0 1px #ffb347 inset; animation:ffPend 1.2s ease-in-out infinite; }
+@keyframes ffPend{ 50%{ opacity:.55; } }
 /* Broker Peace war picker */
 .pp-list{ display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto; }
 .pp-row{ background:var(--bg3); border:1px solid var(--border2); border-radius:6px; padding:9px 11px; display:grid; gap:5px; }
@@ -7764,32 +7766,53 @@ function onMonthEnd(){
   if(G._ffHold){ G._pendingReview=report; return; }      // Next Month shows it once the 30 days are done
   if(G._ffMonth || G.autoPauseMonthly) showMonthReview(report);
 }
-function nextMonth(){
+// Anything on screen that needs the player before the month can carry on
+function ffBlocked(){
+  return ['month-review','crisis-popup','un-vote-modal','conquest-modal','peace-offer','un-lobby','pact-call','liberate-modal','diplo-req','imf-offer','deploy-modal','peace-picker','acct-modal']
+           .some(id=>document.getElementById(id)) || !!document.querySelector('.hud-modal-wrap')
+         || document.getElementById('evov')?.classList.contains('open') || (G._crisisQueue||[]).length>0 || cinematicActive();
+}
+function nextMonth(daysArg){
   const p=G.player; if(!p) return;
   if(document.getElementById('month-review')){ closeMonthReview(); }
   const blocking = ['crisis-popup','un-vote-modal','conquest-modal','peace-offer','un-lobby'].some(id=>document.getElementById(id))
                  || document.getElementById('evov')?.classList.contains('open');
   if(blocking){ addEv('w','⏭ Next Month','Resolve the open decision first.'); return; }
-  const keepSpeed = G.speed || G._preModalSpeed || 0;     // resume at the chosen speed afterwards (1×/2× stays on)
+  // A month interrupted by a decision is finished first (pressing ⏭ again, or automatically once the decision is dealt with)
+  const R=G._ffResume; G._ffResume=null; clearInterval(G._ffResumeTimer);
+  const keepSpeed = R ? R.keep : (G.speed || G._preModalSpeed || 0);     // resume at the chosen speed afterwards (1×/2× stays on)
+  const days = daysArg || R?.left || 30;
   setSpd(0); G._preModalSpeed=null;
-  // Simulate a full month (30 days) from today — production, construction, trade and research all advance.
-  // A Month in Review that falls inside the 30 days is shown at the end, not halfway.
-  G._ffMonth=true; G._stopFF=false; G._ff=true; G._ffHold=true; G._pendingReview=null;
-  const target=G.totalDays+30;
+  // Simulate the days in one go — production, construction, embassies, military orders, trade and research all advance
+  // day by day exactly as if the time had passed. A Month in Review that falls inside is shown at the end, not halfway.
+  G._ffMonth=true; G._stopFF=false; G._ff=true; G._ffHold=true; if(!R) G._pendingReview=null;
+  const target=G.totalDays+days;
   while(G.totalDays<target){
     processTickProduction(p,1);
     processDayTick();
     if(G._stopFF) break;
   }
   G._ff=false; G._ffMonth=false; G._ffHold=false;
-  if(G._pendingReview){ const r=G._pendingReview; G._pendingReview=null; if(!G._stopFF) showMonthReview(r); }
-  if(G.totalDays<target){
-    const left=(p.construction||[]).length;
-    addEv('w','⏭ Paused Early',`Stopped on ${fmtDate()} (${target-G.totalDays} days short) for a decision that needs you. Press ⏭ again to simulate another month${left?` — ${left} construction project${left>1?'s':''} still under way`:''}.`);
+  const done = G.totalDays>=target;
+  if(G._pendingReview && done){ const r=G._pendingReview; G._pendingReview=null; showMonthReview(r); }
+  if(!done){
+    // Interrupted: deal with the decision, then the rest of the month runs by itself
+    G._ffResume={ left:target-G.totalDays, keep:keepSpeed };
+    addEv('i','⏭ Month Paused',`Stopped on ${fmtDate()} for a decision that needs you. Once you've dealt with it, the remaining ${target-G.totalDays} day${target-G.totalDays===1?'':'s'} of the month run by themselves.`);
+    let clear=0;
+    G._ffResumeTimer=setInterval(()=>{
+      if(!G._ffResume || !G.player){ clearInterval(G._ffResumeTimer); return; }
+      if(ffBlocked()){ clear=0; return; }
+      if(++clear<3) return;                                           // still for ~1 s: the player is done
+      clearInterval(G._ffResumeTimer); nextMonth();
+    }, 400);
   }
   // one full UI refresh at the end
   colorMap(); rpRender(); lpRender(); topbarUpdate();
   document.getElementById('tbdate').textContent=fmtDate();
+  const nb=document.getElementById('spdNext');
+  if(nb){ nb.classList.toggle('pending', !!G._ffResume); nb.title = G._ffResume ? `Month paused for a decision: ${G._ffResume.left} days left (they run by themselves when you're done)` : 'Simulate one month (30 days), then pause with a Month in Review'; }
+  if(G._ffResume) return;                                            // speed comes back when the whole month is done
   // Back to the speed the player had: straight away, or when the review / decision that is open gets closed
   const waiting = ['month-review','crisis-popup','un-vote-modal','conquest-modal','peace-offer','un-lobby','pact-call','liberate-modal','diplo-req','imf-offer']
     .some(id=>document.getElementById(id)) || document.getElementById('evov')?.classList.contains('open');
@@ -7866,6 +7889,7 @@ function smoothNow(){
   return base + Math.max(0, extra);
 }
 function setSpd(s){
+  if(s>0 && G._ffResume && !G._ff){ G._ffResume=null; clearInterval(G._ffResumeTimer); document.getElementById('spdNext')?.classList.remove('pending'); }
   G._lastTickT = performance.now();
   G.speed=s;
   ['spd0','spd1','spd2'].forEach(id=>document.getElementById(id).classList.remove('on'));
@@ -16216,7 +16240,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 179;
+const ATLAS_BUILD = 180;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();

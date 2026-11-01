@@ -1,7 +1,7 @@
 {
-  "version": 179,
+  "version": 180,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Aid can no longer balloon an economy: countries put at most ~15% of GDP a year of aid to work, big spending has diminishing returns, and economies inflated by huge gifts are corrected when you load."
+  "notes": "Next Month always runs the full 30 days: if a decision interrupts it, the rest of the month carries on by itself once you've dealt with it."
 }
