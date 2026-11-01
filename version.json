@@ -1,7 +1,7 @@
 {
-  "version": 181,
+  "version": 182,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "National budget: the year so far, a projection for the full year that moves daily, and treasury at year-end. Calendar fixed (January had 28 days)."
+  "notes": "Population now includes the people of lands you (or any country) have annexed: top bar, State tab, phone summary and the world population ranking."
 }
