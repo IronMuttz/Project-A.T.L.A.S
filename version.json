@@ -1,7 +1,7 @@
 {
-  "version": 180,
+  "version": 181,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Next Month always runs the full 30 days: if a decision interrupts it, the rest of the month carries on by itself once you've dealt with it."
+  "notes": "National budget: the year so far, a projection for the full year that moves daily, and treasury at year-end. Calendar fixed (January had 28 days)."
 }

@@ -5624,12 +5624,16 @@ const G = {
 };
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const DAYS_IN_MONTH = [31,28,29,31,30,31,30,31,31,30,31,30,31];
+const DAYS_IN_MONTH = [0,31,28,31,30,31,30,31,31,30,31,30,31];   // index = month (1-12)
+const isLeap = y => (y%4===0 && y%100!==0) || y%400===0;
+function daysInMonth(m, y){ return m===2 && isLeap(y) ? 29 : DAYS_IN_MONTH[m]; }
+function dayOfYear(){ let d=G.day; for(let m=1;m<G.month;m++) d+=daysInMonth(m,G.year); return d; }
+function daysInYear(y){ return isLeap(y) ? 366 : 365; }
 
 function advanceDate(){
   G.day++;
   G.totalDays++;
-  const dim = DAYS_IN_MONTH[G.month];
+  const dim = daysInMonth(G.month, G.year);
   if(G.day > dim){ G.day=1; G.month++; }
   if(G.month > 12){ G.month=1; G.year++; }
 }
@@ -8478,6 +8482,9 @@ function processDayTickCore(){
   p.gdpGrowthRate = gdpGrowthRate;
   p.gdp = Math.max(0.05, p.gdp * (1 + gdpGrowthRate));
   p.pubInvest = (p.pubInvest||0) * (1 - 0.15/365);
+  // Budget year to date (for the national budget's projection): the day's net, booked once a day
+  { if(p._ytdYear!==G.year){ p._ytdYear=G.year; p._ytd=0; p._ytdInc=0; p._ytdExp=0; p._ytdDays=0; }
+    const bd=computeBudget(p); p._ytd+=bd.net; p._ytdInc+=bd.totalIncome; p._ytdExp+=bd.totalExpenses; p._ytdDays++; }
 
   // ── TROOP DEPLOYMENTS TICK ──
   tickDeployedTroops(p);
@@ -12172,6 +12179,20 @@ function setBudgetPeriod(period){
 }
 
 // Patches the four headline figures every tick without re-rendering the panel.
+// The year so far (booked daily) plus the rest of the year at today's rate: this moves every day
+function budgetProjectionHtml(p, b){
+  b=b||computeBudget(p);
+  const sameYear=p._ytdYear===G.year, ytd=sameYear?(p._ytd||0):0, done=sameYear?(p._ytdDays||0):0;
+  const left=Math.max(0, daysInYear(G.year)-Math.max(done, dayOfYear()-1)), proj=ytd+b.net*left;   // today is booked tonight
+  const sg=v=>(v>=0?'+':'')+fmtBil(v), col=v=>v>=0?'var(--green)':'var(--red2)';
+  const endT=p.treasury+b.net*left;
+  return `<div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:var(--fs-xs);color:var(--text3);margin-bottom:10px;">
+      <span>${G.year} so far <i style="font-style:normal;opacity:.8">(${done} day${done===1?'':'s'})</i></span><b style="color:${col(ytd)};text-align:right;">${sg(ytd)}</b>
+      <span>Projected for all of ${G.year} <i style="font-style:normal;opacity:.8">(${left} day${left===1?'':'s'} to go)</i></span><b id="budget-annual" style="color:${col(proj)};text-align:right;">${sg(proj)}</b>
+      <span>At today's rate, a full year</span><b style="color:${col(b.net)};text-align:right;">${sg(b.net*365)}/yr</b>
+      <span>Treasury on 31 Dec at this rate</span><b style="color:${endT>=0?'#e8fbff':'var(--red2)'};text-align:right;">${fmtBil(endT)}</b>
+    </div>`;
+}
 function calcBudgetLive(p){
   if(!p) return;
   const netEl = document.getElementById('budget-net');
@@ -12183,8 +12204,8 @@ function calcBudgetLive(p){
 
   netEl.style.color = col;
   netEl.textContent = sgn(b.net*mult);
-  const annEl = document.getElementById('budget-annual');
-  if(annEl){ annEl.style.color = col; annEl.textContent = sgn(b.net*365) + '/yr'; }
+  const projEl = document.getElementById('budget-proj');
+  if(projEl) projEl.innerHTML = budgetProjectionHtml(p, b);
   const incEl = document.getElementById('budget-income');
   if(incEl) incEl.textContent = fmtBil(b.totalIncome*mult) + sfx;
   const expEl = document.getElementById('budget-expenses');
@@ -12285,10 +12306,7 @@ function renderBudgetSection(p){
         <span style="font-size:var(--fs-md);color:var(--text);font-weight:700;">Net ${per}</span>
         <span id="budget-net" style="font-family:'IBM Plex Sans Condensed',sans-serif;font-size:var(--fs-xl);font-weight:700;color:${netColor};">${b.net>=0?'+':''}${fmtBil(b.net*mult)}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--text3);margin-bottom:10px;">
-        <span>Annual projection</span>
-        <b id="budget-annual" style="color:${netColor};">${b.net>=0?'+':''}${fmtBil(b.net*365)}/yr</b>
-      </div>
+      <div id="budget-proj">${budgetProjectionHtml(p,b)}</div>
       ${renderFiscalStrip(p)}
 
       <div style="font-size:var(--fs-xs);color:var(--green);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">
@@ -16240,7 +16258,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 180;
+const ATLAS_BUILD = 181;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
