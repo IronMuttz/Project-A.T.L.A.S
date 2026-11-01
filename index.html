@@ -744,6 +744,20 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .wl-saves{ display:flex; flex-direction:column; align-items:center; gap:8px; }
 .wl-saves .wl-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
 .install-app-btn[hidden]{ display:none !important; }
+/* Unit picker (deploy / pact call) */
+.upk{ padding:7px 0 4px; border-top:1px solid var(--border); } .upk.none{ opacity:.4; }
+.upk-h{ display:grid; grid-template-columns:22px 1fr auto 104px; gap:8px; align-items:center; }
+.upk-i{ font-size:17px; } .upk-n{ color:var(--text); font-size:14px; font-weight:600; } .upk-a{ color:var(--text3); font-size:12px; text-align:right; white-space:nowrap; }
+.upk-v{ width:100%; box-sizing:border-box; background:var(--bg4,#06131f); border:1px solid var(--border2); color:#e8fbff; padding:5px 8px; border-radius:4px;
+  font:600 15px 'IBM Plex Sans Condensed',sans-serif; text-align:right; font-variant-numeric:tabular-nums; }
+.upk-v:focus{ outline:none; border-color:var(--holo,#38e1ff); }
+.upk-r{ display:block; width:100%; margin:8px 0 2px; height:22px; accent-color:var(--teal,#38e1ff); cursor:pointer; touch-action:pan-y; }
+#deploy-modal .upk-r{ accent-color:#ff5a6a; }
+.upk-q{ display:flex; gap:6px; align-items:center; margin:8px 0 6px; font-size:12.5px; color:var(--text2); letter-spacing:.04em; }
+.upk-q span{ margin-right:2px; } .upk-q button{ flex:1; padding:7px 4px; background:rgba(56,225,255,.07); border:1px solid var(--border2); color:var(--holo,#38e1ff);
+  border-radius:5px; font:600 13.5px 'IBM Plex Sans Condensed',sans-serif; cursor:pointer; } .upk-q button:hover{ background:rgba(56,225,255,.16); }
+#deploy-modal .upk-q button{ color:#ff8a95; background:rgba(255,80,80,.08); border-color:rgba(255,80,80,.4); }
+body.mob .upk-r{ height:32px; } body.mob .upk-v{ font-size:16px; padding:7px 8px; } body.mob .upk-q button{ min-height:38px; }
 /* Account chip (start screen) and account window */
 .wl-acct{ position:absolute; top:calc(18px + env(safe-area-inset-top,0px)); left:18px; z-index:6; display:flex; align-items:center; gap:7px; max-width:46vw;
   background:rgba(4,20,32,.75); border:1px solid rgba(56,225,255,.4); color:#bff3ff; border-radius:999px; padding:6px 14px 6px 10px; cursor:pointer;
@@ -12914,29 +12928,7 @@ function openDeployModal(targetId){
   const tt=troopTravel(p,c,null);
   const travelDays=tt.days;
 
-  const rows=units.map(u=>{
-    if(u.count===0) return `
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);opacity:.4;">
-      <span style="font-size:var(--fs-lg);width:22px">${u.ico}</span>
-      <span style="flex:1;font-size:var(--fs-sm);color:var(--text)">${u.n}</span>
-      <span style="font-size:var(--fs-sm);color:var(--text3);">None available</span>
-    </div>`;
-    return `
-    <div style="padding:7px 0;border-bottom:1px solid var(--border);">
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
-        <span style="font-size:var(--fs-lg);width:22px">${u.ico}</span>
-        <span style="flex:1;font-size:var(--fs-sm);color:var(--text);font-weight:600;">${u.n}</span>
-        <span style="font-size:var(--fs-xs);color:var(--text3);">Avail: <b style="color:var(--teal)">${fmtNum(u.count)}</b></span>
-        <span style="font-family:'IBM Plex Sans Condensed',sans-serif;font-size:var(--fs-md);color:var(--red2);font-weight:700;min-width:70px;text-align:right;" id="dep-lbl-${u.k}">0</span>
-      </div>
-      <input id="dep-${u.k}" type="range" min="0" max="${u.count}" value="0" step="${Math.max(1,Math.floor(u.count/1000))}"
-        oninput="document.getElementById('dep-lbl-${u.k}').textContent=fmtNum(+this.value);updateDeployOdds(${targetId})"
-        style="width:100%;height:6px;accent-color:var(--red2);cursor:pointer;">
-      <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--text3);margin-top:1px;">
-        <span>0</span><span>${fmtNum(Math.floor(u.count/2))}</span><span>${fmtNum(u.count)}</span>
-      </div>
-    </div>`;
-  }).join('');
+  const rows=units.map(u=>unitPickRow({ id:'dep-'+u.k, k:u.k, ico:u.ico, name:u.n, avail:u.count, onchange:`updateDeployOdds(${targetId})` })).join('');
 
   const modal=document.createElement('div');
   modal.id='deploy-modal';
@@ -12945,7 +12937,8 @@ function openDeployModal(targetId){
     <div style="background:var(--bg2);border:1px solid var(--red2);border-radius:6px;padding:20px;width:420px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px rgba(200,50,50,.25);">
       <div style="font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:600;font-size:var(--fs-lg);color:var(--red2);font-weight:700;margin-bottom:2px;">⚔️ Deploy Troops to ${c.flag}${c.name}</div>
       <div id="dep-travel" style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:10px;">${troopTravelText(tt)} · Units leave your roster until they arrive and fight</div>
-      <button onclick="deployFillAll()" style="width:100%;margin-bottom:12px;padding:7px;background:rgba(255,80,80,.12);border:1px solid var(--red2);color:var(--red2);font-family:'IBM Plex Sans Condensed',sans-serif;font-size:var(--fs-md);font-weight:700;border-radius:3px;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;">
+      ${upkQuick('deploy-modal',`updateDeployOdds(${targetId})`)}
+      <button onclick="deployFillAll()" hidden style="width:100%;margin-bottom:12px;padding:7px;background:rgba(255,80,80,.12);border:1px solid var(--red2);color:var(--red2);font-family:'IBM Plex Sans Condensed',sans-serif;font-size:var(--fs-md);font-weight:700;border-radius:3px;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;">
         ⚔️ Deploy ALL Troops
       </button>
       ${rows}
@@ -12961,7 +12954,7 @@ function openDeployModal(targetId){
 
 function updateDeployOdds(targetId){
   const c=CTRY[targetId], el=document.getElementById('dep-odds'); if(!c||!el) return;
-  const u={}; ['ground_troops','artillery','mechanized_vehicles','fighters','bombers','submarines','carrier_fleets'].forEach(k=>{ u[k]=+(document.getElementById('dep-'+k)?.value||0); });
+  const u={}; ['ground_troops','artillery','mechanized_vehicles','fighters','bombers','submarines','carrier_fleets'].forEach(k=>{ u[k]=upkVal('dep-'+k); });
   const pct=Math.round(battleOdds(unitsStrength(u),c)*100);
   const sel=Object.fromEntries(Object.entries(u).filter(([,v])=>v>0)), tEl=document.getElementById('dep-travel');
   if(tEl && Object.keys(sel).length) tEl.textContent=troopTravelText(troopTravel(G.player,c,sel))+' · Units leave your roster until they arrive and fight';
@@ -12971,12 +12964,7 @@ function updateDeployOdds(targetId){
 function deployFillAll(){
   const modal = document.getElementById('deploy-modal'); if(!modal) return;
   const keys=['ground_troops','artillery','mechanized_vehicles','fighters','bombers','submarines','carrier_fleets'];
-  keys.forEach(k=>{
-    const el = modal.querySelector('[id="dep-'+k+'"]'); if(!el) return;
-    el.value = el.max || 0;
-    const lbl = modal.querySelector('[id="dep-lbl-'+k+'"]');
-    if(lbl) lbl.textContent = fmtNum(+el.value);
-  });
+  upkSetAll(modal, 1); void keys;
   const tid = +(modal.querySelector('[onclick^="confirmDeploy("]')?.getAttribute('onclick').match(/confirmDeploy\((\d+)/)?.[1]);
   if(tid) updateDeployOdds(tid);
 }
@@ -13016,7 +13004,7 @@ function confirmDeploy(targetId, travelDays){
   let any=false;
   unitKeys.forEach(k=>{
     const el = modal ? modal.querySelector('[id="dep-'+k+'"]') : null;
-    const v = Math.min(parseInt(el?.value)||0, availableUnits(p,k));
+    const v = Math.min(parseInt(String(el?.value||'0').replace(/[^0-9]/g,''),10)||0, availableUnits(p,k));
     if(v>0){ sent[k]=v; p.mil_units[k]=Math.max(0,(p.mil_units[k]||0)-v); any=true; }
   });
   // Now safe to remove the modal
@@ -13048,6 +13036,24 @@ function tickDeployedTroops(p){
   });
 }
 
+// ═══ UNIT PICKER — each unit type gets a slider plus an exact number box (kept in step), and quick picks
+//     (None / 25% / Half / All) set the whole force at once. Used when deploying to a war and answering a pact call. ═══
+function unitPickRow(o){
+  const n=o.avail||0, step=n>1000?Math.max(1,Math.round(n/400)):1;
+  return `<div class="upk${n?'':' none'}" data-k="${o.k}" data-naval="${o.naval?1:0}" data-max="${n}">
+    <div class="upk-h"><span class="upk-i">${o.ico}</span><span class="upk-n">${o.name}</span><span class="upk-a">${n?'of '+fmtNum(n):'none available'}</span>
+      <input id="${o.id}" class="upk-v" type="text" inputmode="numeric" autocomplete="off" value="0" aria-label="${o.name} to send" ${n?'':'disabled'} onfocus="this.select()" oninput="upkFromBox(this);${o.onchange||''}"></div>
+    ${n?`<input class="upk-r" type="range" min="0" max="${n}" step="${step}" value="0" aria-label="${o.name} slider" oninput="upkFromSlider(this);${o.onchange||''}">`:''}
+  </div>`;
+}
+function upkFromSlider(r){ const row=r.closest('.upk'), max=+row.dataset.max, step=+r.step||1; let v=+r.value; if(v+step>max) v=max; /* the last notch is always everything */ row.querySelector('.upk-v').value=v; }
+function upkFromBox(b){ const row=b.closest('.upk'), max=+row.dataset.max, r=row.querySelector('.upk-r');
+  let v=parseInt(String(b.value).replace(/[^0-9]/g,''),10)||0; if(v>max){ v=max; b.value=String(v); } if(r) r.value=v; }
+function upkSetAll(root, frac){ if(!root) return; root.querySelectorAll('.upk').forEach(row=>{ const box=row.querySelector('.upk-v'); if(!box || box.disabled) return;
+  const v=Math.floor(+row.dataset.max*frac); box.value=String(v); const r=row.querySelector('.upk-r'); if(r) r.value=v; }); }
+function upkQuick(rootId, cb){ return `<div class="upk-q"><span>Send</span>${[['None',0],['25%',0.25],['Half',0.5],['All',1]].map(([l,f])=>`<button type="button" onclick="upkSetAll(document.getElementById('${rootId}'),${f});${cb||''}">${l}</button>`).join('')}</div>`; }
+function upkVal(id){ return Math.max(0, parseInt(String(document.getElementById(id)?.value||'0').replace(/[^0-9]/g,''),10)||0); }
+
 // ═══ PACT AID — when a pact partner is attacked, the player can send an expeditionary force.
 //     It fights alongside the partner in every battle against that aggressor and comes home when that war ends. ═══
 const EXP_UNITS=[
@@ -13073,12 +13079,7 @@ function showPactCall(allyId, enemyId, defending){
   pauseForModal();
   const modes=expModes(p,ally), first=Object.keys(modes)[0];
   const m=document.createElement('div'); m.id='pact-call'; m.className='hud-modal-wrap';
-  const rows=EXP_UNITS.filter(u=>!(u.naval&&p.isLandlocked)).map(u=>{ const n=availableUnits(p,u.k);
-    return `<div class="pc-row" data-k="${u.k}" data-naval="${u.naval?1:0}" style="display:grid;grid-template-columns:22px 1fr 70px 92px;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--border);">
-      <span>${u.ico}</span><span style="color:var(--text2);font-size:var(--fs-sm);">${u.n}</span>
-      <span style="color:var(--text3);font-size:var(--fs-xs);text-align:right;">of ${fmtNum(n)}</span>
-      <input id="pc-${u.k}" type="number" min="0" max="${n}" value="0" ${n?'':'disabled'} oninput="pactCallCalc()"
-        style="width:100%;background:var(--bg4);border:1px solid var(--border2);color:#e8fbff;padding:3px 6px;border-radius:2px;font-family:'IBM Plex Sans Condensed',sans-serif;"></div>`; }).join('');
+  const rows=EXP_UNITS.filter(u=>!(u.naval&&p.isLandlocked)).map(u=>unitPickRow({ id:'pc-'+u.k, k:u.k, ico:u.ico, name:u.n, avail:availableUnits(p,u.k), naval:u.naval, onchange:'pactCallCalc()' })).join('');
   m.innerHTML=`<div class="hud-modal" style="width:470px;">
     <div class="hud-modal-h"><span>🛡️ Pact Called: ${ally.name} ${dfd?'at War':'Under Attack'}</span></div>
     <div style="font-size:13.5px;color:var(--text2);line-height:1.5;">${dfd ? `${ally.name}, your defensive-pact partner, has gone to war with ${enemy.name} to defend ${dfd.name}.` : `${enemy.name} has attacked ${ally.name}, your defensive-pact partner.`} Honouring the pact puts you at war with ${enemy.name}. Your force fights beside ${ally.name} in every battle against ${enemy.name}, takes its share of losses, and comes home when that war ends.</div>
@@ -13086,6 +13087,7 @@ function showPactCall(allyId, enemyId, defending){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">${Object.entries(modes).map(([k,md])=>`<label style="flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:6px 8px;cursor:pointer;">
       <input type="radio" name="pc-mode" value="${k}" ${k===first?'checked':''} onchange="pactCallCalc()"> <b style="color:var(--text);">${md.label}</b>
       <div style="font-size:var(--fs-xs);color:var(--teal);">~${md.days} day${md.days===1?'':'s'}</div><div style="font-size:11px;color:var(--text3);">${md.note}</div></label>`).join('')}</div>
+    ${upkQuick('pact-call','pactCallCalc()')}
     <div>${rows}</div>
     <div id="pc-sum" style="font-size:var(--fs-sm);color:var(--teal);margin-top:6px;"></div>
     <div class="hud-row" style="justify-content:flex-end;gap:6px;">
@@ -13099,9 +13101,9 @@ function pactCallCalc(){
   const m=document.getElementById('pact-call'); if(!m) return;
   const mode=m.querySelector('input[name=pc-mode]:checked')?.value||'air', md=m._modes[mode], p=G.player;
   let total=0, str=0, flown=0;
-  m.querySelectorAll('.pc-row').forEach(r=>{ const k=r.dataset.k, el=r.querySelector('input'), naval=r.dataset.naval==='1';
-    const blocked = naval && mode!=='sea'; el.disabled = blocked || !availableUnits(p,k); r.style.opacity=blocked?0.4:1;
-    const v=blocked?0:Math.max(0,Math.min(availableUnits(p,k), parseInt(el.value)||0)); total+=v; str+=v*(MIL_STRENGTH_PER[k]||0);
+  m.querySelectorAll('.upk').forEach(r=>{ const k=r.dataset.k, el=r.querySelector('.upk-v'), sl=r.querySelector('.upk-r'), naval=r.dataset.naval==='1';
+    const blocked = naval && mode!=='sea'; el.disabled = blocked || !availableUnits(p,k); if(sl) sl.disabled=el.disabled; r.style.opacity=blocked?0.4:1;
+    const v=blocked?0:Math.max(0,Math.min(availableUnits(p,k), upkVal(el.id))); total+=v; str+=v*(MIL_STRENGTH_PER[k]||0);
     flown+=v*(AIRLIFT_COST[k]||0); });
   const cost = mode==='air' ? flown : 0;
   document.getElementById('pc-sum').innerHTML = total ? `${fmtNum(total)} units · +${fmtNum(Math.round(str))} strength · arrives in ~${md.days} day${md.days===1?'':'s'}${cost?` · airlift ${fmtShort(cost)}`:''}` : 'Choose how many units to send.';
@@ -13110,8 +13112,8 @@ function answerPactCall(allyId, enemyId, yes){
   const p=G.player, ally=CTRY[allyId], enemy=CTRY[enemyId], m=document.getElementById('pact-call');
   const mode=m?.querySelector('input[name=pc-mode]:checked')?.value||'air', md=m?._modes?.[mode];
   const sent={}; let any=false, flown=0;
-  if(yes && m) m.querySelectorAll('.pc-row').forEach(r=>{ const k=r.dataset.k; if(r.dataset.naval==='1' && mode!=='sea') return;
-    const v=Math.max(0,Math.min(availableUnits(p,k), parseInt(r.querySelector('input').value)||0)); if(v>0){ sent[k]=v; any=true; flown+=v*(AIRLIFT_COST[k]||0); } });
+  if(yes && m) m.querySelectorAll('.upk').forEach(r=>{ const k=r.dataset.k; if(r.dataset.naval==='1' && mode!=='sea') return;
+    const v=Math.max(0,Math.min(availableUnits(p,k), upkVal('pc-'+k))); if(v>0){ sent[k]=v; any=true; flown+=v*(AIRLIFT_COST[k]||0); } });
   if(yes && !any){ addEv('w','⚠️','Choose at least one unit to send, or refuse the pact call.'); return; }
   const cost = mode==='air' ? flown : 0;
   if(yes && cost>0 && p.treasury<cost){ addEv('w','⚠️ Airlift',`The airlift costs ${fmtShort(cost)}. Pick another route or send fewer units.`); return; }
@@ -16077,7 +16079,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 173;
+const ATLAS_BUILD = 174;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();

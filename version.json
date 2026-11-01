@@ -1,7 +1,7 @@
 {
-  "version": 173,
+  "version": 174,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Troops and trade to landlocked countries take the road when it's quicker (Pakistan \u2192 Tajikistan now goes via Afghanistan). Capitals fixed for 29 countries."
+  "notes": "Sending troops: every unit type has a slider and an exact number box, plus None / 25% / Half / All buttons (pact calls and war deployments)."
 }
