@@ -1,7 +1,7 @@
 {
-  "version": 172,
+  "version": 173,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Bitcoin: big orders now move the price as they fill (no more buy-and-pump), with a live estimate before you trade."
+  "notes": "Troops and trade to landlocked countries take the road when it's quicker (Pakistan \u2192 Tajikistan now goes via Afghanistan). Capitals fixed for 29 countries."
 }
