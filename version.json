@@ -1,7 +1,7 @@
 {
-  "version": 182,
+  "version": 183,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Population now includes the people of lands you (or any country) have annexed: top bar, State tab, phone summary and the world population ranking."
+  "notes": "Tax revenue now follows population: annexed lands are taxed at your rates and show in Total Tax Revenue and the National Budget (taxes, resource revenue, their public services, garrisons and debt); a growing workforce widens the income-tax base; fiscal balance and lender debt ratio measured against the whole realm"
 }

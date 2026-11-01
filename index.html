@@ -4057,7 +4057,6 @@ const GOODS_DEMAND_PER_M = { auto:0.0673, tech:2.52, aviation:0.00135, chemical:
 function localGoodsDemand(c,k){ return (GOODS_DEMAND_PER_M[k]||0) * (c.pop||0) * incomeF(c); }
 // A country's whole home market: its own people plus everyone living in land it has annexed
 function realmDemand(c,k){ let d=localGoodsDemand(c,k); CLIST.forEach(t=>{ if(t.annexedBy===c.abbr) d+=localGoodsDemand(t,k); }); return d; }
-function realmPop(c){ return (c.pop||0) + CLIST.reduce((s,t)=>s+(t.annexedBy===c.abbr?(t.pop||0):0),0); }
 // Share of a market open to imports even when the country makes the product itself (brands, specialisation)
 const IMPORT_OPEN_SHARE = 0.35;
 function importCapacity(c,k){
@@ -4604,11 +4603,26 @@ function debtRatio(c){ return c.gdp>0 ? (c.debt||0)/c.gdp*100 : 0; }
 // A country's people include those of the lands it has annexed (they keep their own records for happiness, revolts and taxes)
 function annexedPopMap(){ const m={}; CLIST.forEach(t=>{ if(t.annexedBy) m[t.annexedBy]=(m[t.annexedBy]||0)+(t.pop||0); }); return m; }
 function realmPop(c, map){ return (c?.pop||0) + ((map||annexedPopMap())[c?.abbr]||0); }
+// Lands a country has annexed (none for a land that is itself annexed)
+function realmTerritories(c){
+  if(!c || c.annexedBy) return [];
+  return (G._territories?.[c.abbr] || CLIST).filter(t=>t.annexedBy===c.abbr);
+}
+function territoryCollect(t){ return t.taxExempt ? 0 : (t.revolution ? 0.5 : 1); }
+function realmGDP(c){ return (c?.gdp||0) + realmTerritories(c).reduce((s,t)=>s+(t.gdp||0),0); }
 // Cash the government can actually use to pay creditors: the treasury and the State Bank
 function liquidAssets(c){ return Math.max(0, c.treasury||0) + Math.max(0, c.stateBank?.balance||0); }
 // Lenders judge debt net of that cash: a country sitting on more money than it owes is not a credit risk
-function netDebtRatio(c){ return c.gdp>0 ? Math.max(0, (c.debt||0) - liquidAssets(c))/c.gdp*100 : 0; }
-function fiscalBalancePct(c){ return c.gdp>0 ? computeBudget(c).net*365/c.gdp*100 : 0; }
+// Annexed lands' debts are serviced by the annexer, and their economies stand behind it: lenders look at the whole realm
+function netDebtRatio(c){ const g=realmGDP(c), d=(c.debt||0)+realmTerritories(c).reduce((s,t)=>s+(t.debt||0),0); return g>0 ? Math.max(0, d - liquidAssets(c))/g*100 : 0; }
+function fiscalBalancePct(c){ const g=realmGDP(c); return g>0 ? computeBudget(c).net*365/g*100 : 0; }
+// The "normal" balance for a realm: each part's 2010 norm, weighted by its economy (annexed India brings India's deficit habit)
+function realmBaseBal(c){
+  const ts=realmTerritories(c); if(!ts.length) return c.fiscal?.baseBal ?? 0;
+  let w=c.gdp||0, s=(c.fiscal?.baseBal??0)*w;
+  ts.forEach(t=>{ const g=t.gdp||0; w+=g; s+=(t.fiscal?.baseBal??c.fiscal?.baseBal??0)*g; });
+  return w>0 ? s/w : (c.fiscal?.baseBal??0);
+}
 
 // Track record with lenders (score points; ~8 points = one rating notch). Fades slowly.
 function creditHistory(c, pts, why){
@@ -4620,7 +4634,7 @@ function fiscalRating(c){
   if(F.defaultDays > 0) return { r:'D', s:DEFAULT_SPREAD, score:0 };
   const comp = F.competence ?? 0.5, k = 1.3 - comp;
   // A deficit worries lenders less the longer the country's cash could cover it (no worry at all with 10+ years' worth)
-  const bal = fiscalBalancePct(c), deficitYr = c.gdp>0 && bal<0 ? -bal/100*c.gdp : 0;
+  const bal = fiscalBalancePct(c), deficitYr = c.gdp>0 && bal<0 ? -bal/100*realmGDP(c) : 0;
   const cushion = deficitYr>0 ? Math.max(0, 1 - liquidAssets(c)/(deficitYr*10)) : 1;
   const score = 80 - 0.35*netDebtRatio(c)*k - 2.5*Math.max(0,-bal)*k*cushion + 60*(comp-0.5) + Math.max(-20,Math.min(16,F.history||0));
   const t = RATING_SCALE.find(x=>score>=x.min);
@@ -4817,7 +4831,7 @@ function aiFiscalReview(c){
   if(Math.random() > 0.35 + 0.65*F.competence) return;       // weak states miss reviews
   const step   = 1 + (1-F.competence)*Math.random();           // and over/under-shoot
   const bal    = fiscalBalancePct(c);
-  const gap    = bal - F.baseBal;                              // vs this country's normal
+  const gap    = bal - realmBaseBal(c);                        // vs this country's normal (and its annexed lands')
   const demo   = DEMOCRATIC_LAWS.has(c.governmentLaw);
   const crisis = F.defaultDays>0 || c.treasury < 0 || F.score < (F.score0 ?? 50) - 8;   // deteriorating, not just chronically weak
   const tax = (f,d)=>{ c[f] = Math.max(5, Math.min(50, Math.round((c[f]||20) + d*step))); };
@@ -4934,10 +4948,22 @@ function computeBudget(p){
     disasters:    (p.disasters||[]).reduce((s,d)=>s+(R.disasterPctGDP[d.severity]||0),0) * p.gdp / 100 / 365,
     health:       (p.healthEvents||[]).reduce((s,d)=>s+(R.healthPctGDP[d.severity]||0),0) * p.gdp / 100 / 365,
   };
+  // Annexed lands: taxed at your rates, their resource revenue is yours, and you pay their public services,
+  // garrisons and debt interest (exports are credited on delivery; their industry already moved to you)
+  const annexed = { n:0, pop:0, revolts:0, exempt:0 };
+  income.annexedTaxes = 0; income.annexedResources = 0; expenses.annexedServices = 0; expenses.annexedUpkeep = 0;
+  realmTerritories(p).forEach(t=>{
+    const k = territoryCollect(t), tb = computeBudget(t);
+    income.annexedTaxes      += calcTaxRevenue(t, p).total * k;
+    income.annexedResources  += tb.income.resources * k;
+    expenses.annexedServices += tb.expenses.publicServices;
+    expenses.annexedUpkeep   += tb.totalExpenses - tb.expenses.publicServices;
+    annexed.n++; annexed.pop += t.pop||0; if(t.revolution) annexed.revolts++; if(t.taxExempt) annexed.exempt++;
+  });
   const totalIncome   = Object.values(income).reduce((a,b)=>a+b,0);
   const totalExpenses = Object.values(expenses).reduce((a,b)=>a+b,0);
   return {
-    income, expenses, totalIncome, totalExpenses,
+    income, expenses, totalIncome, totalExpenses, annexed,
     net: totalIncome - totalExpenses,
     // Memo only — compounds inside the bank, never touches treasury
     bankInterest: (p.stateBank?.balance||0) > 0 ? p.stateBank.balance * R.stateBankAnnual / 365 : 0,
@@ -8549,7 +8575,7 @@ function processDayTickCore(){
 
   // ── APPROVAL DRIVERS (daily organic shifts) ──
   // 1. Budget vs this country's normal (a US-style deficit isn't a scandal in the US)
-  const _gap = fiscalBalancePct(p) - (p.fiscal?.baseBal ?? 0);
+  const _gap = fiscalBalancePct(p) - realmBaseBal(p);
   if(_gap > 1)        p.eventModifier += 0.05;   // better than usual
   else if(_gap < -5)  p.eventModifier -= 0.20;   // far worse than usual
   else if(_gap < -2)  p.eventModifier -= 0.08;
@@ -8805,7 +8831,7 @@ function aiDay(c){
   c.eventModifier = (c.eventModifier || 0) * 0.95;
   if(c.gdpGrowthRate > 0.0005) c.eventModifier += 0.05;
   if(c.fiscal){
-    const gap = fiscalBalancePct(c) - c.fiscal.baseBal;
+    const gap = fiscalBalancePct(c) - realmBaseBal(c);
     if(gap < -3) c.eventModifier -= 0.10;
     if(['CCC','CC','D'].includes(c.fiscal.rating)) c.eventModifier -= 0.15;
   }
@@ -9988,7 +10014,7 @@ function renderEconomyTax(){
   const p = G.player; if(!p) return;
   const el = document.getElementById('tax-panel-inner'); if(!el) return;
 
-  const rev = calcTaxRevenue(p);
+  const rev = realmTaxRevenue(p);              // home + annexed lands (your rates apply across the realm)
   const fx  = getTaxEffects(p);
 
   const fmtRev = v => {
@@ -10027,6 +10053,7 @@ function renderEconomyTax(){
       <span class="tax-total-label">📊 Total Tax Revenue</span>
       <span class="tax-total-val">${fmtRev(rev.total)}</span>
     </div>
+    ${taxRealmNote(p, rev)}
     ${slider('incomeTaxRate',     'Income Tax',      '👤', rev.income,      'Happiness',     itHap, false)}
     ${slider('corporateTaxRate',  'Corporate Tax',   '🏢', rev.corporate,   'Industry %',    (+ctInd).toFixed(1), false)}
     ${slider('luxuryTaxRate',     'Luxury Tax',      '💎', rev.luxury,      'Happiness',     ltHap, false)}
@@ -10057,6 +10084,22 @@ function renderEconomyTax(){
 
     ${renderBudgetSection(p)}
   `;
+}
+
+// Where the tax comes from: home (with the workforce effect) and annexed lands
+function fmtPeopleM(m){ return m>=1 ? `${Math.round(m).toLocaleString()}M` : `${Math.round(m*1000).toLocaleString()}K`; }
+function taxRealmNote(p, rev){
+  const wf = workforceFactor(p), popPct = ((p.pop/(p.fiscal?.pop0||p.pop))-1)*100, A = rev.annexed;
+  const line = (l,v,c) => `<div style="display:flex;justify-content:space-between;gap:8px;"><span>${l}</span><b style="color:${c||'var(--text2)'};white-space:nowrap;">${v}</b></div>`;
+  let h = line(`🏠 ${p.name} · ${fmtPeopleM(p.pop)} people`, `${fmtBil(rev.own.total)}/day`);
+  if(Math.abs(popPct) >= 0.5) h += `<div style="color:var(--text3);">Population ${popPct>=0?'+':''}${popPct.toFixed(1)}% since 2010 → income-tax base ${wf>=1?'+':''}${((wf-1)*100).toFixed(1)}%</div>`;
+  if(A.n){
+    const ex = realmTerritories(p).filter(t=>t.taxExempt).length, rv = realmTerritories(p).filter(t=>t.revolution&&!t.taxExempt).length;
+    h += line(`🏴 Annexed lands (${A.n}) · ${fmtPeopleM(A.pop)} people`, `+${fmtBil(A.total)}/day`, 'var(--green)');
+    if(ex||rv) h += `<div style="color:var(--text3);">${ex?`${ex} tax-exempt (pays nothing)`:''}${ex&&rv?' · ':''}${rv?`${rv} in revolt (pays half)`:''}</div>`;
+    h += `<div style="color:var(--text3);">Your tax rates apply to annexed lands too. Their public services, garrisons and debt are in the budget below.</div>`;
+  }
+  return `<div style="font-size:var(--fs-xs);color:var(--text2);background:var(--bg4);border:1px solid var(--border2);border-radius:3px;padding:5px 7px;margin:-2px 0 8px;display:flex;flex-direction:column;gap:2px;">${h}</div>`;
 }
 
 // ── RESOURCES PANEL ──
@@ -12032,22 +12075,40 @@ function embassyActionNow(iso3, action){
 // ═══════════════════════════════════════════════════════════════════
 //   TAXATION SYSTEM
 // ═══════════════════════════════════════════════════════════════════
-function calcTaxRevenue(c){
+function calcTaxRevenue(c, ratesFrom){
+  const r = ratesFrom || c;                     // annexed lands pay at their annexer's rates
   const dailyGDP = c.gdp / 365; // GDP in billions
-  const it = (c.incomeTaxRate       || 20) / 100;
-  const ct = (c.corporateTaxRate    || 18) / 100;
-  const lt = (c.luxuryTaxRate       || 15) / 100;
-  const et = (c.environmentalTaxRate || 10) / 100;
+  const it = (r.incomeTaxRate       || 20) / 100;
+  const ct = (r.corporateTaxRate    || 18) / 100;
+  const lt = (r.luxuryTaxRate       || 15) / 100;
+  const et = (r.environmentalTaxRate || 10) / 100;
 
   // Taxable GDP sectors — realistic government revenue ≈ 10-18% of GDP at default rates
   // Real-world: income tax ~8%, corporate ~3%, luxury ~2%, environmental ~0.5%
   // At 20% income tax rate applied to 8% of GDP = 1.6% total income tax revenue
   const tb = c.fiscal?.taxBase ?? 1;           // calibrated to real 2010 revenue
-  const income      = dailyGDP * 0.08 * it * tb;   // 8% of GDP is wage/income base
+  const income      = dailyGDP * 0.08 * it * tb * workforceFactor(c);   // 8% of GDP is wage/income base, widened by a growing workforce
   const corporate   = dailyGDP * 0.06 * ct * tb;   // 6% of GDP is corporate profit base
   const luxury      = dailyGDP * 0.04 * lt * tb;   // 4% of GDP is luxury spending
   const environment = dailyGDP * 0.02 * et * tb;   // 2% of GDP is taxable environmental activity
   return { income, corporate, luxury, environment, total: income + corporate + luxury + environment };
+}
+// More people at work means more income-tax payers (fewer after war, famine or fallout). Same curve as
+// the public-services bill, which already grows with the population.
+function workforceFactor(c){
+  const pop0 = c.fiscal?.pop0 || c.pop || 1;
+  return Math.pow(Math.max(0.5, (c.pop||pop0)/pop0), ENTERPRISE.popPressure);
+}
+// Tax across the whole realm: home plus annexed lands (at your rates; none from tax-exempt lands, half from lands in revolt)
+function realmTaxRevenue(c){
+  const own = calcTaxRevenue(c), out = { ...own, own, annexed:{ total:0, n:0, pop:0 } };
+  realmTerritories(c).forEach(t=>{
+    const k = territoryCollect(t), tx = calcTaxRevenue(t, c);
+    ['income','corporate','luxury','environment'].forEach(key=>{ out[key] += tx[key]*k; });
+    out.annexed.total += tx.total*k; out.annexed.n++; out.annexed.pop += t.pop||0;
+  });
+  out.total = own.total + out.annexed.total;
+  return out;
 }
 
 function getTaxEffects(c){
@@ -12231,10 +12292,10 @@ function renderFiscalStrip(c){
   <div style="display:flex;gap:4px;background:var(--bg4);border:1px solid var(--border2);border-radius:3px;padding:5px 4px;margin-bottom:10px;">
     ${cell('Credit', F.rating + (F.defaultDays>0?' ⛔':''), RATING_COLOR(F.rating))}
     ${cell('Debt / GDP', debtRatio(c).toFixed(0)+'%', debtRatio(c)>90?'var(--red2)':debtRatio(c)>60?'var(--gold)':'var(--green)')}
-    ${cell('Balance / GDP', (bal>=0?'+':'')+bal.toFixed(1)+'%', bal>=0?'var(--green)':bal>=F.baseBal-1?'var(--gold)':'var(--red2)')}
+    ${cell('Balance / GDP', (bal>=0?'+':'')+bal.toFixed(1)+'%', bal>=0?'var(--green)':bal>=realmBaseBal(c)-1?'var(--gold)':'var(--red2)')}
     ${cell('Borrowing', F.rate.toFixed(1)+'%', F.rate>8?'var(--red2)':F.rate>4?'var(--gold)':'var(--green)')}
   </div>
-  <div style="font-size:var(--fs-xs);color:var(--text3);margin:-6px 0 10px;text-align:right;">2010 norm: ${F.baseBal>=0?'+':''}${F.baseBal.toFixed(1)}% of GDP${F.defaultDays>0?` · <span style="color:var(--red2)">in default, ${F.defaultDays}d left</span>`:''}</div>`;
+  <div style="font-size:var(--fs-xs);color:var(--text3);margin:-6px 0 10px;text-align:right;">${(()=>{ const nb=realmBaseBal(c), ann=realmTerritories(c).length; return `${ann?'Realm norm (incl. annexed lands)':'2010 norm'}: ${nb>=0?'+':''}${nb.toFixed(1)}% of ${ann?'realm ':''}GDP`; })()}${F.defaultDays>0?` · <span style="color:var(--red2)">in default, ${F.defaultDays}d left</span>`:''}</div>`;
 }
 
 function renderBudgetSection(p){
@@ -12262,6 +12323,8 @@ function renderBudgetSection(p){
     ['🏪 Domestic Sales (state goods)', I.domesticSales, 'var(--green)'],
     ['📈 Foreign Bond Coupons',        I.bondCoupons,   'var(--green)'],
     ['🏝️ Tourism Levy (growth since 2010)', I.tourism,  'var(--green)'],
+    [`🏴 Annexed Lands — Taxes (${b.annexed.n} · ${fmtPeopleM(b.annexed.pop)} people${b.annexed.revolts?` · ${b.annexed.revolts} in revolt`:''})`, I.annexedTaxes, 'var(--green)'],
+    ['🏴 Annexed Lands — Resource Revenue', I.annexedResources, 'var(--green)'],
   ]);
   const expenseRows = lines([
     [`🏥 Public Services (${Math.round((p.fiscal?.psLevel??1)*100)}% funding · pop ${(p.pop/(p.fiscal?.pop0||p.pop)*100-100>=0?'+':'')}${(p.pop/(p.fiscal?.pop0||p.pop)*100-100).toFixed(1)}% since 2010)`, E.publicServices, 'var(--red2)', 1],
@@ -12284,6 +12347,8 @@ function renderBudgetSection(p){
     [`⚔️ War Operations (${n.warCount})`,                           E.wars,        'var(--red2)', 1],
     [`🌍 Disaster Relief (${n.disasters})`,                         E.disasters,   'var(--red2)', 1],
     [`🦠 Health Response (${n.health})`,                            E.health,      '#e04080',     1],
+    [`🏴 Annexed Lands — Public Services (${b.annexed.n})`,          E.annexedServices, 'var(--red2)', 1],
+    ['🏴 Annexed Lands — Garrisons, Debt & Admin',                   E.annexedUpkeep,   'var(--red2)', 1],
   ]) || `<div style="font-size:var(--fs-xs);color:var(--green);padding:3px 8px;">No active expenses ✓</div>`;
 
   const bankMemo = b.bankInterest > 0 ? `
@@ -14358,10 +14423,7 @@ function tickTerritories(){
   CLIST.forEach(c=>{
     if(!c.annexedBy) return;
     const X = CLIST.find(x=>x.abbr===c.annexedBy); if(!X){ c.annexedBy=null; return; }
-    // Fiscal: annexer collects the territory's revenue and pays its public services & debt
-    const b = computeBudget(c);
-    const collect = c.taxExempt ? 0 : (c.revolution ? 0.5 : 1);
-    X.treasury += b.totalIncome*collect - b.totalExpenses;
+    // Fiscal: its taxes and costs are part of the annexer's budget (computeBudget → applyDailyFiscal)
     c.gdp *= 1 + (c.revolution ? -0.02 : 0.015)/365;
     if(c.integrated){ c.revolution=false; return; }
     // Occupation resentment, religious friction, suppression; tax relief helps
@@ -14369,6 +14431,7 @@ function tickTerritories(){
     if(c.religion!==X.religion) d -= 0.02;
     if(c.suppressed) d -= 0.03;
     if(c.taxExempt) d += 0.03;
+    else d -= Math.max(0, (X.incomeTaxRate||20) - 25) * 0.001;   // your income tax applies here too: heavy rates breed resentment
     c.happiness = Math.max(0, Math.min(100, (c.happiness??50) + d));
     c.appr = c.happiness;
     // Revolution below 30% (suppression holds it down, at a price)
@@ -14406,7 +14469,7 @@ function territoryHappinessMod(c){
   return Math.max(-15, Math.min(15, (avg-50)*w));
 }
 function revoltCount(c){ return G._revolts?.[c.abbr] || 0; }
-function effectiveGDP(c){ return c.gdp + CLIST.filter(t=>t.annexedBy===c.abbr).reduce((s,t)=>s+t.gdp,0); }
+function effectiveGDP(c){ return realmGDP(c); }
 
 // ── AI war decisions (replaces random aggression) ──
 function aiConsiderWar(c){
@@ -16262,7 +16325,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 182;
+const ATLAS_BUILD = 183;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
