@@ -1,7 +1,7 @@
 {
-  "version": 171,
+  "version": 172,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Cancelling a build or a military order now refunds everything: money, materials and parts."
+  "notes": "Bitcoin: big orders now move the price as they fill (no more buy-and-pump), with a live estimate before you trade."
 }

@@ -15109,12 +15109,39 @@ const STOCKS = [
   { id:'PFE',    name:'Pfizer',           ico:'💊', sector:'pharma',  price:17,  vol:0.012, drift:0.06, div:0.045 },
   { id:'JNJ',    name:'Johnson & Johnson',ico:'🧴', sector:'pharma',  price:63,  vol:0.010, drift:0.06, div:0.035 },
 ];
-const BTC = { start:25000, supply:18.5e6, vol:0.035, drift:0.0004, floor:1500, trend:1.25 };   // trend: ×1.25/yr long-run anchor
+const BTC = { start:25000, supply:18.5e6, vol:0.035, drift:0.0004, floor:1500, trend:1.25,   // trend: ×1.25/yr long-run anchor
+  depth:0.02,                  // market depth: buying 2% of Bitcoin's market value moves the price ×e (~2.7×)
+  maxPump:Math.log(8),         // an order can't push the price above 8× its market value: the market runs out of sellers
+  decay:0.7,                   // a price pushed by a big order falls back toward market value (70% of the gap left after a day)
+  fee:0.005 };                 // 0.5% exchange fee on every trade
+// Trades move the price as they fill: you pay more for every coin you buy and get less for every coin you sell,
+// so a whale can't buy, pump the price and sell at the top. Round trips lose the fee; pumped prices fade back.
+function btcAnchor(){ return BTC.start*Math.pow(BTC.trend, (G.totalDays||0)/365); }
+function btcFix(b){            // markets from before price impact existed (and any runaway price) start from market value again
+  if(b.fair==null || !isFinite(b.fair) || !isFinite(b.price) || b.fair>btcAnchor()*12){
+    const a=btcAnchor(); b.fair = isFinite(b.price) && b.price>0 && b.price<a*12 ? b.price : a; b.prem=0; b.price=b.fair;
+    if(Array.isArray(b.hist)) b.hist=b.hist.map(v=>isFinite(v)&&v<a*12?v:b.fair);
+  }
+  if(!isFinite(b.prem)) b.prem=0;
+}
+function btcDepthB(b){ return BTC.depth*b.fair*BTC.supply/1e9; }     // $B of buying that moves the price ×e
+// Quote a buy of usd ($B) or a sale of coins: what you'd get, the average price and where the price ends up
+function btcQuote(side, amt){
+  const b=G.markets.btc; btcFix(b); const L=btcDepthB(b), P=b.price;
+  if(side==='buy'){
+    const room=Math.max(0, L*(BTC.maxPump-b.prem)), net=amt*(1-BTC.fee);
+    const coins=(L*1e9/P)*(1-Math.exp(-net/L));
+    return { coins, avg: coins>0 ? amt*1e9/coins : P, after: P*Math.exp(net/L), room: room/(1-BTC.fee), ok: net<=room+1e-9 };
+  }
+  const gross=L*Math.log(1+amt*P/(L*1e9)), usd=gross*(1-BTC.fee);
+  return { usd, avg: amt>0 ? usd*1e9/amt : P, after: P*Math.exp(-gross/L) };
+}
 const gauss = ()=>{ let u=0,v=0; while(!u) u=Math.random(); while(!v) v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
 
 function ensureInvest(p){
-  if(!G.markets) G.markets = { btc:{ price:BTC.start, hist:[BTC.start], flow:0, lastRet:0 },
+  if(!G.markets) G.markets = { btc:{ price:BTC.start, fair:BTC.start, prem:0, hist:[BTC.start], flow:0, lastRet:0 },
     stocks:Object.fromEntries(STOCKS.map(s=>[s.id,{ price:s.price, hist:[s.price] }])), oilRef:marketPrice('crude_oil') };
+  btcFix(G.markets.btc);
   if(!p.invest) p.invest = { surveys:[], earlyWarning:0, btc:0, btcCost:0, stocks:{}, bondsIssued:[], bondsHeld:[] };
   if(!p.reserves) p.reserves = { level:0, stock:Object.fromEntries(RESERVE_KEYS.map(k=>[k,RESERVE_BASE])) };
 }
@@ -15122,12 +15149,15 @@ function ensureInvest(p){
 // ── Daily markets (global) ──
 function tickMarkets(){
   const M=G.markets; if(!M) return;
-  // Bitcoin: volatile random walk with momentum, rare shocks, and price impact from state buying/selling
-  const b=M.btc, cap=b.price*BTC.supply;
-  let r = BTC.drift + BTC.vol*gauss() + 0.08*b.lastRet + b.flow/cap*3;
+  // Bitcoin: its market value is a volatile random walk with momentum and rare shocks; the traded price sits above or
+  // below it after big orders and drifts back over a few days
+  const b=M.btc; btcFix(b);
+  let r = BTC.drift + BTC.vol*gauss() + 0.08*(b.lastRet||0);
   if(Math.random()<0.006) r += (Math.random()<0.55?1:-1)*(0.15+Math.random()*0.2);   // boom / crash
-  r -= 0.01*Math.log(b.price/(BTC.start*Math.pow(BTC.trend,G.totalDays/365)));        // loose anchor to a rising trend
-  b.price=Math.max(BTC.floor, b.price*Math.exp(r)); b.lastRet=r; b.flow=0;
+  r -= 0.01*Math.log(b.fair/btcAnchor());                                              // loose anchor to a rising trend
+  b.fair=Math.max(BTC.floor, b.fair*Math.exp(r)); b.lastRet=r; b.flow=0;
+  b.prem*=BTC.decay; if(Math.abs(b.prem)<1e-4) b.prem=0;
+  b.price=Math.max(BTC.floor*0.5, b.fair*Math.exp(b.prem));
   b.hist.push(b.price); if(b.hist.length>180) b.hist.shift();
   // Equities: drift + noise + sector drivers from the simulated world
   const oilNow=marketPrice('crude_oil'), oilChg=(oilNow-(M.oilRef||oilNow))/Math.max(1,M.oilRef||oilNow); M.oilRef=oilNow;
@@ -15244,19 +15274,39 @@ function plunderReserves(p, winner){
 function tradeBTC(side){
   const p=G.player; ensureInvest(p); ensureStateBank(p);
   const usd=readMoney('btc-amt'); if(!(usd>0)){ addEv('w','₿ Bitcoin','Enter an amount, e.g. 250M or 1.5B.'); return; }
-  const b=G.markets.btc, I=p.invest;
+  const b=G.markets.btc, I=p.invest; btcFix(b);
+  const before=b.price;
   if(side==='buy'){
     if(p.stateBank.balance<usd){ addEv('w','₿ Bitcoin',`State Bank has ${fmtShort(p.stateBank.balance)} — deposit more first (STATE tab).`); return; }
-    const coins=usd*1e9/b.price; p.stateBank.balance-=usd; I.btc+=coins; I.btcCost+=usd; b.flow+=usd*1e9;
-    addEv('t','₿ Bought Bitcoin',`${fmtNum(Math.round(coins))} BTC at $${fmtNum(Math.round(b.price))}.`);
+    const q=btcQuote('buy', usd);
+    if(!q.ok){ addEv('w','₿ Order Too Large',`The market can't fill ${fmtShort(usd)}: there aren't enough sellers. The most you can buy right now is about ${fmtShort(Math.max(0,q.room))} (it would push the price to ${Math.round(Math.exp(BTC.maxPump))}× its market value). Buy in smaller amounts over several days.`); return; }
+    const L=btcDepthB(b);
+    p.stateBank.balance-=usd; I.btc+=q.coins; I.btcCost+=usd;
+    b.prem+=usd*(1-BTC.fee)/L; b.price=b.fair*Math.exp(b.prem);
+    addEv('t','₿ Bought Bitcoin',`${fmtNum(Math.round(q.coins))} BTC for ${fmtShort(usd)}: average $${fmtNum(Math.round(q.avg))} each. Your order pushed the price from $${fmtNum(Math.round(before))} to $${fmtNum(Math.round(b.price))}; it drifts back over the next few days.`);
   } else {
     const coins=Math.min(I.btc, usd*1e9/b.price); if(coins<=0) return;
-    const proceeds=coins*b.price/1e9, basis=I.btcCost*(coins/I.btc);
-    I.btc-=coins; I.btcCost-=basis; p.stateBank.balance+=proceeds; b.flow-=proceeds*1e9;   // proceeds return to the State Bank
-    addEv(proceeds>=basis?'d':'w','₿ Sold Bitcoin',`${fmtNum(Math.round(coins))} BTC for ${fmtShort(proceeds)} (${proceeds>=basis?'profit':'loss'} ${fmtShort(Math.abs(proceeds-basis))}).`);
+    const q=btcQuote('sell', coins), L=btcDepthB(b);
+    const proceeds=q.usd, basis=I.btcCost*(coins/I.btc);
+    I.btc-=coins; I.btcCost-=basis; p.stateBank.balance+=proceeds;      // proceeds return to the State Bank
+    b.prem-=L*Math.log(1+coins*before/(L*1e9))/L; b.price=Math.max(BTC.floor*0.5, b.fair*Math.exp(b.prem));
+    addEv(proceeds>=basis?'d':'w','₿ Sold Bitcoin',`${fmtNum(Math.round(coins))} BTC for ${fmtShort(proceeds)}: average $${fmtNum(Math.round(q.avg))} each (${proceeds>=basis?'profit':'loss'} ${fmtShort(Math.abs(proceeds-basis))}).${b.price<before*0.97?` The sale pushed the price down to $${fmtNum(Math.round(b.price))}.`:''}`);
   }
   renderResearch(); topbarUpdate();
 }
+function btcPreviewText(){
+  const p=G.player; if(!p?.invest || !G.markets?.btc) return '';
+  const usd=readMoney('btc-amt'), b=G.markets.btc; btcFix(b);
+  const L=btcDepthB(b), pct=v=>(v>=0?'+':'')+(v*100).toFixed(v>=1?0:1)+'%';
+  if(!(usd>0)) return `Large orders move the price: about ${fmtShort(L*0.1)} pushes it up ~10%. Fee ${(BTC.fee*100).toFixed(1)}%.`;
+  const qb=btcQuote('buy', usd);
+  let t = qb.ok ? `Buy: ≈ ${fmtNum(Math.round(qb.coins))} BTC at avg $${fmtNum(Math.round(qb.avg))} · price ${pct(qb.after/b.price-1)}`
+                : `<span style="color:var(--red2)">Buy: too large for the market (max ≈ ${fmtShort(Math.max(0,qb.room))} now)</span>`;
+  const coins=Math.min(p.invest.btc||0, usd*1e9/b.price);
+  if(coins>0){ const qs=btcQuote('sell', coins); t+=`<br>Sell: ≈ ${fmtShort(qs.usd)} for ${fmtNum(Math.round(coins))} BTC · price ${pct(qs.after/b.price-1)}`; }
+  return t;
+}
+function btcPreview(){ const el=document.getElementById('btc-est'); if(el) el.innerHTML=btcPreviewText(); }
 function tradeStock(id, side){
   const p=G.player; ensureInvest(p); ensureStateBank(p);
   const usd=readMoney('stk-'+id); if(!(usd>0)){ addEv('w','📈 Investment','Enter an amount, e.g. 100M or 2B.'); return; }
@@ -15409,7 +15459,7 @@ function renderResearch(){
       <div style="width:90px;height:4px;background:var(--bg4);border-radius:2px;"><div style="height:100%;width:${Math.min(100,v/cap*100)}%;background:var(--teal);border-radius:2px;"></div></div>
       <span style="min-width:90px;text-align:right;color:var(--text3)">${fmtNum(Math.round(v))}/${fmtNum(cap)}</span></div>`;}).join('');
   // Bitcoin
-  const b=M.btc, btcVal=I.btc*b.price/1e9, btcPL=btcVal-I.btcCost, chg=(b.price/(b.hist[Math.max(0,b.hist.length-31)]||b.price)-1)*100;
+  const b=M.btc; btcFix(b); const btcVal=I.btc*Math.min(b.price,b.fair)/1e9, btcPL=btcVal-I.btcCost, chg=(b.price/(b.hist[Math.max(0,b.hist.length-31)]||b.price)-1)*100;
   // Stocks
   const stockRows=STOCKS.map(s=>{ const st=M.stocks[s.id], h=I.stocks[s.id]||{shares:0,cost:0}, val=h.shares*st.price/1e9, pl=val-h.cost;
     const c30=(st.price/(st.hist[Math.max(0,st.hist.length-31)]||st.price)-1)*100;
@@ -15446,7 +15496,8 @@ function renderResearch(){
         <div style="font-size:var(--fs-xs);color:${chg>=0?'var(--green)':'var(--red2)'}">${chg>=0?'+':''}${chg.toFixed(1)}% · 30 days</div></div>
       <div style="flex:1">${sparkline(b.hist,170,36,'var(--gold)')}</div></div>
       <div style="font-size:var(--fs-xs);color:var(--text3);margin:4px 0;">Holdings ${fmtNum(Math.round(I.btc))} BTC = ${fmtShort(btcVal)} · ${btcPL>=0?'profit':'loss'} <b style="color:${btcPL>=0?'var(--green)':'var(--red2)'}">${fmtShort(Math.abs(btcPL))}</b></div>
-      <div style="display:flex;gap:5px;align-items:center;font-size:var(--fs-xs);">${moneyInput('btc-amt','1B',{width:'110px'})} <button class="eab primary" style="font-size:var(--fs-xs)" onclick="tradeBTC('buy')">Buy</button><button class="eab" style="font-size:var(--fs-xs)" onclick="tradeBTC('sell')">Sell</button></div>`)}
+      <div style="display:flex;gap:5px;align-items:center;font-size:var(--fs-xs);">${moneyInput('btc-amt','1B',{width:'110px',oninput:'btcPreview()'})} <button class="eab primary" style="font-size:var(--fs-xs)" onclick="tradeBTC('buy')">Buy</button><button class="eab" style="font-size:var(--fs-xs)" onclick="tradeBTC('sell')">Sell</button></div>
+      <div id="btc-est" style="font-size:var(--fs-xs);color:var(--text2);margin-top:3px;line-height:1.45;">${btcPreviewText()}</div>`)}
     ${sec('🌐 Foreign Investments',`from the State Bank (balance ${fmtShort(p.stateBank.balance)}) · dividends paid into it`)}
     ${box(stockRows)}
     ${sec('📜 Sovereign Bonds',`your rating ${p.fiscal?.rating||'—'} · market rate ${(p.fiscal?.rate||5).toFixed(1)}%`)}
@@ -16019,7 +16070,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 171;
+const ATLAS_BUILD = 172;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
