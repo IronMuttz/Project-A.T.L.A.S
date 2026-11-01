@@ -743,6 +743,7 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 /* Welcome: saved games */
 .wl-saves{ display:flex; flex-direction:column; align-items:center; gap:8px; }
 .wl-saves .wl-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.install-app-btn[hidden]{ display:none !important; }
 .wl-alt{ font-family:'IBM Plex Sans Condensed',sans-serif; font-weight:600; font-size:15px; letter-spacing:.08em; color:var(--holo,#38e1ff); background:rgba(56,225,255,.06);
   border:1px solid rgba(56,225,255,.45); padding:10px 22px; cursor:pointer; clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%); opacity:0; transition:opacity .5s; }
 .wl-alt.ready{ opacity:1; } .wl-alt:hover{ background:rgba(56,225,255,.16); }
@@ -1277,6 +1278,7 @@ body.mob .rrow{ min-height:36px; }
       <button class="wl-go" id="wl-go" onclick="leaveWelcome()">Choose your nation</button>
       <div class="wl-cont-meta" id="wl-cont-meta"></div>
       <div class="wl-row" id="wl-alt-row"></div>
+      <button class="wl-alt ready install-app-btn" hidden onclick="installApp()" style="margin-top:2px;">💻 Install on this PC</button>
     </div>
   </div>
 </div>
@@ -1493,6 +1495,7 @@ body.mob .rrow{ min-height:36px; }
       <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=resources]'),'resources');closeOv('menuov')">⚙️ Industry</button>
       <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=diplo]'),'diplo');closeOv('menuov')">🌐 Foreign Affairs</button>
       <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=intel]'),'intel');closeOv('menuov')">🕵️ Intelligence</button>
+      <button class="ombt cnt install-app-btn" hidden onclick="closeOv('menuov');installApp()">💻 Install as PC app</button>
       <button class="ombt rst" style="margin-top:4px;" onclick="doRestart()">↺ New Game</button>
     </div>
   </div>
@@ -15907,8 +15910,32 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 169;
-function appInfo(){ try{ return window.AtlasApp ? JSON.parse(AtlasApp.info()) : null; }catch(e){ return null; } }
+const ATLAS_BUILD = 170;
+// ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
+const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
+const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
+let _installPrompt=null;
+if(IS_WEBAPP){
+  try{ const l=document.createElement('link'); l.rel='manifest'; l.href='manifest.webmanifest'; document.head.appendChild(l); }catch(e){}
+  if('serviceWorker' in navigator) window.addEventListener('load', ()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));   // offline play
+  window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); _installPrompt=e; installUI(); });
+  window.addEventListener('appinstalled', ()=>{ _installPrompt=null; installUI(); addEv?.('d','💻 Installed','A.T.L.A.S is now an app on this computer: find it in the Start menu or on the desktop.'); });
+}
+function installUI(){
+  const on=!!_installPrompt && !IS_INSTALLED;
+  document.querySelectorAll('.install-app-btn').forEach(b=>b.hidden=!on);
+}
+async function installApp(){
+  if(!_installPrompt){ hudConfirm?.('💻 Install A.T.L.A.S',`Open this page in <b>Chrome</b> or <b>Edge</b>, then choose <b>Install</b>: the install icon at the right end of the address bar, or the ⋮ / ⋯ menu → <i>Install A.T.L.A.S</i> (Edge: <i>Apps → Install this site as an app</i>).`,'OK',()=>{},false); return; }
+  _installPrompt.prompt(); try{ await _installPrompt.userChoice; }catch(e){}
+  _installPrompt=null; installUI();
+}
+function appInfo(){
+  try{ if(window.AtlasApp) return JSON.parse(AtlasApp.info()); }catch(e){ return null; }
+  if(IS_WEBAPP) return { web:true, app:IS_INSTALLED?'PC app':'web', appCode:999, installed:0, updateBase:location.href.replace(/[?#].*$/,'').replace(/[^/]*$/,'') };
+  return null;
+}
+function appRestart(){ if(window.AtlasApp) AtlasApp.restart(); else location.reload(); }
 let _appUpdating=false;
 async function appCheckUpdate(manual){
   const info=appInfo(); if(!info || _appUpdating) return;
@@ -15921,7 +15948,7 @@ async function appCheckUpdate(manual){
       if(onStart){ wlUpd('newapp', v); return; }
       hudConfirm('📲 New app version',`Version ${v.version} needs a newer app. Download it and install it over this one; your saves are kept.`,'Download',()=>AtlasApp.openUrl(v.apk||info.updateBase),false); return; }
     if(!(v.version > ATLAS_BUILD)){ if(onStart) wlUpd('current'); if(manual) addEv('d','📲 Up to date',`You have the latest version (v${ATLAS_BUILD}).`); return; }
-    if(!(info.installed >= v.version)){
+    if(!info.web && !(info.installed >= v.version)){
       if(onStart) wlUpd('downloading', v);
       if(manual) addEv('d','📲 Downloading',`Downloading v${v.version}…`);
       const html=await (await fetch(info.updateBase+(v.file||'atlas.html')+'?t='+Date.now(),{cache:'no-store'})).text();
@@ -15932,7 +15959,7 @@ async function appCheckUpdate(manual){
     _appPrompted[v.version]=true;
     hudConfirm('📲 Update ready',`A.T.L.A.S v${v.version} is ready (you have v${ATLAS_BUILD}).${v.notes?'<br><br>'+v.notes:''}<br><br>Restart now? Your game is saved first. Otherwise it starts next time you open the app.`,'Restart now',async()=>{
       try{ if(G.player) await saveGame('auto', true); }catch(e){}
-      AtlasApp.restart(); },false);
+      appRestart(); },false);
   }catch(e){ if(!G.player) wlUpd(''); if(manual) addEv('w','📲 Update check failed','Could not reach the update server. Check your internet connection.'); }
   finally{ _appUpdating=false; }
 }
@@ -15957,22 +15984,22 @@ function wlUpdRender(){
 }
 window.addEventListener('resize', ()=>{ if(_wlUpd.state) wlUpdRender(); });
 function appUpdateNow(){
-  const { state, v }=_wlUpd, info=appInfo(); if(!window.AtlasApp) return;
-  if(state==='newapp'){ AtlasApp.openUrl(v?.apk || info?.updateBase || ''); return; }
+  const { state, v }=_wlUpd, info=appInfo(); if(!info) return;
+  if(state==='newapp'){ if(window.AtlasApp) AtlasApp.openUrl(v?.apk || info?.updateBase || ''); return; }
   const b=document.getElementById('wl-upd-b'); if(b){ b.disabled=true; b.textContent='Restarting…'; }
-  setTimeout(()=>AtlasApp.restart(), 150);
+  setTimeout(appRestart, 150);
 }
 function appSetup(){
-  if(!window.AtlasApp) return;
+  if(!appInfo()) return;
   const col=document.querySelector('#menuov .omod > div:last-child'); if(!col || document.getElementById('app-upd-btn')) return;
   const b=document.createElement('button'); b.id='app-upd-btn'; b.className='ombt cnt'; b.textContent='📲 Check for updates';
   b.onclick=()=>{ closeOv('menuov'); appCheckUpdate(true); };
   const ver=document.createElement('div'); ver.style.cssText='font-size:11px;color:var(--text3);text-align:center;margin-top:2px;';
-  const info=appInfo(); ver.textContent=`A.T.L.A.S v${ATLAS_BUILD} · app ${info?.app||''}`;
+  const info=appInfo(); ver.textContent=`A.T.L.A.S v${ATLAS_BUILD} · ${info?.web?info.app:'app '+(info?.app||'')}`;
   col.insertBefore(b, col.lastElementChild); col.appendChild(ver);
   if(appInfo()?.updateBase?.indexOf('http')===0) wlUpd('checking');
   setTimeout(appAutoCheck, 300);
-  // Android keeps the game running in the background, so check again whenever it comes back to the front
+  // Android (and a PC app left open) keeps the game running in the background, so check again whenever it comes back to the front
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') setTimeout(appAutoCheck, 1500); });
   setInterval(()=>{ if(document.visibilityState==='visible') appAutoCheck(); }, 30*60*1000);
 }

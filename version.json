@@ -1,7 +1,7 @@
 {
-  "version": 169,
+  "version": 170,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Panels keep their place: no more jumping to the top each day, no refresh while you type or scroll, and each tab remembers where you were."
+  "notes": "PC app: install A.T.L.A.S on Windows or Mac from Chrome or Edge \u2014 its own window, works offline, updates itself."
 }
