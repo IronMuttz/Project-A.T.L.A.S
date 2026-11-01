@@ -8844,8 +8844,9 @@ function aiDay(c){
 
 function declareWar(a,b,log,defensive,defendingId){
   if(a.wars.has(b.id)) return;
-  // Cannot declare war on annexed or vassal territories
-  if(b.annexedBy||b.vassalOf) return;
+  // Annexed land can't be attacked on its own. Vassals: only the player may attack another power's vassal (its overlord defends it)
+  if(b.annexedBy) return;
+  if(b.vassalOf && !(a===G.player && b.vassalOf!==a.abbr)) return;
   if(a.annexedBy||a.vassalOf) return;
   a.wars.add(b.id); b.wars.add(a.id);
   a.allies.delete(b.id); b.allies.delete(a.id);
@@ -10477,7 +10478,9 @@ function diploCard(p, c, inline=false){
 
   // Status badge — show highest active status
   let badge = '';
+  const lordOf = c.vassalOf && c.vassalOf!==p.abbr ? CLIST.find(x=>x.abbr===c.vassalOf) : null;
   if(atWar)         badge = `<span class="emb-badge war">⚔️ War</span>`;
+  else if(lordOf)   badge = `<span class="emb-badge neutral" title="Attacking it brings ${lordOf.name} into the war">⛓️ Vassal of ${lordOf.name}</span>`;
   else if(hasPact)  badge = `<span class="emb-badge pact">🛡️ Def. Pact</span>`;
   else if(isAlly)   badge = `<span class="emb-badge ally">🤝 Ally</span>`;
   else if(embActive)badge = `<span class="emb-badge emb">🏛️ Embassy</span>`;
@@ -13388,9 +13391,12 @@ function doRelease(targetId){
   p.treasury += rep;
   c.treasury -= rep;
   endWar(p,c);
+  // A vassal of another power that you defeat and release goes free: its overlord's hold is broken
+  const lord = c.vassalOf && c.vassalOf!==p.abbr ? CLIST.find(x=>x.abbr===c.vassalOf) : null;
+  if(lord){ c.vassalOf=null; relShift(c,p,25); }
   // Relations boost with neutral countries
   CLIST.forEach(x=>{ if(x.id!==p.id&&x.id!==c.id) p.rels[x.id]=Math.min(100,(p.rels[x.id]||50)+3); });
-  addEv('d','🕊️ Released',`${c.flag}${c.name} released. Reparations: ${fmtBil(rep)}. Global relations improved.`);
+  addEv('d','🕊️ Released',`${c.flag}${c.name} released${lord?`: free of ${lord.name} and independent again`:''}. Reparations: ${fmtBil(rep)}. Global relations improved.`);
   addWorldEv('d','🕊️ Peace',`${p.flag}${p.name} releases ${c.flag}${c.name} after victory. Relations improve globally.`,p.flag,'🕊️');
   colorMap(); topbarUpdate(); renderDiplo();
 }
@@ -15994,15 +16000,17 @@ function showCountrySheet(id){
     const nbr=RT.nbrs?.[p.id]?.has(c.id);
     sub=[c.region, nbr?'neighbour':null, Math.round(c.pop).toLocaleString()+'M people', hasNukes(c)?'☢️ nuclear':null].filter(Boolean).join(' · ');
     if(atWar){ tag='AT WAR'; tagCls='r'; } else if(c.vassalOf===p.abbr){ tag='YOUR VASSAL'; tagCls='g'; } else if(pact){ tag='PACT'; tagCls='g'; } else if(isAlly){ tag='ALLY'; tagCls='g'; }
-    else if(c.vassalOf){ tag='VASSAL'; } else if(rel<30){ tag='HOSTILE'; tagCls='r'; } else if(rel>=70){ tag='FRIENDLY'; tagCls='g'; } else tag='NEUTRAL';
+    else if(c.vassalOf){ tag='VASSAL OF '+(CLIST.find(x=>x.abbr===c.vassalOf)?.name||'').toUpperCase(); } else if(rel<30){ tag='HOSTILE'; tagCls='r'; } else if(rel>=70){ tag='FRIENDLY'; tagCls='g'; } else tag='NEUTRAL';
     const col=atWar?'#ff4d5e':rel>=70?'#4dffa6':rel>=45?'#38e1ff':rel>=30?'#f0c040':'#ff4d5e';
     relHtml=`<div class="cs-rel"><span>Relations with you</span><b style="color:${col}">${Math.round(rel)} / 100</b></div><div class="cs-bar"><span style="width:${Math.max(3,rel)}%;background:${col}"></span></div>`;
     mini=`<div><small>GDP</small><b>${fmtShort(c.gdp)}</b></div><div><small>Military</small><b>${mNum(c.mil_strength||0)}</b></div><div><small>UN votes</small><b>${calcUNVotes(c)}</b></div>`;
     const ed=envoyDays(p,c), pend=t=>pendingMission(p,c.abbr,t);
     const intel=csBtn('🕵️','INTEL',`G.intelTargetId=${c.id};mobGo('intel')`);
     const aid=csBtn('🎁','AID',`playerProvideAid(${c.id})`);
-    if(c.vassalOf){
+    if(c.vassalOf===p.abbr){
       acts=aid+csBtn('📋','DETAILS',`selCtry(${c.id})`)+intel;
+    } else if(c.vassalOf && !atWar){
+      acts=aid+csBtn('⚔️','WAR',`pDiplo(${c.id},'war')`,'war')+intel+csBtn('📋','DETAILS',`selCtry(${c.id})`);
     } else if(atWar){
       acts=csBtn('🪖','DEPLOY',`openDeployModal(${c.id})`,'war')+aid+csBtn('🕊️',`PEACE ${Math.round(peaceChance(p,c)*100)}%`,`playerSueForPeace(${c.id});setTimeout(()=>${rr()},50)`,'ok')+intel+csBtn('📋','DETAILS',`selCtry(${c.id})`);
     } else {
@@ -16127,7 +16135,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 175;
+const ATLAS_BUILD = 176;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -16722,7 +16730,7 @@ function pAct(a){
     topbarUpdate(); lpRender(); }
   if(a==='loan'){ p.treasury+=50;p.debt=(p.debt||0)+50; addEv('i','💳 Loan','$50B loan taken.'); topbarUpdate(); renderNation(); }
 }
-function pDiplo(tid,action){
+function pDiplo(tid,action,confirmed){
   const p=G.player,c=CTRY[tid]; if(!c) return;
   if(action==='trade'){ return embassyAction(c.abbr,'trade');   // same rules as Foreign Affairs (envoy, 45+ relations)
   } else if(action==='aid'){
@@ -16730,9 +16738,18 @@ function pDiplo(tid,action){
     p.treasury-=5; p.rels[c.id]=Math.min(100,(p.rels[c.id]||50)+14); c.rels[p.id]=Math.min(100,(c.rels[p.id]||50)+11);
     addEv('d','💊 Aid',`Sent to ${c.flag}${c.name}. Rel+14`);
   } else if(action==='war'){
-    if(c.annexedBy||c.vassalOf){ addEv('w','⚠️','Cannot declare war on a territory.'); return; }
+    if(c.annexedBy){ const o=CLIST.find(x=>x.abbr===c.annexedBy); addEv('w','⚠️',`${c.name} is part of ${o?.name||'another country'} now. Declare war on ${o?.name||'its owner'} to fight over it.`); return; }
+    if(c.vassalOf===p.abbr){ addEv('w','⛓️ Your Vassal',`${c.name} is your vassal. Free it in the UN tab first if you want to fight it.`); return; }
+    const lord = c.vassalOf ? CLIST.find(x=>x.abbr===c.vassalOf && !x.annexedBy) : null;
+    if(lord && !confirmed){
+      hudConfirm(`⚔️ Attack ${mEsc(c.name)}?`, `${mEsc(c.name)} is a vassal of <b>${mEsc(lord.name)}</b>. Attacking it means war with ${mEsc(lord.name)} too: it will defend its vassal.<br><br>Strength: ${mEsc(c.name)} <b>${fmtNum(c.mil_strength||0)}</b> + ${mEsc(lord.name)} <b>${fmtNum(lord.mil_strength||0)}</b> vs yours <b>${fmtNum(p.mil_strength||0)}</b>.${hasNukes(lord)?` <b style="color:var(--red2)">${mEsc(lord.name)} has nuclear weapons.</b>`:''}<br><br>Win, and you can annex ${mEsc(c.name)}, make it your vassal, or set it free.`,
+        'Declare war', ()=>{ pDiplo(tid,'war',true); try{ if(document.getElementById('csheet')?.classList.contains('on')) showCountrySheet(tid); }catch(e){} }, true);
+      return;
+    }
     const um=unMandate(p,c);
-    declareWar(p,c,true); addEv('w','⚔️ War',`Declared on ${c.flag}${c.name}!${um?' (UN-authorised)':''}`);
+    declareWar(p,c,true);
+    if(lord && lord!==p && !lord.wars.has(p.id)) declareWar(lord, p, true, true, c.id);      // the overlord defends its vassal
+    addEv('w','⚔️ War',`Declared on ${c.flag}${c.name}!${um?' (UN-authorised)':''}${lord?` ${lord.flag}${lord.name}, its overlord, joins the war to defend it.`:''}`);
   } else if(action==='peace'){
     playerSueForPeace(c.id); return;
   }

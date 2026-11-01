@@ -1,7 +1,7 @@
 {
-  "version": 175,
+  "version": 176,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Every nuclear launch, AI or player, now takes the camera: launch alert with countdown, the map frames the strike, then returns to your view."
+  "notes": "You can now declare war on another country's vassal: its overlord joins to defend it. Beat it and release it to set it free."
 }
