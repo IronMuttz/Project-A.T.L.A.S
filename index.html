@@ -4246,11 +4246,20 @@ const FOOD_CONSUMPTION_PER_M = { fruits: 200, veggies: 200, meat: 80, wheat: 300
 function incomeF(c){ const pc=(c.gdp||0)/Math.max(0.01,c.pop||0.01)*1000; return Math.pow(Math.max(300,pc)/9600, 0.7); }
 // Units per million people per day at world-average income; calibrated so 2010 world demand ≈ GOODS_DEMAND_BASELINE
 const GOODS_DEMAND_PER_M = { auto:0.0673, tech:2.52, aviation:0.00135, chemical:4.21, pharma:6.73, textile:10.1, luxury:1.26 };
-function localGoodsDemand(c,k){ return (GOODS_DEMAND_PER_M[k]||0) * (c.pop||0) * incomeF(c); }
+// Consumers spend more when they're happy and trust their government, less when they're afraid (war, unrest)
+function consumerMood(c){
+  const h=c.happiness??50, a=c.appr??50, war=c.wars?.size ? 0.06 : 0, rev=c.revolution ? 0.12 : 0;
+  return Math.max(0.6, Math.min(1.45, 1 + 0.45*(h-50)/100 + 0.25*(a-50)/100 - war - rev));
+}
+// The world buys more of each product every year, beyond income growth: new technology spreads, flying and
+// medicine become everyday, middle classes grow. (%/yr)
+const GOODS_TREND = { auto:0.02, tech:0.055, aviation:0.045, chemical:0.025, pharma:0.035, textile:0.015, luxury:0.035 };
+function goodsTrend(k){ return Math.pow(1+(GOODS_TREND[k]||0.02), Math.max(0,(G.totalDays||0)/365)); }
+function localGoodsDemand(c,k){ return (GOODS_DEMAND_PER_M[k]||0) * (c.pop||0) * incomeF(c) * consumerMood(c) * goodsTrend(k); }
 // A country's whole home market: its own people plus everyone living in land it has annexed
 function realmDemand(c,k){ let d=localGoodsDemand(c,k); CLIST.forEach(t=>{ if(t.annexedBy===c.abbr) d+=localGoodsDemand(t,k); }); return d; }
 // Share of a market open to imports even when the country makes the product itself (brands, specialisation)
-const IMPORT_OPEN_SHARE = 0.35;
+const IMPORT_OPEN_SHARE = 0.4;
 function importCapacity(c,k){
   const D=realmDemand(c,k), own=(c.gd_fac?.[k]||0)*(GOODS[k]?.product?.perDay||0);
   const day=c._impDay===G.totalDays ? c._imp : (c._imp={}, c._impDay=G.totalDays, c._imp);
@@ -7299,42 +7308,65 @@ function rtSimplify(pts,eps){
 }
 
 // Build a route: [{mode:'land'|'sea', pts:[[lon,lat],…]}], with cumulative km for animation
+// Border lines between two countries (cached), as [lon,lat] points
+const _borderLines={};
+function borderLines(a,b){
+  const key=a.id<b.id ? a.id+'-'+b.id : b.id+'-'+a.id;
+  if(_borderLines[key]) return _borderLines[key];
+  let pts=[];
+  try{ const topo=G.topoData||WORLD_ATLAS_TOPO;
+    const m=topojson.mesh(topo, topo.objects.countries, (x,y)=>{ const X=CTRY[+x.id], Y=CTRY[+y.id]; return x!==y && X && Y && ((X===a&&Y===b)||(X===b&&Y===a)); });
+    (m.coordinates||[]).forEach(l=>{ const step=Math.max(1,Math.floor(l.length/40)); for(let i=0;i<l.length;i+=step) pts.push(l[i]); });
+  }catch(e){}
+  return (_borderLines[key]=pts);
+}
+// Where a road crosses from a into b: the border point that keeps the trip to `goal` shortest
+function borderCrossing(a, b, from, goal){
+  const L=borderLines(a,b); if(!L.length) return borderPoint(a,b);
+  let best=L[0], bd=Infinity; L.forEach(pt=>{ const d=rtKm(from,pt)+rtKm(pt,goal); if(d<bd){ bd=d; best=pt; } });
+  return best;
+}
+// A land leg through a chain of countries: start → border crossings → end (no detour through each capital)
+function rtLandPts(path, start, end){
+  const goal=end || [path[path.length-1].lon, path[path.length-1].lat];
+  const pts=[start || [path[0].lon, path[0].lat]];
+  for(let i=0;i<path.length-1;i++) pts.push(borderCrossing(path[i], path[i+1], pts[pts.length-1], goal));
+  pts.push(goal);
+  return pts;
+}
+const RT_DAY_KM = { land:250, sea:550 };
+function rtDays(segs){ return segs.reduce((t,sg)=>{ let km=0; for(let i=1;i<sg.pts.length;i++) km+=rtKm(sg.pts[i-1],sg.pts[i]); return t+km/RT_DAY_KM[sg.mode]; },0); }
 function getTradeRoute(a,b){
   const key=a.id<b.id?a.id+'-'+b.id:b.id+'-'+a.id;
   if(RT.cache[key]) return RT.cache[key].a===a.id ? RT.cache[key] : rtReverse(RT.cache[key]);
   rtInit(); if(!RT.water) return null;
-  const caps = arr => arr.map(c=>[c.lon,c.lat]);
-  const segs=[];
   const anyLandlocked = rtPort(a)==null || rtPort(b)==null;
-  let land = rtLandPath(a,b, anyLandlocked ? 8 : RT_MAX_LAND_HOPS), landAlt=null;
-  if(land && land.length>2){                       // a long way round by road loses to the sea (or to the gateway route)
+  // 1. Overland (only sensible distances; for coastal pairs a long road loses to the sea)
+  let land = rtLandPath(a,b, anyLandlocked ? 8 : RT_MAX_LAND_HOPS);
+  if(land && land.length>2 && !anyLandlocked){
     const direct=rtKm([a.lon,a.lat],[b.lon,b.lat]), pk=rtPathKm(land);
-    if(anyLandlocked ? pk>direct*2.2 : (pk>direct*1.4 || pk>5200)){ if(anyLandlocked) landAlt=land; land=null; }
+    if(pk>direct*1.4 || pk>5200) land=null;
   }
-  if(land){
-    segs.push({mode:'land', pts:caps(land)});
-  } else {
-    const ga = rtPort(a)!=null ? [a] : rtGateway(a,b);
-    const gb = rtPort(b)!=null ? [b] : rtGateway(b,a);
-    const A = ga?.[ga.length-1], Bc = gb?.[gb.length-1];
-    const sea = A && Bc ? rtSeaPath(rtPort(A), rtPort(Bc), rtPortSet(A), rtPortSet(Bc)) : null;
-    if(!sea){ segs.push({mode:'land', pts:caps([a,b])}); }   // fallback: straight line
-    else {
-      // shift sea path so it starts next to country A's longitude frame
-      const off = Math.round((A.lon - sea[0][0])/360)*360;
-      const seaPts = sea.map(([lo,la])=>[lo+off,la]);
-      const endOff = Math.round((seaPts[seaPts.length-1][0]-Bc.lon)/360)*360;
-      segs.push({mode:'land', pts:[...caps(ga), seaPts[0]]});
-      segs.push({mode:'sea',  pts:seaPts});
-      segs.push({mode:'land', pts:[seaPts[seaPts.length-1], ...caps([...gb].reverse()).map(([lo,la])=>[lo+endOff,la])]});
-      // A landlocked end: only go round by sea if that is really quicker than the roads (Pakistan → Tajikistan goes via Afghanistan,
-      // not by ship round India and overland across China)
-      if(landAlt){
-        const viaSea=rtMeasure({a:a.id,b:b.id,segs:segs.map(x=>({...x}))});
-        if(rtPathKm(landAlt)/250 <= (viaSea.km-viaSea.seaKm)/250 + viaSea.seaKm/550){ segs.length=0; segs.push({mode:'land', pts:caps(landAlt)}); }
-      }
-    }
+  const landSegs = land ? [{mode:'land', pts:rtLandPts(land)}] : null;
+  // 2. By sea, with a road to the port at each end (a landlocked country uses its neighbour's port:
+  //    ship to South Africa or Tanzania, then truck on to Botswana or Zambia)
+  let seaSegs=null;
+  const ga = rtPort(a)!=null ? [a] : rtGateway(a,b);
+  const gb = rtPort(b)!=null ? [b] : rtGateway(b,a);
+  const A = ga?.[ga.length-1], Bc = gb?.[gb.length-1];
+  const sea = A && Bc && A!==Bc ? rtSeaPath(rtPort(A), rtPort(Bc), rtPortSet(A), rtPortSet(Bc)) : null;
+  if(sea){
+    const off = Math.round((A.lon - sea[0][0])/360)*360;
+    const seaPts = sea.map(([lo,la])=>[lo+off,la]);
+    const endOff = Math.round((seaPts[seaPts.length-1][0]-Bc.lon)/360)*360;
+    const lastSea = seaPts[seaPts.length-1], backIn=[lastSea[0]-endOff, lastSea[1]];
+    const inbound = rtLandPts([...gb].reverse(), backIn, [b.lon,b.lat]).map(([lo,la])=>[lo+endOff,la]);
+    seaSegs = [ {mode:'land', pts:rtLandPts(ga, [a.lon,a.lat], seaPts[0])}, {mode:'sea', pts:seaPts}, {mode:'land', pts:inbound} ];
   }
+  // 3. The quicker of the two (by days on the move), or a straight line if neither exists
+  let segs;
+  if(landSegs && seaSegs) segs = (anyLandlocked ? rtDays(landSegs) <= rtDays(seaSegs) : true) ? landSegs : seaSegs;
+  else segs = landSegs || seaSegs || [{mode:'land', pts:[[a.lon,a.lat],[b.lon,b.lat]]}];
   const route=rtMeasure({a:a.id, b:b.id, segs});
   RT.cache[key]=route;
   return route;
@@ -10550,6 +10582,13 @@ function renderImportSection(p){
     ${partners?'':'<div style="font-size:var(--fs-xs);color:var(--gold);margin-bottom:4px;">Open an embassy with any country to start importing.</div>'}
     ${rows}`;
 }
+// What your trade partners' people want to buy from abroad each day (before today's deliveries)
+function partnerDemand(p, k){
+  let tot=0, n=0;
+  CLIST.forEach(ct=>{ if(ct===p || ct.annexedBy || !p.trades.has(ct.id) || p.diplomacy?.[ct.abbr]?.embassyStatus!=='active' || tradeBlocked(p,ct)) return;
+    const D=realmDemand(ct,k), own=(ct.gd_fac?.[k]||0)*(GOODS[k]?.product?.perDay||0); tot+=Math.max(D*IMPORT_OPEN_SHARE, D-own); n++; });
+  return { tot, n };
+}
 function goodsSplitRow(p, k, label, ico){
   ensureGoodsSplit(p);
   const prod=GOODS[k].product, facs=p.gd_fac[k]||0, stock=p.gd_stock[k]||0;
@@ -10580,8 +10619,8 @@ function goodsSplitRow(p, k, label, ico){
       <div><span style="color:var(--green);font-weight:700">🏘️ Home ${home}%</span> <span style="color:var(--text3)">${q(homeQ)}/d</span>${slider('home',home,100-exp,'var(--green)')}</div>
     </div>
     <div style="font-size:var(--fs-xs);color:var(--text3);margin-top:3px;line-height:1.45">
-      <span style="color:var(--gold)">📦 Stockpile ${pile}%</span> · local demand ${q(need)}/d${homeQ>need+0.001?` <span style="color:var(--gold)">(home share above demand, extra is stockpiled)</span>`:''}<br>
-      Yesterday: sold ${q(st.expSold||0)} abroad <b style="color:var(--green)">+${fmtShort(st.expRev||0)}</b> · ${q(st.homeSold||0)} at home <b style="color:var(--green)">+${fmtShort(st.homeRev||0)}</b>${unsoldExp>0.01?` · <span style="color:var(--red2)">${q(unsoldExp)} found no foreign buyer</span>`:''}${unsoldHome>0.01?` · <span style="color:var(--gold)">${q(unsoldHome)} unsold at home</span>`:''}
+      <span style="color:var(--gold)">📦 Stockpile ${pile}%</span> · local demand ${q(need)}/d · ${(()=>{ const fd=partnerDemand(p,k); return `foreign demand ${q(fd.tot)}/d (${fd.n} partner${fd.n===1?'':'s'})`; })()}${homeQ>need+0.001?` <span style="color:var(--gold)">(home share above demand, extra is stockpiled)</span>`:''}<br>
+      Yesterday: sold ${q(st.expSold||0)} abroad <b style="color:var(--green)">+${fmtShort(st.expRev||0)}</b> · ${q(st.homeSold||0)} at home <b style="color:var(--green)">+${fmtShort(st.homeRev||0)}</b>${unsoldExp>0.01?` · <span style="color:var(--red2)">${q(unsoldExp)} found no foreign buyer: open trade routes with more countries, or send the extra home</span>`:''}${unsoldHome>0.01?` · <span style="color:var(--gold)">${q(unsoldHome)} unsold at home</span>`:''}
     </div>
   </div>`;
 }
@@ -14532,7 +14571,7 @@ const AIRLIFT_COST = { ground_troops:0.000002, artillery:0.00005, mechanized_veh
 function expModes(p, ally){
   const b=troopBoosts(p), km=d3.geoDistance([p.lon,p.lat],[ally.lon,ally.lat])*6371, modes={};
   let path=null; try{ path=rtLandPath(p,ally,8); }catch(e){}
-  if(path){ let lk=0; for(let i=1;i<path.length;i++) lk+=d3.geoDistance([path[i-1].lon,path[i-1].lat],[path[i].lon,path[i].lat])*6371;
+  if(path){ const pts=rtLandPts(path); let lk=0; for(let i=1;i<pts.length;i++) lk+=rtKm(pts[i-1],pts[i]);     // via border crossings, not each capital
     lk=Math.max(lk*1.15, 200); modes.land={ days:Math.max(2,Math.round(TROOP_SPEED.mobilise+lk/(TROOP_SPEED.land*(1+b.land)))), km:lk, label:'🛣️ Overland', note:'roads & rail · no naval units', path:path.map(c=>c.id) }; }
   if(!p.isLandlocked && !ally.isLandlocked){ const t=troopTravel(p,ally,{ground_troops:1});
     modes.sea={ days:t.days, km:t.km, label:'🚢 By sea', note:'troopships along shipping lanes' }; }
@@ -17673,7 +17712,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 187;
+const ATLAS_BUILD = 188;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();

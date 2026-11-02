@@ -1,7 +1,7 @@
 {
-  "version": 187,
+  "version": 188,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Choose how you're addressed (Mr./Madam President, Prime Minister, General, Supreme Leader, Your Highness, Emperor, Empress, Commander) on the start screen or in Settings. Interface colour themes in Settings: Holo Cyan, Radar Green, Amber, Violet, Steel. Leader calls: after you accept, raise your own asks (alliance, trade, aid, pact) on the same call; phone any leader yourself (\ud83d\udcde Call); denounce a country and its leader calls you angry or hurt, declare war and you get a threat. Voices carry emotion. iPhone: start-up can no longer hang on world data; lighter start-screen globe."
+  "notes": "Consumption: every country's demand for goods now grows each year and rises with happiness and approval (falls in war or revolt), for AI markets and your home market alike; the trade panel shows foreign demand across your partners. Routes: landlocked countries are supplied by ship to the nearest port then by road (e.g. via Tanzania to Zambia) when that is quicker, and land routes cross borders directly instead of detouring through each capital (Pakistan to Mongolia across annexed China no longer goes via Beijing). Troop travel uses the same routes."
 }
