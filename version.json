@@ -1,7 +1,7 @@
 {
-  "version": 184,
+  "version": 185,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Diplomatic proposals: the sender's flag emblem, government and relations in the pop-up; offers stay open 30 days (Later button, Foreign \u2192 Proposals, tap the news entry to review); pop-ups the game opens ignore taps for a moment so a stray tap can't hit Accept/Decline; queued phone pop-ups can no longer get stuck"
+  "notes": "World leaders now in the app: every country has a head of government with a portrait and personality, and proposals come as secure video calls (missed calls can be returned from Foreign \u2192 Missed Calls for 30 days). UN: a country never votes for its own sanctions or invasion; vassals can't sit on the Security Council. Annexing a country frees its vassals; only the player can make vassal states."
 }

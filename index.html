@@ -722,18 +722,10 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .hud-modal{ max-width:94vw; max-height:88vh; overflow-y:auto; padding:14px 16px; color:var(--text); font-family:'IBM Plex Sans Condensed',sans-serif; }
 .hud-modal-h{ display:flex; align-items:center; justify-content:space-between; font-size:20px; font-weight:600; color:var(--teal); margin-bottom:6px; text-shadow:var(--holo-glow); }
 .hud-x{ background:none; border:1px solid var(--border2); color:var(--teal); width:30px; height:30px; cursor:pointer; }
-/* Diplomatic proposals: the sender's emblem, name and standing */
-.dr-who{ display:flex; align-items:center; gap:12px; margin:4px 0 10px; }
-.dr-av{ flex:0 0 auto; width:58px; height:58px; border-radius:50%; display:grid; place-items:center; font-size:32px; line-height:1; overflow:hidden;
-  background:radial-gradient(circle at 35% 30%, rgba(56,225,255,.28), rgba(6,18,32,.95) 70%); border:1px solid var(--teal2);
-  box-shadow:0 0 18px rgba(56,225,255,.28), inset 0 0 12px rgba(56,225,255,.18); }
-.dr-av .fe{ font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji","Twemoji Mozilla",'IBM Plex Sans Condensed',sans-serif; font-weight:700; letter-spacing:.02em; color:var(--teal); }
-.dr-name{ font-size:var(--fs-lg); font-weight:600; color:#e8fbff; line-height:1.15; }
-.dr-sub{ font-size:var(--fs-xs); color:var(--text3); margin-top:1px; }
-.dr-rel{ display:flex; align-items:center; gap:6px; margin-top:5px; font-size:var(--fs-xs); color:var(--text3); }
-.dr-rel i{ flex:1; min-width:60px; height:5px; background:rgba(56,225,255,.12); border-radius:3px; overflow:hidden; display:block; }
-.dr-rel i b{ display:block; height:100%; border-radius:3px; }
-.dr-rel em{ font-style:normal; color:var(--text); font-weight:600; min-width:22px; text-align:right; }
+/* Missed calls list (Foreign tab) */
+.dr-av{ flex:0 0 auto; width:38px; height:38px; border-radius:50%; overflow:hidden; display:grid; place-items:center; font-size:20px;
+  background:radial-gradient(circle at 50% 35%, rgba(56,225,255,.22), rgba(6,18,32,.95) 70%); border:1px solid var(--teal2); }
+.dr-av svg{ width:100%; height:100%; display:block; }
 .dr-list{ display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
 .dr-item{ display:flex; align-items:center; gap:10px; width:100%; padding:6px 9px; background:rgba(56,225,255,.06); border:1px solid var(--teal2); border-radius:6px; color:var(--text); cursor:pointer; font:inherit; }
 .dr-item b{ display:block; font-size:var(--fs-sm); color:#e8fbff; }
@@ -1334,6 +1326,121 @@ body.ph .ov.open, body.ph #govmodal.open{ align-items:flex-end !important; }
 }
 body.mob .rrow{ min-height:36px; }
 
+</style>
+<style id="atlas-leaders">
+/* ═══ WORLD LEADERS — portraits, leader cards and the secure video call ═══ */
+.lv .lv-lid{ transform-box:fill-box; transform-origin:50% 0; transform:scaleY(0); animation:lvBlink 5.6s infinite; animation-delay:var(--bd,0s); }
+.lv .lv-talk{ opacity:0; transform-box:fill-box; transform-origin:50% 30%; }
+.talking .lv .lv-talk{ opacity:1; animation:lvTalk .46s infinite; }
+@keyframes lvBlink{ 0%,94%,100%{ transform:scaleY(0); } 96.5%{ transform:scaleY(1); } }
+@keyframes lvTalk{ 0%{ transform:scaleY(.25); } 30%{ transform:scaleY(1); } 55%{ transform:scaleY(.45); } 80%{ transform:scaleY(.9); } 100%{ transform:scaleY(.25); } }
+
+.ldr-card{ display:flex; gap:11px; align-items:flex-start; background:linear-gradient(180deg,rgba(56,225,255,.07),rgba(56,225,255,.02)); border:1px solid var(--border2); border-radius:4px; padding:9px 10px; margin-bottom:9px; }
+.ldr-av{ flex:0 0 80px; width:80px; height:80px; border-radius:50%; overflow:hidden; border:1px solid var(--border2); background:radial-gradient(circle at 50% 35%, #1b3a55, #071321 72%); box-shadow:0 0 16px rgba(56,225,255,.16); }
+.ldr-av svg{ width:100%; height:100%; display:block; }
+.ldr-body{ min-width:0; flex:1; }
+.ldr-t{ font-size:var(--fs-xs); color:var(--text2); text-transform:uppercase; letter-spacing:.1em; }
+.ldr-n{ font-size:var(--fs-lg); font-weight:600; color:#e8fbff; line-height:1.15; }
+.ldr-s{ font-size:var(--fs-xs); color:var(--text2); margin-top:1px; }
+.ldr-chips{ display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; }
+.ldr-chip{ font-size:11.5px; padding:1px 7px; border:1px solid var(--border2); border-radius:10px; color:var(--teal); background:rgba(56,225,255,.06); white-space:nowrap; cursor:help; }
+.ldr-d{ font-size:12px; color:var(--text2); margin-top:5px; line-height:1.4; }
+.ldr-lc{ font-size:11.5px; color:var(--text2); margin-top:4px; opacity:.85; }
+.emb-ldr{ font-size:11.5px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.cs-ldr{ display:flex; align-items:center; gap:9px; margin:2px 0 8px; font-size:13px; color:#e8fbff; line-height:1.25; }
+.cs-ldr small{ color:var(--text2); font-size:11.5px; }
+.cs-ldr-av{ flex:0 0 40px; width:40px; height:40px; border-radius:50%; overflow:hidden; border:1px solid var(--border2); background:radial-gradient(circle at 50% 35%, #1b3a55, #071321 72%); }
+.cs-ldr-av svg{ width:100%; height:100%; display:block; }
+
+.vc-wrap{ background:rgba(1,5,10,.86); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+.vc{ width:min(640px,94vw); max-height:94vh; display:flex; flex-direction:column; background:linear-gradient(180deg, rgba(10,34,54,.97), rgba(4,12,22,.99));
+  border:1px solid var(--border2); border-radius:6px; overflow:hidden; font-family:'IBM Plex Sans Condensed',sans-serif; color:var(--text);
+  box-shadow:0 0 0 1px rgba(56,225,255,.06), 0 0 50px rgba(56,225,255,.16), 0 24px 70px rgba(0,0,0,.8); animation:vcIn .35s ease-out; }
+.vc-wrap.ending .vc{ animation:vcOut .38s ease-in forwards; }
+@keyframes vcIn{ from{ opacity:0; transform:scale(.96) translateY(8px); } to{ opacity:1; transform:none; } }
+@keyframes vcOut{ to{ opacity:0; transform:scaleY(.02); filter:brightness(2); } }
+.vc-top{ display:flex; align-items:center; gap:10px; padding:7px 12px; font-size:12px; letter-spacing:.12em; color:var(--text2); border-bottom:1px solid var(--border); background:rgba(0,0,0,.25); }
+.vc-lock{ color:var(--green); font-weight:600; white-space:nowrap; }
+.vc-chan{ flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vc-time{ color:var(--teal); font-variant-numeric:tabular-nums; }
+.vc-sig{ display:flex; align-items:flex-end; gap:2px; height:12px; }
+.vc-sig i{ width:3px; background:var(--teal); border-radius:1px; }
+.vc-sig i:nth-child(1){ height:4px; } .vc-sig i:nth-child(2){ height:7px; } .vc-sig i:nth-child(3){ height:10px; } .vc-sig i:nth-child(4){ height:12px; opacity:.4; }
+.vc-feed{ position:relative; height:min(46vh,360px); flex:0 0 auto; overflow:hidden; background:#0b1522; }
+.vc-bg{ position:absolute; inset:0; background:
+   radial-gradient(ellipse at 74% 16%, rgba(255,214,160,.17), transparent 46%),
+   repeating-linear-gradient(90deg, rgba(255,255,255,.028) 0 2px, transparent 2px 66px),
+   linear-gradient(180deg, #26344c 0%, #182337 55%, #0e1726 100%); }
+.vc-bg::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:30%; background:linear-gradient(180deg, rgba(60,40,26,0), rgba(52,36,24,.55)); }
+.vc-flag{ position:absolute; left:8%; top:8%; font-size:clamp(64px,12vh,112px); line-height:1; transform:perspective(320px) rotateY(20deg) rotate(-3deg); filter:blur(1.3px) saturate(.85) brightness(.82); }
+.vc-flag::before{ content:''; position:absolute; left:-7px; top:-6px; height:330%; width:4px; background:linear-gradient(#e2c070,#7a6230); border-radius:2px; }
+.vc-person{ position:absolute; left:50%; bottom:0; height:93%; aspect-ratio:200/240; transform:translateX(-50%); transform-origin:50% 100%; animation:vcBreathe 5s ease-in-out infinite; }
+.vc-person svg{ width:100%; height:100%; display:block; filter:drop-shadow(0 0 14px rgba(0,0,0,.55)); }
+@keyframes vcBreathe{ 0%,100%{ transform:translateX(-50%) translateY(0); } 50%{ transform:translateX(-50%) translateY(-1.5px); } }
+.vc-scan{ position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, rgba(0,0,0,.13) 0 1px, transparent 1px 3px); opacity:.6; }
+.vc-scan::after{ content:''; position:absolute; inset:0; background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
+.vc-live{ position:absolute; left:10px; top:9px; font-size:11px; letter-spacing:.14em; color:#fff; background:rgba(0,0,0,.45); padding:2px 7px 2px 6px; border-radius:2px; display:flex; align-items:center; gap:5px; }
+.vc-live b{ width:7px; height:7px; border-radius:50%; background:#ff3b4e; box-shadow:0 0 6px #ff3b4e; animation:vcDot 1.2s infinite; }
+@keyframes vcDot{ 50%{ opacity:.25; } }
+.vc-pip{ position:absolute; right:10px; top:9px; width:84px; height:62px; border:1px solid var(--border2); background:linear-gradient(180deg,#0d2236,#06111d); border-radius:3px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; box-shadow:0 4px 14px rgba(0,0,0,.5); }
+.vc-pip .fe{ font-size:26px; line-height:1; }
+.vc-pip small{ font-size:9.5px; letter-spacing:.14em; color:var(--teal); }
+.vc-lower{ position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; gap:9px; padding:22px 14px 10px; background:linear-gradient(0deg, rgba(2,8,15,.94), rgba(2,8,15,0)); }
+.vc-lower .fe{ font-size:24px; line-height:1; }
+.vc-ln{ font-size:17px; font-weight:600; color:#fff; text-shadow:0 1px 3px #000; }
+.vc-lc{ font-size:12px; color:var(--text2); }
+.vc-ring{ position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:10px;
+  background:radial-gradient(ellipse at center, rgba(4,14,26,.7), rgba(2,6,12,.94)); }
+.vc-feed.ringing .vc-ring{ display:flex; }
+.vc-feed.ringing .vc-person{ filter:blur(6px) brightness(.45); }
+.vc-feed.ringing .vc-lower, .vc-feed.ringing .vc-live, .vc-feed.ringing .vc-pip{ display:none; }
+.vc-ring-av{ position:relative; width:112px; height:112px; border-radius:50%; border:2px solid var(--teal); background:radial-gradient(circle at 50% 35%, #1b3a55, #071321 72%); box-shadow:0 0 26px rgba(56,225,255,.4); margin-bottom:22px; }
+.vc-ring-av svg{ position:relative; width:100%; height:100%; border-radius:50%; display:block; }
+.vc-ring-av i{ position:absolute; inset:-2px; border-radius:50%; border:2px solid var(--teal); animation:vcPulse 1.8s ease-out infinite; }
+.vc-ring-av i:nth-child(2){ animation-delay:.9s; }
+@keyframes vcPulse{ from{ transform:scale(1); opacity:.8; } to{ transform:scale(1.7); opacity:0; } }
+.vc-ring-k{ font-size:12px; letter-spacing:.24em; color:var(--teal); text-shadow:var(--holo-glow); animation:vcDot 1.4s infinite; }
+.vc-ring-n{ font-size:22px; font-weight:600; color:#fff; margin-top:4px; }
+.vc-ring-c{ font-size:14px; color:var(--text2); margin-top:2px; }
+.vc-ring-s{ font-size:13px; color:var(--gold2); margin-top:8px; }
+.vc-feed.connecting::after{ content:''; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, rgba(56,225,255,.2) 0 2px, transparent 2px 5px); animation:vcGlitch .65s steps(6) forwards; }
+@keyframes vcGlitch{ 0%{ opacity:1; transform:translateX(-6px); } 40%{ transform:translateX(5px); } 100%{ opacity:0; transform:none; } }
+.vc-under{ padding:12px 14px 14px; display:flex; flex-direction:column; gap:10px; overflow-y:auto; }
+.vc-sub{ min-height:46px; font-size:16px; line-height:1.45; color:#eaf9ff; }
+.vc-sub:empty::before{ content:'…'; color:var(--text3); }
+.vc-deal{ background:rgba(56,225,255,.05); border:1px solid var(--border2); border-left:3px solid var(--teal); border-radius:3px; padding:8px 11px; }
+.vc-deal-h{ font-size:13.5px; font-weight:700; letter-spacing:.07em; color:var(--teal); text-transform:uppercase; }
+.vc-deal-b{ font-size:14px; color:var(--text); margin-top:3px; line-height:1.45; }
+.vc-deal-f{ font-size:12px; color:var(--text2); margin-top:5px; }
+.vc-btns{ display:flex; gap:10px; justify-content:center; }
+.vc-b{ flex:1; max-width:220px; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 14px; border-radius:24px; border:1px solid;
+  font:700 14px 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
+.vc-b span{ font-size:16px; line-height:1; }
+.vc-b.yes{ background:rgba(76,242,176,.16); border-color:var(--green); color:var(--green); }
+.vc-b.yes:hover:not(:disabled){ background:rgba(76,242,176,.28); box-shadow:0 0 16px rgba(76,242,176,.35); }
+.vc-b.no{ background:rgba(255,77,94,.12); border-color:var(--red2); color:var(--red2); }
+.vc-b.no:hover{ background:rgba(255,77,94,.24); box-shadow:0 0 16px rgba(255,77,94,.3); }
+.vc-b.end{ background:rgba(56,225,255,.1); border-color:var(--teal2); color:var(--teal); }
+.vc-b:disabled{ opacity:.45; cursor:not-allowed; }
+.vc-hold{ align-self:center; background:none; border:none; color:var(--text2); opacity:.75; font:500 12.5px 'IBM Plex Sans Condensed',sans-serif; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.vc-hold:hover{ opacity:1; }
+.vc-result{ text-align:center; font-size:14px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.vc-result.ok{ color:var(--green); } .vc-result.bad{ color:var(--red2); }
+@media (max-width:600px), (max-height:520px){
+  .vc-wrap{ align-items:stretch; justify-content:stretch; }
+  .vc{ width:100vw; max-width:100vw; height:100%; max-height:100%; border-radius:0; border:none; padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+  .vc-feed{ height:auto; flex:0 1 40vh; min-height:240px; }
+  .vc-sub{ font-size:15px; min-height:40px; }
+  .vc-pip{ width:64px; height:48px; } .vc-pip .fe{ font-size:20px; }
+}
+@media (max-height:520px) and (orientation:landscape){
+  .vc{ flex-direction:row; flex-wrap:wrap; }
+  .vc-top{ flex:0 0 100%; }
+  .vc-feed{ flex:1 1 50%; min-height:0; height:auto; }
+  .vc-under{ flex:1 1 45%; max-height:calc(100% - 34px); }
+}
+@media (prefers-reduced-motion: reduce){ .vc-person, .lv .lv-lid, .vc-ring-av i{ animation:none !important; } }
 </style>
 </head>
 <body>
@@ -6269,6 +6376,7 @@ function startGame(){
 
   // 2010 world: real diplomatic relations & alliances, real UN Security Council (no random wars)
   seedRealRelations();
+  ensureLeaders();                                                    // a head of government for every country
   setTimeout(()=>{ syncMobileTop(); focusPlayerCountry(); }, 900);
   initUN();
   initCoalitions();
@@ -8549,6 +8657,7 @@ function processDayTickCore(){
   if(G.totalDays % 30 === 15) aiUNInitiatives();
   if(G.totalDays % 30 === 10) marketShakeout();
   if(G.totalDays > 0 && G.totalDays % 365 === 0) unAnnualSession();
+  else if(G.totalDays % 7 === 3){ freeOrphanVassals(); unscPurgeVassals(); }
 
   // ── EMBASSY CONSTRUCTION TICK ──
   if(p.diplomacy){
@@ -8677,6 +8786,7 @@ function processDayTickCore(){
 
   // ── FISCAL REVIEW: ratings, borrowing costs, defaults, AI budget policy ──
   CLIST.forEach(c=>{ if(c.fiscal && !c.annexedBy && (G.totalDays + c.id) % 30 === 0) fiscalMonthly(c); });
+  CLIST.forEach(c=>{ if(c!==p && (G.totalDays + c.id) % 30 === 15) leaderTurnover(c); });
 
   // ── WAR EFFECTS (daily) ──
   G.wars.forEach(w=>{
@@ -8728,6 +8838,7 @@ function processDayTickCore(){
   tickNeglect(p);
   tickSportEvents();
   aiDiplomaticRequests(p);
+  leaderPeaceTick(p);
   aiCovertOps(p);
   tickShipments(p);
   processDailyExports(p);
@@ -9159,7 +9270,7 @@ function startCinematic(ms){
   },200);
 }
 (function deferPopupsDuringCinematic(){
-  ['showCrisisPopup','triggerEv','showMonthReview','showUNLobby','showUNVoteModal','showDiploRequest','maybeOfferRestructuring','offerPeaceToPlayer','showConquestPopup','showPactCall','showLiberationPrompt'].forEach(name=>{
+  ['showCrisisPopup','triggerEv','showMonthReview','showUNLobby','showUNVoteModal','showDiploRequest','maybeOfferRestructuring','offerPeaceToPlayer','offerTermsToPlayer','showConquestPopup','showPactCall','showLiberationPrompt'].forEach(name=>{
     const orig=window[name]; if(typeof orig!=='function') return;
     window[name]=function(...a){ if(cinematicActive()){ (G._deferred=G._deferred||[]).push(()=>orig.apply(this,a)); return; } return orig.apply(this,a); };
   });
@@ -9805,6 +9916,7 @@ function renderNation(){
         <div style="font-size:var(--fs-lg);color:var(--text3);text-transform:uppercase;letter-spacing:.07em;">${c.region}${isP?' · YOUR NATION':''}</div>
       </div>
     </div>
+    ${!isP ? leaderCardHTML(c) : ''}
     <div class="sg">
       <div class="sg-i"><div class="sg-l">GDP ${gdpArrow(c)}</div><div class="sg-v" style="font-size:var(--fs-lg);">$${fmtM(c.gdp)}</div></div>
       ${(()=>{ const ap=annexedStates.reduce((s,t)=>s+(t.pop||0),0); return `<div class="sg-i" ${ap>0.5?`title="${Math.round(c.pop).toLocaleString()}M at home + ${Math.round(ap).toLocaleString()}M in annexed lands"`:''}><div class="sg-l">Population</div><div class="sg-v" style="font-size:var(--fs-lg);">${Math.round(c.pop+ap).toLocaleString()}M</div>${ap>0.5?`<div style="font-size:var(--fs-xs);color:var(--text3);font-family:'IBM Plex Sans Condensed',sans-serif;">incl. ${Math.round(ap).toLocaleString()}M annexed</div>`:''}</div>`; })()}
@@ -10684,6 +10796,7 @@ function diploCard(p, c, inline=false){
     <div class="emb-head">
       <div class="emb-info">
         <div class="emb-name">${c.name}</div>
+        <div class="emb-ldr">${leaderShortLine(c)}</div>
         <div class="emb-rel">Relations: <b style="color:${relColor}">${Math.round(rel)}/100</b> · GDP: ${fmtShort(c.gdp)} · 🗳️ ${calcUNVotes(c)} UN votes</div>
         <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:3px;">
           <div style="height:100%;width:${rel}%;background:${relColor};border-radius:2px;transition:width .3s;"></div>
@@ -10865,20 +10978,734 @@ function denounceCountry(id){
 // A war is "justified" for the player if the other side declared it
 
 
-// ═══ AI DIPLOMATIC REQUESTS — other countries approach you (about one a month) ═══
+// ═══════════════════════════════════════════════════════════════════
+//   WORLD LEADERS — every country is run by a (fictional) head of government with a drawn portrait
+//   and a personality that steers its diplomacy. Leaders phone you on a secure video line to propose
+//   embassies, trade routes, alliances, defensive pacts and peace.
+// ═══════════════════════════════════════════════════════════════════
+// Trait multipliers (1 = no effect):
+//   war        chance the AI declares wars          peace      chance it accepts peace when asked
+//   offerPeace chance it phones you to end a war    demand     reparations it demands when winning
+//   repay      reparations it offers when losing    callRate   how often it phones you at all
+//   w_<kind>   preference for each kind of request  sting      relations lost when you refuse it
+//   wait       how long it waits before asking the same thing again
+const LEADER_TRAITS = {
+  hawk:        { name:'Hawk',            ico:'⚔️', desc:'Quick to go to war, slow to make peace, demands more when winning.',
+                 m:{ war:1.6, peace:0.65, offerPeace:0.6, demand:1.5, repay:0.6, w_pact:1.5, w_ally:1.3, sting:1.6 } },
+  dove:        { name:'Peacemaker',      ico:'🕊️', desc:'Avoids war, ends wars quickly and takes a refusal well.',
+                 m:{ war:0.5, peace:1.35, offerPeace:1.6, demand:0, repay:1.3, sting:0.6, w_embassy:1.2 } },
+  merchant:    { name:'Dealmaker',       ico:'💼', desc:'Chases trade deals above all and phones more often.',
+                 m:{ w_trade:2.2, callRate:1.25, repay:1.1 } },
+  pragmatist:  { name:'Pragmatist',      ico:'⚖️', desc:'Judges every deal on its merits and rarely holds a grudge.',
+                 m:{ peace:1.1, offerPeace:1.15, sting:0.7 } },
+  nationalist: { name:'Nationalist',     ico:'🦅', desc:'Proud: takes a refusal personally and waits longer to ask again.',
+                 m:{ war:1.25, sting:1.8, wait:1.4, w_pact:1.2, callRate:0.85, repay:0.7 } },
+  diplomat:    { name:'Multilateralist', ico:'🌐', desc:'Builds ties with everyone, phones often and forgives quickly.',
+                 m:{ w_embassy:1.8, w_ally:1.3, callRate:1.3, sting:0.6, wait:0.6, peace:1.15 } },
+  isolationist:{ name:'Isolationist',    ico:'🏔️', desc:'Keeps to itself: rarely phones, wary of alliances, slow to start wars.',
+                 m:{ callRate:0.45, w_ally:0.5, w_pact:0.6, war:0.8 } },
+  loyal:       { name:'Steadfast',       ico:'🤝', desc:'Stands by its friends and pushes for firm commitments like defensive pacts.',
+                 m:{ w_pact:1.8, w_ally:1.4, sting:1.2 } },
+};
+const TRAIT_CLASH = [['hawk','dove'],['diplomat','isolationist'],['diplomat','nationalist'],['merchant','isolationist']];
+const TRAIT_BY_GOV = {
+  democracy:   { dove:3, diplomat:3, pragmatist:3, merchant:2, loyal:2, hawk:1, nationalist:1, isolationist:1 },
+  free_market: { merchant:5, pragmatist:3, diplomat:2, dove:1, loyal:1, hawk:1, nationalist:.5, isolationist:.5 },
+  technocracy: { pragmatist:4, merchant:3, diplomat:2, isolationist:1, dove:1, loyal:1, hawk:.5, nationalist:.5 },
+  autocracy:   { nationalist:3, hawk:2.5, pragmatist:2.5, isolationist:2, merchant:1.5, loyal:1, dove:.5, diplomat:.5 },
+  theocracy:   { nationalist:3, isolationist:3, hawk:2, loyal:2, pragmatist:1, dove:1, merchant:.5, diplomat:.5 },
+  militarism:  { hawk:5, nationalist:4, loyal:2, pragmatist:1, isolationist:1, merchant:.5, dove:.2, diplomat:.2 },
+};
+const LEADER_MONARCH = { SAU:'King', JOR:'King', MAR:'King', BHR:'King', SWZ:'King', BTN:'King', QAT:'Emir', KWT:'Emir', OMN:'Sultan', BRN:'Sultan' };
+const LEADER_GULF = new Set(['SAU','QAT','KWT','BHR','ARE','OMN']);
+const LEADER_PM = new Set(['GBR','IND','PAK','JPN','CAN','AUS','NZL','ITA','ESP','NLD','BEL','SWE','NOR','DNK','FIN','GRC','TUR','ISR','IRL','PRT',
+  'HUN','CZE','SVK','POL','EST','LVA','LTU','HRV','SVN','BGR','LUX','MLT','ISL','BGD','NPL','MYS','SGP','THA','KHM','ETH','IRQ','LBN','JAM','TTO',
+  'BHS','BRB','GRD','KNA','LCA','VCT','FJI','PNG','MUS','LSO','BLZ','AND','MNE']);
+const LEADER_SCARF = { IRN:1, AFG:1, SAU:1, YEM:.9, PAK:.6, BGD:.5, MYS:.6, IDN:.45, SDN:.7, SOM:.9, MRT:.8, EGY:.35, JOR:.4, IRQ:.6, LBY:.6, NER:.6, MLI:.5, SEN:.3, TUR:.2 };
+const LV_HAIR = { black:'#17110e', dark:'#33241a', brown:'#57391f', light:'#7d5734', blond:'#b9904f', auburn:'#7c3518', salt:'#77726c', silver:'#b9b7b3', white:'#e4e2de' };
+const LV_IRIS = { brown:'#5a3a22', dark:'#2b1b12', hazel:'#7a5a2c', green:'#4c6b3a', blue:'#4a76a8', grey:'#6d7e8b' };
+const LV_SKIN = [   // base, shade, deep
+  ['#f6dccb','#dcb39b','#be8d75'], ['#efcdb4','#d3a88b','#b48264'], ['#e5bb98','#c79772','#a6744d'], ['#d6a479','#b5845a','#91623d'],
+  ['#bf8a5e','#9d6c44','#7a502e'], ['#9c6a45','#7e5233','#5f3b22'], ['#7a4e31','#5f3b24','#452a17'], ['#5a3822','#452a19','#301d0f'],
+  ['#efcfab','#d1aa83','#b1875f'], ['#ddb48a','#bd9068','#9b704a'],
+];
+
+// ── small helpers ──
+function lvRng(seed){ let a=seed>>>0; return ()=>{ a=(a+0x6D2B79F5)>>>0; let t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+function lvPick(r, w){ const e=Object.entries(w).filter(([,v])=>v>0), tot=e.reduce((s,[,v])=>s+v,0); let x=r()*tot; for(const [k,v] of e){ if((x-=v)<=0) return k; } return e[e.length-1][0]; }
+function lvRange(r,a,b){ return a+(b-a)*r(); }
+function lvMix(a,b,t){ const pa=parseInt(a.slice(1),16), pb=parseInt(b.slice(1),16), ch=s=>Math.round(((pa>>s)&255)*(1-t)+((pb>>s)&255)*t);
+  return '#'+[16,8,0].map(s=>ch(s).toString(16).padStart(2,'0')).join(''); }
+function lvHash(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+
+function leaderSkinWeights(c){
+  const a=c.abbr, r=c.region;
+  if(['HTI','JAM','BHS','BRB','TTO','GRD','KNA','LCA','VCT'].includes(a)) return {5:2,6:3,7:2};
+  if(['CUB','DOM','BLZ','GUY','SUR'].includes(a)) return {2:1,3:2,4:2,5:2,6:1};
+  if(a==='USA') return {0:2,1:3,2:2,3:1,5:1,6:1};
+  if(a==='GRL') return {3:2,4:1};
+  if(['ARG','URY','CHL','CAN','FLK'].includes(a)) return {0:2,1:3,2:2,3:1};
+  if(r==='N.America'||r==='S.America') return {2:2,3:3,4:3,5:1};
+  if(r==='W.Europe'||r==='E.Europe'||r==='S.Europe') return ['ITA','ESP','PRT','GRC','MLT','ALB','MKD','BGR','MNE'].includes(a) ? {1:3,2:3,3:1} : {0:3,1:3,2:1};
+  if(r==='Oceania') return ['PNG','FJI'].includes(a) ? {5:2,6:2} : {0:2,1:3,2:1};
+  if(r==='E.Asia') return {8:3,9:2};
+  if(r==='SE.Asia') return {8:1,9:3,3:1,4:2};
+  if(r==='C.Asia') return ['KAZ','KGZ','TKM','UZB','TJK'].includes(a) ? {8:1,9:2,2:2,3:1} : {1:2,2:3,3:1};
+  if(r==='S.Asia') return {3:2,4:3,5:2,6:1};
+  if(['SDN','ETH','ERI','DJI','SOM','MRT'].includes(a)) return {4:1,5:3,6:2};
+  if(['MUS','MDG','COM','STP'].includes(a)) return {3:1,4:2,5:2,6:1};
+  if(r==='M.East'||r==='N.Africa'||['EGY','MAR','DZA','LBY','TUN','ESH'].includes(a)) return a==='YEM' ? {3:2,4:2,5:1} : {2:2,3:3,4:2};
+  if(typeof AFRICAN_REGIONS!=='undefined' && AFRICAN_REGIONS.has(r)) return {5:1,6:3,7:3};
+  return {1:1,2:2,3:2,4:1};
+}
+
+// ── appearance: everything the portrait needs, rolled once and kept with the leader ──
+function genLeaderLook(c, L, r){
+  const fem=L.fem, age=G.year-L.born, law=c.governmentLaw;
+  const skin=+lvPick(r, leaderSkinWeights(c)), light=skin<=2;
+  const greyP=Math.max(0, Math.min(0.92, (age-42)/34));
+  // light hair and eyes only where they are common (Europe, the Anglosphere, the Southern Cone)
+  const fair = light && (['W.Europe','E.Europe','S.Europe','N.America','Oceania'].includes(c.region) || ['ARG','URY','CHL','FLK','GRL'].includes(c.abbr));
+  let hair = lvPick(r, fair ? {black:1,dark:3,brown:3,light:2,blond:fem?3:1.5,auburn:1} : skin<=3||skin>=8 ? {black:3,dark:3,brown:1.2,light:.2} : {black:4,dark:2,brown:.5});
+  if(r()<greyP*(fem?0.55:1)) hair = age<58 ? 'salt' : (r()<0.6?'silver':'white');
+  const iris = lvPick(r, fair ? (skin<=1 ? {blue:3,green:1,hazel:2,brown:3,grey:1} : {hazel:2,brown:4,blue:1,green:1}) : skin<=3 ? {hazel:1.2,brown:4,dark:2,green:.25,blue:.15} : {brown:3,dark:4});
+  const gulf = LEADER_GULF.has(c.abbr) && !fem;
+  const mil  = law==='militarism' || !!L.rank;
+  const scarfP = fem ? (LEADER_SCARF[c.abbr] ?? (typeof DEFAULT_RELIGION_MAP!=='undefined' && DEFAULT_RELIGION_MAP[c.abbr]==='islam' ? 0.35 : 0)) * (law==='theocracy'?2:1) : 0;
+  const k = {
+    skin, hair, iris,
+    w:lvRange(r,33,40), jaw:fem?lvRange(r,0.76,0.92):lvRange(r,0.84,1.08), top:lvRange(r,34,41), chin:lvRange(r,147,159),
+    wt:Math.pow(r(),1.6)*(fem?0.7:1), eyeS:lvRange(r,0.86,1.14), arch:lvRange(r,2.2,5.2), earS:lvRange(r,0.85,1.15), tint:lvPick(r,{'#ffd9b0':1,'#f0c8c8':1,'#d8c8a8':1,'none':2}), tintA:lvRange(r,.04,.12),
+    eyeY:lvRange(r,94,98), eyeGap:lvRange(r,15,17.5), noseL:lvRange(r,17,21.5), noseW:lvRange(r,7,10), mouthW:fem?lvRange(r,10,12.5):lvRange(r,10.5,13.5),
+    lip:fem?lvRange(r,1.05,1.35):lvRange(r,0.8,1.15), smile:0, brow:0, browTh:fem?lvRange(r,1.6,2.3):lvRange(r,2.4,3.6),
+    glasses: r() < 0.16+Math.max(0,age-50)*0.012 ? lvPick(r,{rect:3,round:1.5,half:1.5}) : null,
+    frame: lvPick(r,{'#1b1b1f':4,'#5b4636':1.5,'#9aa0a6':2,'#b08d57':1}),
+    style:null, beard:null, attire:'suit', head:null, cap:false,
+  };
+  const tr=L.traits||[];
+  if(tr.includes('hawk')||tr.includes('nationalist')) k.brow=lvRange(r,1.5,3.2);
+  if(tr.includes('dove')||tr.includes('diplomat')||tr.includes('merchant')) k.smile=lvRange(r,0.45,1);
+  else k.smile=lvRange(r,-0.1,0.45);
+  if(fem){
+    k.style = lvPick(r, age>62 ? {bob:3,bun:3,shoulder:2,pixie:2,long:.5} : {bob:3,long:2.5,bun:2.5,shoulder:3,pixie:1});
+    if(skin>=5 && r()<0.45) k.style = r()<0.5 ? 'curly' : 'bun';
+    k.lipstick = r()<0.6 ? lvPick(r,{'#a8424f':2,'#b5535e':2,'#8c3b46':1,'#c46a6a':1}) : null;
+    k.blouse = lvPick(r,{'#f3f1ec':3,'#efe4d2':2,'#dfe8f2':1,'#1d1d22':1});
+    k.suit = lvPick(r,{'#1f2a44':3,'#18191d':2,'#8f1d2b':1.5,'#e3d8c6':1,'#1f5f66':1,'#2a4c9a':1.5,'#563a77':1,'#4a4f57':1.5});
+    k.pearls = r()<0.45;
+    if(r()<scarfP){ k.head='scarf'; k.scarf=lvPick(r,{'#1d2b45':2,'#3b2340':1,'#6b1f2c':1,'#d9cbb5':1,'#2f4f3f':1,'#141414':2,'#5f6b7a':1}); }
+    if(mil){ k.attire='military'; k.suit=lvPick(r,{'#4b5320':3,'#2f3d2a':2,'#1d2840':2}); }
+    else k.attire='blazer';
+  } else {
+    const bald = Math.max(0, (age-45)/40);
+    const curlyW = (typeof AFRICAN_REGIONS!=='undefined' && AFRICAN_REGIONS.has(c.region) && !['EGY','MAR','DZA','LBY','TUN','ESH','SDN'].includes(c.abbr)) || ['HTI','JAM','BHS','BRB','TTO','GRD','KNA','LCA','VCT','PNG','FJI'].includes(c.abbr) ? 5 : skin>=5 ? 2 : 0.3;
+    k.style = lvPick(r, {short:4, side:4, swept:2, receding:2+bald*6, bald:bald*5, buzz:1+curlyW*.4, curly:curlyW});
+    const beardy = ['M.East','S.Asia','C.Asia','N.Africa'].includes(c.region) || ['EGY','LBY','DZA','MAR','SDN','AFG','IRN'].includes(c.abbr);
+    const african = typeof AFRICAN_REGIONS!=='undefined' && AFRICAN_REGIONS.has(c.region);
+    k.beard = lvPick(r, law==='theocracy' ? {beard:6,short:2,goatee:1}
+                       : gulf ? {beard:2,short:4,goatee:2,mustache:1}
+                       : beardy ? {none:2,mustache:3,beard:1.5,short:3,goatee:1}
+                       : african ? {none:4,mustache:2,short:1.5,goatee:1,stubble:1}
+                       : {none:8,mustache:1,short:1,goatee:.6,stubble:1.2});
+    k.suit = lvPick(r,{'#1f2a44':4,'#2b2e33':3,'#16181c':3,'#3a4250':2,'#4a4f57':1,'#3b302a':.5});
+    k.shirt = lvPick(r,{'#f2f4f7':4,'#dfe9f5':2});
+    k.tie = lvPick(r,{'#a3202a':3,'#24508f':3,'#4f7fbf':2,'#6b1e2e':2,'#2f6b3a':1,'#b08a2e':1,'#4b2d6b':1,'#7d1f3f':1});
+    k.stripes = r()<0.35;
+    k.square = r()<0.3;
+    if(gulf){ k.attire='bisht'; k.head='ghutra'; k.ghutra = c.abbr==='OMN' ? 'massar' : (c.abbr==='SAU'||c.abbr==='QAT'||c.abbr==='KWT') && r()<0.6 ? 'red' : 'white';
+      k.suit = lvPick(r,{'#141414':3,'#3a2a1c':2,'#7a5a36':1.5}); }
+    else if(mil){ k.attire='military'; k.suit=lvPick(r,{'#4b5320':3,'#2f3d2a':2,'#1d2840':2,'#6f6448':1}); k.cap = r()<0.6; k.capBand=lvPick(r,{'#1a1a14':2,'#8c1c1c':1}); }
+    else if(law==='theocracy'){ k.attire='robe'; k.suit=lvPick(r,{'#1a1714':3,'#3b2d22':2,'#2a2b2e':1}); }
+  }
+  k.medals = mil ? 2+Math.floor(r()*3) : 0;
+  k.ribbons = Array.from({length:12},()=>lvPick(r,{'#b3202a':2,'#1f4f9a':2,'#d4af37':2,'#2f7a3a':1,'#ffffff':1,'#6b2a7a':1,'#e07a1f':1}));
+  return k;
+}
+
+// ── the portrait: an SVG bust in a 200×240 box. variant ('card','ring','call','sheet') keeps gradient ids unique ──
+const _lvCache = new Map();
+function leaderAvatarSVG(c, variant, cls){
+  const L=c?.leader, k=L?.look; if(!k) return '';
+  const key=c.id+':'+(L.gen||0)+':'+variant+':'+L.name;
+  if(_lvCache.has(key)) return _lvCache.get(key);
+  const id=('lv'+variant+c.id+'x'+(L.gen||0)).replace(/[^a-z0-9]/gi,'');
+  const n=v=>Math.round(v*10)/10;
+  const sk=LV_SKIN[k.skin]||LV_SKIN[2], tn=c=>k.tint&&k.tint!=='none'?lvMix(c,k.tint,k.tintA||.06):c, [base,shade,deep]=[tn(sk[0]),tn(sk[1]),tn(sk[2])];
+  const wt=k.wt||0, ES=k.eyeS||1, T=k.top, W=k.w+wt*2.5, jw=W*Math.min(1.12,k.jaw+wt*.1), C=k.chin+wt*2, EY=k.eyeY, EG=k.eyeGap, tip=EY+k.noseL, NW=k.noseW+wt*1.2, MW=k.mouthW, my=tip+13, age=G.year-L.born, NK=15+wt*4;
+  const ageF=Math.max(0,Math.min(1,(age-45)/30));
+  const hairC=LV_HAIR[k.hair]||LV_HAIR.dark, hairD=lvMix(hairC,'#000000',.35), hairL=lvMix(hairC,'#ffffff',.22);
+  const browC= ['silver','white'].includes(k.hair) ? '#8d8a85' : k.hair==='salt' ? '#4a4540' : lvMix(hairC,'#000000',.15);
+  const lip = k.lipstick || lvMix(base,'#a0525a',.38), lipD=lvMix(lip,'#000000',.22);
+  const S=k.suit, Sd=lvMix(S,'#000000',.35), Sl=lvMix(S,'#ffffff',.1);
+  const P=[];          // the drawing, back to front
+  const fem=L.fem, longHair = fem && !k.head && ['long','shoulder','bob','curly'].includes(k.style);
+  const defs=`<defs>
+    <radialGradient id="${id}f" cx=".44" cy=".42" r=".66"><stop offset=".5" stop-color="${shade}" stop-opacity="0"/><stop offset="1" stop-color="${deep}" stop-opacity=".75"/></radialGradient>
+    <linearGradient id="${id}j" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".07"/><stop offset=".45" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".38"/></linearGradient>
+    <linearGradient id="${id}h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".16"/><stop offset=".6" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="${id}n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${deep}" stop-opacity=".7"/><stop offset=".35" stop-color="${shade}" stop-opacity=".15"/><stop offset="1" stop-color="${shade}" stop-opacity=".25"/></linearGradient>
+    <pattern id="${id}k" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="#f5f3ef"/><path d="M0 0H7M0 0V7" stroke="#c4182c" stroke-width="1.6"/></pattern>
+    <pattern id="${id}m" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><rect width="9" height="9" fill="#e9e1cf"/><path d="M0 0H9M0 4.5H9" stroke="#7c2f2f" stroke-width="1.2"/><path d="M0 0V9" stroke="#2f4f6b" stroke-width="1"/></pattern>
+    ${[-1,1].map(s=>`<clipPath id="${id}e${s<0?'l':'r'}"><path d="${eyePath(100+s*EG,EY)}"/></clipPath>`).join('')}
+  </defs>`;
+  function eyePath(x,y){ const a=8*ES, h=5.6*ES, l=4.4*ES; return `M${n(x-a)} ${n(y)} C${n(x-a*.62)} ${n(y-h)} ${n(x+a*.62)} ${n(y-h)} ${n(x+a)} ${n(y)} C${n(x+a*.62)} ${n(y+l)} ${n(x-a*.62)} ${n(y+l)} ${n(x-a)} ${n(y)}Z`; }
+  const headD=`M100 ${n(T)} C${n(100+W*.75)} ${n(T)} ${n(100+W)} ${n(T+20)} ${n(100+W)} ${n(T+50)} C${n(100+W)} ${n(T+78)} ${n(100+jw+5)} ${n(C-24)} ${n(100+jw*.6)} ${n(C-8)} C${n(100+jw*.35)} ${n(C-1)} 108 ${n(C)} 100 ${n(C)} C92 ${n(C)} ${n(100-jw*.35)} ${n(C-1)} ${n(100-jw*.6)} ${n(C-8)} C${n(100-jw-5)} ${n(C-24)} ${n(100-W)} ${n(T+78)} ${n(100-W)} ${n(T+50)} C${n(100-W)} ${n(T+20)} ${n(100-W*.75)} ${n(T)} 100 ${n(T)}Z`;
+  // headcloth / scarf: an inverted U that frames the face and falls to the shoulders
+  const clothD=(top,win)=>`M${n(100-W-34)} 236 C${n(100-W-14)} 182 ${n(100-W-12)} 142 ${n(100-W-12)} 100 C${n(100-W-12)} ${n(top+10)} ${n(100-W*.6)} ${n(top)} 100 ${n(top)} C${n(100+W*.6)} ${n(top)} ${n(100+W+12)} ${n(top+10)} ${n(100+W+12)} 100 C${n(100+W+12)} 142 ${n(100+W+14)} 182 ${n(100+W+34)} 236 L${n(100+W+11)} 250 C${n(100+W+4)} 202 ${n(100+W+1)} 178 ${n(100+W+1)} ${n(C-10)} C${n(100+W+1)} ${n(T+44)} ${n(100+W-6)} ${n(win+4)} 100 ${n(win)} C${n(100-W+6)} ${n(win+4)} ${n(100-W-1)} ${n(T+44)} ${n(100-W-1)} ${n(C-10)} C${n(100-W-1)} 178 ${n(100-W-4)} 202 ${n(100-W-11)} 250Z`;
+
+  // 1. hair that sits behind the head
+  if(fem && !k.head){
+    if(k.style==='long') P.push(`<path d="M${n(100-W-12)} 232 C${n(100-W-19)} 170 ${n(100-W-17)} ${n(T+30)} ${n(100-W-8)} ${n(T+4)} C${n(100-W)} ${n(T-13)} ${n(100+W)} ${n(T-13)} ${n(100+W+8)} ${n(T+4)} C${n(100+W+17)} ${n(T+30)} ${n(100+W+19)} 170 ${n(100+W+12)} 232Z" fill="${hairD}"/>`);
+    if(k.style==='bob'||k.style==='shoulder'||k.style==='curly'){ const bt = k.style==='shoulder' ? C+24 : C-2;
+      P.push(`<path d="M${n(100-W-11)} ${n(bt)} C${n(100-W-15)} ${n(T+40)} ${n(100-W-8)} ${n(T-10)} 100 ${n(T-11)} C${n(100+W+8)} ${n(T-10)} ${n(100+W+15)} ${n(T+40)} ${n(100+W+11)} ${n(bt)} C${n(100+W+4)} ${n(bt+6)} ${n(100+W-5)} ${n(bt+3)} ${n(100+W-7)} ${n(bt-6)} L${n(100-W+7)} ${n(bt-6)} C${n(100-W+5)} ${n(bt+3)} ${n(100-W-4)} ${n(bt+6)} ${n(100-W-11)} ${n(bt)}Z" fill="${hairD}"/>`); }
+    if(k.style==='bun') P.push(`<circle cx="100" cy="${n(T-6)}" r="14" fill="${hairC}"/><circle cx="100" cy="${n(T-6)}" r="14" fill="url(#${id}h)"/>`);
+  }
+  if(k.head==='scarf') P.push(`<path d="M${n(100-W-26)} 222 C${n(100-W-18)} 190 ${n(100-W-20)} 150 ${n(100-W-16)} 120 L${n(100+W+16)} 120 C${n(100+W+20)} 150 ${n(100+W+18)} 190 ${n(100+W+26)} 222Z" fill="${lvMix(k.scarf,'#000000',.3)}"/>`);
+  // 2. neck
+  const neckD=`M${n(100-NK)} ${n(C-18)} C${n(100-NK)} ${n(C+8)} ${n(100-NK-2)} ${n(C+20)} ${n(100-NK-4)} 194 L${n(100+NK+4)} 194 C${n(100+NK+2)} ${n(C+20)} ${n(100+NK)} ${n(C+8)} ${n(100+NK)} ${n(C-18)}Z`;
+  P.push(`<path d="${neckD}" fill="${base}"/><path d="${neckD}" fill="url(#${id}n)"/>`);
+  // 3. clothes
+  const jacket=`M-30 290 L-30 214 C-14 192 30 180 68 176 L100 171 L132 176 C170 180 214 192 230 214 L230 290Z`;
+  if(k.attire==='suit'||k.attire==='military'){
+    const milA=k.attire==='military', shirt=milA?'#cdbf93':k.shirt, tie=milA?lvMix(S,'#000000',.45):k.tie, vB=milA?208:222;
+    P.push(`<path d="${jacket}" fill="${S}"/>`,
+      `<path d="M83 174 L100 ${vB} L117 174Z" fill="${shirt}"/>`,
+      `<path d="M86 168 L100 190 L92 197 L79 178Z" fill="${shirt}" stroke="${lvMix(shirt,'#000000',.18)}" stroke-width=".6"/><path d="M114 168 L100 190 L108 197 L121 178Z" fill="${shirt}" stroke="${lvMix(shirt,'#000000',.18)}" stroke-width=".6"/>`,
+      `<path d="M95.5 188 L104.5 188 L102.8 197 L97.2 197Z" fill="${lvMix(tie,'#000000',.15)}"/><path d="M97.2 197 L102.8 197 L106.5 ${vB+6} L100 ${vB+14} L93.5 ${vB+6}Z" fill="${tie}"/>`);
+    if(!milA && k.stripes) P.push(`<path d="M93 206 L107 199 M93 214 L107 207 M94 222 L107 215 M95 230 L106 224" stroke="${lvMix(tie,'#ffffff',.45)}" stroke-width="1.6" opacity=".8"/>`);
+    P.push(`<path d="M72 175 L84 171 L100 ${vB} L97 ${vB+7} L79 197 L87 191Z" fill="${Sl}" stroke="${Sd}" stroke-width=".8"/><path d="M128 175 L116 171 L100 ${vB} L103 ${vB+7} L121 197 L113 191Z" fill="${Sl}" stroke="${Sd}" stroke-width=".8"/>`);
+    if(milA){
+      P.push(`<path d="M22 197 L60 180 L64 188 L27 205Z" fill="${Sd}" stroke="#d4af37" stroke-width="1.4"/><path d="M178 197 L140 180 L136 188 L173 205Z" fill="${Sd}" stroke="#d4af37" stroke-width="1.4"/>`,
+        `<circle cx="40" cy="193" r="2.2" fill="#e8c55a"/><circle cx="49" cy="189" r="2.2" fill="#e8c55a"/><circle cx="160" cy="193" r="2.2" fill="#e8c55a"/><circle cx="151" cy="189" r="2.2" fill="#e8c55a"/>`,
+        `<rect x="82" y="174" width="6" height="4" fill="#8c1c1c" transform="rotate(-25 85 176)"/><rect x="112" y="174" width="6" height="4" fill="#8c1c1c" transform="rotate(25 115 176)"/>`,
+        `<circle cx="100" cy="218" r="2.3" fill="#d9b44a"/><circle cx="100" cy="232" r="2.3" fill="#d9b44a"/>`);
+      let rb=''; for(let row=0; row<k.medals; row++) for(let i=0;i<4;i++){ const col=k.ribbons[(row*4+i)%k.ribbons.length];
+        rb+=`<rect x="${118+i*8}" y="${206-row*6}" width="7.4" height="5" fill="${col}" stroke="#111" stroke-width=".35"/>`; }
+      P.push(rb, `<path d="M128 ${212} L128 220" stroke="#b3202a" stroke-width="3"/><circle cx="128" cy="223" r="3.6" fill="#d4af37" stroke="#8a6d1d" stroke-width=".6"/>`);
+    } else if(k.square) P.push(`<path d="M146 210 L158 208 L156 214 L147 215Z" fill="${lvMix(k.tie,'#ffffff',.35)}"/>`);
+  } else if(k.attire==='blazer'){
+    P.push(`<path d="M-24 290 L-24 216 C-8 196 32 184 70 180 L100 176 L130 180 C168 184 208 196 224 216 L224 290Z" fill="${S}"/>`,
+      `<path d="M80 179 L100 232 L120 179Z" fill="${k.blouse}"/>`);
+    if(!k.head) P.push(`<path d="M86 176 C90 192 110 192 114 176Z" fill="${base}"/><path d="M86 176 C90 192 110 192 114 176Z" fill="url(#${id}n)" opacity=".6"/>`);
+    P.push(`<path d="M77 181 L80 179 L100 230 L97 236 L82 202 L88 197Z" fill="${Sl}" stroke="${Sd}" stroke-width=".7"/><path d="M123 181 L120 179 L100 230 L103 236 L118 202 L112 197Z" fill="${Sl}" stroke="${Sd}" stroke-width=".7"/>`);
+    if(k.pearls && !k.head){ let pr=''; for(let i=0;i<=10;i++){ const t=i/10, x=(1-t)**3*87+3*(1-t)**2*t*91+3*(1-t)*t*t*109+t**3*113, y=(1-t)**3*178+3*(1-t)**2*t*192+3*(1-t)*t*t*192+t**3*178;
+        pr+=`<circle cx="${n(x)}" cy="${n(y)}" r="1.55" fill="#f4efe6" stroke="#c9c0b0" stroke-width=".4"/>`; } P.push(pr); }
+  } else if(k.attire==='bisht'||k.attire==='robe'){
+    const gold=k.attire==='bisht';
+    P.push(`<path d="M86 171 L114 171 L114 290 L86 290Z" fill="${gold?'#f7f6f2':'#ece8df'}"/><path d="M92 170 C96 176 104 176 108 170" stroke="${gold?'#d6d3cb':'#c9c3b6'}" stroke-width="1.2" fill="none"/>`,
+      `<path d="M-30 290 L-30 214 C-14 192 30 180 68 176 L88 171 L95 290Z" fill="${S}"/><path d="M230 290 L230 214 C214 192 170 180 132 176 L112 171 L105 290Z" fill="${S}"/>`);
+    if(gold) P.push(`<path d="M88 171 L95 290 M112 171 L105 290" stroke="#c9a24a" stroke-width="3"/><path d="M84 172 L91 290 M116 172 L109 290" stroke="#e2c070" stroke-width=".9" opacity=".8"/>`);
+    else P.push(`<path d="M88 171 L95 290 M112 171 L105 290" stroke="${Sd}" stroke-width="1.5"/>`);
+  }
+  P.push(`<path d="${jacket}" fill="url(#${id}j)"/>`);
+  // 4. long hair falling over the shoulders (in front of the clothes, behind the face)
+  if(longHair && k.style!=='bob' && k.style!=='curly'){ const ln=k.style==='long' ? 54 : 26;
+    [-1,1].forEach(s=>P.push(`<path d="M${n(100+s*(W+5))} ${n(T+40)} C${n(100+s*(W+10))} ${n(C-10)} ${n(100+s*(W+12))} ${n(C+ln*.45)} ${n(100+s*(W+20))} ${n(C+ln)} C${n(100+s*(W+11))} ${n(C+ln+4)} ${n(100+s*(W+3))} ${n(C+ln+2)} ${n(100+s*(W-3))} ${n(C+ln-6)} C${n(100+s*(W-2))} ${n(C+18)} ${n(100+s*(W-4))} ${n(C-6)} ${n(100+s*(W-6))} ${n(T+62)}Z" fill="${hairC}"/>`)); }
+  // 5. ears (hidden under longer hair and headcloths)
+  if(!k.head && !longHair) [-1,1].forEach(s=>P.push(`<ellipse cx="${n(100+s*(W-1))}" cy="${n(EY+5)}" rx="${n(6.5*(k.earS||1))}" ry="${n(11.5*(k.earS||1))}" fill="${base}"/><path d="M${n(100+s*(W+1))} ${n(EY-2)} C${n(100+s*(W+4))} ${n(EY+3)} ${n(100+s*(W+3))} ${n(EY+10)} ${n(100+s*(W))} ${n(EY+12)}" stroke="${deep}" stroke-width="1.3" fill="none" opacity=".55"/>`));
+  // 6. head and shading
+  P.push(`<path d="${headD}" fill="${base}"/><path d="${headD}" fill="url(#${id}f)"/>`);
+  if(fem) [-1,1].forEach(s=>P.push(`<ellipse cx="${n(100+s*22)}" cy="${n(EY+19)}" rx="9" ry="6" fill="#e0607a" opacity=".13"/>`));
+  if(wt>0.5) P.push(`<path d="M${n(100-jw*.5)} ${n(C-1)} C${n(100-jw*.25)} ${n(C+5)} ${n(100+jw*.25)} ${n(C+5)} ${n(100+jw*.5)} ${n(C-1)}" stroke="${deep}" stroke-width="1.1" fill="none" opacity="${n(.2+.4*(wt-.5))}"/>`,
+    ...[-1,1].map(s=>`<path d="M${n(100+s*(W-6))} ${n(EY+16)} C${n(100+s*(W-4))} ${n(EY+26)} ${n(100+s*(W-8))} ${n(C-20)} ${n(100+s*(jw*.62))} ${n(C-10)}" stroke="${deep}" stroke-width="1" fill="none" opacity=".18"/>`));
+  // 7. stubble / beard base (lips are drawn over it)
+  const beardD=(bot)=>`M${n(100-W+1)} ${n(EY+14)} C${n(100-W+1)} ${n(C-26)} ${n(100-jw-2)} ${n(C-12)} ${n(100-jw*.55)} ${n(bot-8)} C${n(100-jw*.3)} ${n(bot-1)} 91 ${n(bot)} 100 ${n(bot)} C109 ${n(bot)} ${n(100+jw*.3)} ${n(bot-1)} ${n(100+jw*.55)} ${n(bot-8)} C${n(100+jw+2)} ${n(C-12)} ${n(100+W-1)} ${n(C-26)} ${n(100+W-1)} ${n(EY+14)} L${n(100+W-6)} ${n(EY+16)} C${n(100+W-8)} ${n(tip+2)} ${n(100+MW+8)} ${n(my-2)} ${n(100+MW+3)} ${n(my+8)} C${n(100+MW-2)} ${n(my+13)} ${n(100-MW+2)} ${n(my+13)} ${n(100-MW-3)} ${n(my+8)} C${n(100-MW-8)} ${n(my-2)} ${n(100-W+8)} ${n(tip+2)} ${n(100-W+6)} ${n(EY+16)}Z`;
+  const moD=`M${n(100-MW-3)} ${n(my+1)} C${n(100-MW)} ${n(my-7)} 96 ${n(my-9)} 100 ${n(my-7)} C104 ${n(my-9)} ${n(100+MW)} ${n(my-7)} ${n(100+MW+3)} ${n(my+1)} C${n(100+MW-2)} ${n(my-3)} 104 ${n(my-4)} 100 ${n(my-3.5)} C96 ${n(my-4)} ${n(100-MW+2)} ${n(my-3)} ${n(100-MW-3)} ${n(my+1)}Z`;
+  if(k.beard==='stubble') P.push(`<path d="${beardD(C+2)}" fill="${hairD}" opacity=".2"/><path d="${moD}" fill="${hairD}" opacity=".2"/>`);
+  if(k.beard==='beard') P.push(`<path d="${beardD(C+9)}" fill="${hairC}"/><path d="${beardD(C+9)}" fill="url(#${id}h)"/>`);
+  if(k.beard==='short') P.push(`<path d="${beardD(C+4)}" fill="${hairC}" opacity=".78"/>`);
+  if(k.beard==='goatee') P.push(`<path d="M${n(100-MW-1)} ${n(my+7)} C${n(100-MW)} ${n(my+16)} 92 ${n(C+6)} 100 ${n(C+6)} C108 ${n(C+6)} ${n(100+MW)} ${n(my+16)} ${n(100+MW+1)} ${n(my+7)} C${n(100+MW-4)} ${n(my+10)} ${n(100-MW+4)} ${n(my+10)} ${n(100-MW-1)} ${n(my+7)}Z" fill="${hairC}"/>`);
+  // 8. age lines
+  if(ageF>0.05){ const o=n(.12+.3*ageF);
+    if(!['short','side','swept','buzz'].includes(k.style) || ageF>0.4) P.push(`<path d="M${n(100-W*.45)} ${n(T+25)} C${n(100-W*.2)} ${n(T+22)} ${n(100+W*.2)} ${n(T+22)} ${n(100+W*.45)} ${n(T+25)} M${n(100-W*.38)} ${n(T+31)} C${n(100-W*.15)} ${n(T+28.5)} ${n(100+W*.15)} ${n(T+28.5)} ${n(100+W*.38)} ${n(T+31)}" stroke="${deep}" stroke-width="1" fill="none" opacity="${o}"/>`);
+    [-1,1].forEach(s=>P.push(`<path d="M${n(100+s*(NW+3))} ${n(tip-2)} C${n(100+s*(NW+7))} ${n(tip+6)} ${n(100+s*(MW+5))} ${n(my-2)} ${n(100+s*(MW+4))} ${n(my+5)}" stroke="${deep}" stroke-width="1.1" fill="none" opacity="${n(.2+.3*ageF)}"/>`,
+      ageF>0.3 ? `<path d="M${n(100+s*(EG+9))} ${n(EY-1)} l${s*4} -2 M${n(100+s*(EG+9))} ${n(EY+1.5)} l${s*4} 1.5 M${n(100+s*(EG-6))} ${n(EY+6.5)} C${n(100+s*(EG-2))} ${n(EY+9)} ${n(100+s*(EG+4))} ${n(EY+9)} ${n(100+s*(EG+7))} ${n(EY+6)}" stroke="${deep}" stroke-width=".8" fill="none" opacity="${o}"/>` : ''));
+  }
+  // 9. eyes (with a blinking lid)
+  [-1,1].forEach(s=>{ const x=100+s*EG, y=EY, ic=LV_IRIS[k.iris]||LV_IRIS.brown;
+    P.push(`<path d="${eyePath(x,y)}" fill="#f3efe9"/>`,
+      `<g clip-path="url(#${id}e${s<0?'l':'r'})"><circle cx="${n(x)}" cy="${n(y-.3)}" r="${n(4.4*ES)}" fill="${ic}"/><circle cx="${n(x)}" cy="${n(y-.3)}" r="${n(4.4*ES)}" fill="none" stroke="${lvMix(ic,'#000000',.45)}" stroke-width=".8"/><circle cx="${n(x)}" cy="${n(y-.3)}" r="2" fill="#0b0705"/><circle cx="${n(x+1.4)}" cy="${n(y-1.7)}" r="1.1" fill="#ffffff" opacity=".9"/><path d="M${n(x-9)} ${n(y-6)} L${n(x+9)} ${n(y-6)} L${n(x+9)} ${n(y-2.6)} L${n(x-9)} ${n(y-2.6)}Z" fill="${shade}" opacity=".35"/></g>`,
+      `<path d="M${n(x-8.5*ES)} ${n(y+.3)} C${n(x-5*ES)} ${n(y-6*ES)} ${n(x+5*ES)} ${n(y-6*ES)} ${n(x+8.5*ES)} ${n(y+.3)}" stroke="#24160f" stroke-width="${fem?2:1.5}" fill="none" stroke-linecap="round"/>`,
+      fem ? `<path d="M${n(x+s*8*ES)} ${n(y-.6)} l${s*2.6} -2" stroke="#24160f" stroke-width="1.4" stroke-linecap="round"/>` : '',
+      `<path d="M${n(x-7)} ${n(y-7.6)} C${n(x-3)} ${n(y-10.2)} ${n(x+3)} ${n(y-10.2)} ${n(x+7.5)} ${n(y-7)}" stroke="${deep}" stroke-width=".9" fill="none" opacity=".5"/>`,
+      `<path d="M${n(x-7)} ${n(y+2.6)} C${n(x-3)} ${n(y+5.2)} ${n(x+3)} ${n(y+5.2)} ${n(x+7)} ${n(y+2.4)}" stroke="${deep}" stroke-width=".7" fill="none" opacity=".35"/>`,
+      `<path class="lv-lid" d="M${n(x-8.6*ES)} ${n(y+.4)} C${n(x-5*ES)} ${n(y-6.4*ES)} ${n(x+5*ES)} ${n(y-6.4*ES)} ${n(x+8.6*ES)} ${n(y+.4)} C${n(x+5*ES)} ${n(y+5*ES)} ${n(x-5*ES)} ${n(y+5*ES)} ${n(x-8.6*ES)} ${n(y+.4)}Z" fill="${base}" stroke="#24160f" stroke-width=".8"/>`);
+  });
+  // 10. brows (k.brow > 0: stern, inner ends low)
+  [-1,1].forEach(s=>{ const x=100+s*EG, by=EY-11.5, inner=by+k.brow, outer=by+1.2-(fem?.5:0);
+    P.push(`<path d="M${n(100+s*(EG-8.5))} ${n(inner)} C${n(100+s*(EG-3))} ${n(by-(k.arch||3.6)-(fem?1:0))} ${n(100+s*(EG+4))} ${n(by-(k.arch||3.6)-.2-(fem?1:0))} ${n(100+s*(EG+10))} ${n(outer)}" stroke="${browC}" stroke-width="${n(k.browTh)}" fill="none" stroke-linecap="round"/>`); });
+  // 11. nose
+  P.push(`<path d="M${n(100-3)} ${n(EY+4)} C${n(100-4)} ${n(EY+11)} ${n(100-NW*.62)} ${n(tip-7)} ${n(100-NW*.58)} ${n(tip-1)}" stroke="${deep}" stroke-width="1.2" fill="none" opacity=".4"/>`,
+    `<path d="M${n(100-NW)} ${n(tip-1)} C${n(100-NW*.75)} ${n(tip+4)} ${n(100-3)} ${n(tip+3)} 100 ${n(tip+3.6)} C${n(100+3)} ${n(tip+3)} ${n(100+NW*.75)} ${n(tip+4)} ${n(100+NW)} ${n(tip-1)}" stroke="${deep}" stroke-width="1.5" fill="none" opacity=".55" stroke-linecap="round"/>`,
+    `<ellipse cx="${n(100-NW*.42)}" cy="${n(tip+1.4)}" rx="1.8" ry="1.1" fill="${deep}" opacity=".6"/><ellipse cx="${n(100+NW*.42)}" cy="${n(tip+1.4)}" rx="1.8" ry="1.1" fill="${deep}" opacity=".6"/>`,
+    `<ellipse cx="${n(100+1)}" cy="${n(tip-3)}" rx="2.6" ry="2" fill="#ffffff" opacity=".13"/>`);
+  // 12. mouth: closed lips, plus an open mouth that animates while the leader is talking
+  const sm=k.smile*2.6, lf=k.lip;
+  P.push(`<path d="M${n(100-MW)} ${n(my-sm)} C${n(100-MW*.5)} ${n(my-3)} 97 ${n(my-4.6)} 100 ${n(my-3)} C103 ${n(my-4.6)} ${n(100+MW*.5)} ${n(my-3)} ${n(100+MW)} ${n(my-sm)} C${n(100+MW*.5)} ${n(my+.6)} ${n(100-MW*.5)} ${n(my+.6)} ${n(100-MW)} ${n(my-sm)}Z" fill="${lipD}"/>`,
+    `<path d="M${n(100-MW+1)} ${n(my+.4-sm*.6)} C${n(100-MW*.5)} ${n(my+1)} ${n(100+MW*.5)} ${n(my+1)} ${n(100+MW-1)} ${n(my+.4-sm*.6)} C${n(100+MW*.55)} ${n(my+5.6*lf)} ${n(100-MW*.55)} ${n(my+5.6*lf)} ${n(100-MW+1)} ${n(my+.4-sm*.6)}Z" fill="${lip}"/>`,
+    `<path d="M${n(100-MW)} ${n(my-sm)} C${n(100-MW*.5)} ${n(my+.8)} ${n(100+MW*.5)} ${n(my+.8)} ${n(100+MW)} ${n(my-sm)}" stroke="${lvMix(lipD,'#000000',.35)}" stroke-width="1" fill="none"/>`,
+    `<ellipse cx="100" cy="${n(my+2.4*lf)}" rx="3.5" ry="1" fill="#ffffff" opacity=".12"/>`,
+    `<g class="lv-talk"><ellipse cx="100" cy="${n(my+1.6)}" rx="${n(MW*.62)}" ry="3.4" fill="#3a1212"/><path d="M${n(100-MW*.48)} ${n(my-.6)} L${n(100+MW*.48)} ${n(my-.6)} L${n(100+MW*.42)} ${n(my+.9)} L${n(100-MW*.42)} ${n(my+.9)}Z" fill="#efe9df" opacity=".9"/></g>`);
+  if(['mustache','beard','short','goatee'].includes(k.beard)) P.push(`<path d="${moD}" fill="${hairC}"/>`);
+  // 13. hair in front
+  const H=[];
+  if(!k.head && !k.cap){
+    const st=k.style;
+    if(st==='curly'){
+      const hy=T+20, rx=W+(fem?9:4), ry=fem?40:31, bumps=fem?22:16, br=fem?6.5:4.6; let cs='';
+      H.push(`<path d="M${n(100-W-2)} ${n(T+50)} C${n(100-W-5)} ${n(T+14)} ${n(100-W*.6)} ${n(T-8)} 100 ${n(T-8)} C${n(100+W*.6)} ${n(T-8)} ${n(100+W+5)} ${n(T+14)} ${n(100+W+2)} ${n(T+50)} L${n(100+W-1)} ${n(T+51)} C${n(100+W-3)} ${n(T+30)} ${n(100+W*.6)} ${n(T+12)} 100 ${n(T+13)} C${n(100-W*.6)} ${n(T+12)} ${n(100-W+3)} ${n(T+30)} ${n(100-W+1)} ${n(T+51)}Z" fill="${hairC}"/>`);
+      for(let i=0;i<=bumps;i++){ const a=Math.PI*(1.06+0.88*i/bumps); cs+=`<circle cx="${n(100+Math.cos(a)*rx*.98)}" cy="${n(hy+Math.sin(a)*ry)}" r="${n(br)}" fill="${hairC}"/>`; }
+      for(let i=0;i<14;i++){ const a=Math.PI*(1.12+0.76*i/13), f=.72; cs+=`<circle cx="${n(100+Math.cos(a)*rx*f)}" cy="${n(hy+Math.sin(a)*ry*f)}" r="1.6" fill="${hairD}" opacity=".55"/>`; }
+      if(fem) for(let i=0;i<8;i++){ const yy=T+48+i*9; cs+=`<circle cx="${n(100-W-6+(i%2)*2)}" cy="${n(yy)}" r="6" fill="${hairC}"/><circle cx="${n(100+W+6-(i%2)*2)}" cy="${n(yy)}" r="6" fill="${hairC}"/>`; }
+      H.push(cs);
+    }
+    else if(!fem && st==='bald'){ [-1,1].forEach(s=>H.push(`<path d="M${n(100+s*(W+1))} ${n(T+57)} C${n(100+s*(W+4))} ${n(T+38)} ${n(100+s*(W+2))} ${n(T+24)} ${n(100+s*(W-6))} ${n(T+16)} C${n(100+s*(W-5))} ${n(T+27)} ${n(100+s*(W-3))} ${n(T+40)} ${n(100+s*(W-3))} ${n(T+58)}Z" fill="${hairC}"/>`));
+      H.push(`<ellipse cx="${n(100-W*.25)}" cy="${n(T+9)}" rx="11" ry="5" fill="#ffffff" opacity=".12"/>`); }
+    else {
+      let outer=-7, line=15;
+      if(st==='side'||st==='pixie') outer=-9; if(st==='swept') { outer=-12; line=12; } if(st==='buzz'){ outer=-3; line=14; } if(st==='receding') outer=-5;
+      if(fem && (st==='bob'||st==='long'||st==='shoulder')){
+        H.push(`<path d="M${n(100-W-4)} ${n(T+58)} C${n(100-W-6)} ${n(T+12)} ${n(100-W*.5)} ${n(T-10)} ${n(100+W*.15)} ${n(T-10)} C${n(100+W*.85)} ${n(T-9)} ${n(100+W+5)} ${n(T+18)} ${n(100+W+4)} ${n(T+60)} L${n(100+W)} ${n(T+62)} C${n(100+W-3)} ${n(T+34)} ${n(100+W*.55)} ${n(T+18)} ${n(100+W*.05)} ${n(T+23)} C${n(100-W*.45)} ${n(T+29)} ${n(100-W+4)} ${n(T+40)} ${n(100-W)} ${n(T+64)}Z" fill="${hairC}"/>`);
+      } else {
+        let inner;
+        if(st==='receding') inner=`C${n(100+W-3)} ${n(T+30)} ${n(100+W*.75)} ${n(T+9)} ${n(100+W*.55)} ${n(T+7)} C${n(100+W*.4)} ${n(T+15)} ${n(100+W*.2)} ${n(T+17)} 100 ${n(T+16)} C${n(100-W*.2)} ${n(T+17)} ${n(100-W*.4)} ${n(T+15)} ${n(100-W*.55)} ${n(T+7)} C${n(100-W*.75)} ${n(T+9)} ${n(100-W+3)} ${n(T+30)} ${n(100-W+1)} ${n(T+53)}`;
+        else if(st==='side'||st==='pixie') inner=`C${n(100+W-3)} ${n(T+30)} ${n(100+W*.55)} ${n(T+16)} ${n(100-W*.2)} ${n(T+(st==='pixie'?20:14))} C${n(100-W*.5)} ${n(T+(st==='pixie'?24:16))} ${n(100-W+3)} ${n(T+32)} ${n(100-W+1)} ${n(T+53)}`;
+        else inner=`C${n(100+W-3)} ${n(T+32)} ${n(100+W*.6)} ${n(T+line-1)} 100 ${n(T+line)} C${n(100-W*.6)} ${n(T+line-1)} ${n(100-W+3)} ${n(T+32)} ${n(100-W+1)} ${n(T+53)}`;
+        H.push(`<path d="M${n(100-W-2)} ${n(T+52)} C${n(100-W-4)} ${n(T+18)} ${n(100-W*.6)} ${n(T+outer)} 100 ${n(T+outer)} C${n(100+W*.6)} ${n(T+outer)} ${n(100+W+4)} ${n(T+18)} ${n(100+W+2)} ${n(T+52)} L${n(100+W-1)} ${n(T+53)} ${inner}Z" fill="${hairC}" ${st==='buzz'?'opacity=".82"':st==='receding'?'opacity=".93"':''}/>`);
+        if(st==='side') H.push(`<path d="M${n(100-W*.42)} ${n(T-6)} C${n(100-W*.4)} ${n(T+2)} ${n(100-W*.36)} ${n(T+8)} ${n(100-W*.32)} ${n(T+14)}" stroke="${hairL}" stroke-width="1.1" fill="none" opacity=".7"/>`);
+        if(st==='swept'||st==='side') H.push(`<path d="M${n(100-W*.2)} ${n(T-6)} C${n(100+W*.2)} ${n(T-9)} ${n(100+W*.6)} ${n(T-3)} ${n(100+W*.85)} ${n(T+8)} M${n(100-W*.5)} ${n(T-2)} C${n(100-W*.1)} ${n(T-6)} ${n(100+W*.4)} ${n(T-1)} ${n(100+W*.7)} ${n(T+10)}" stroke="${hairL}" stroke-width=".9" fill="none" opacity=".45"/>`);
+      }
+      H.push(`<path d="M${n(100-W*.6)} ${n(T-4)} C${n(100-W*.2)} ${n(T-9)} ${n(100+W*.2)} ${n(T-9)} ${n(100+W*.5)} ${n(T-3)}" stroke="${hairL}" stroke-width="3" fill="none" opacity=".25" stroke-linecap="round"/>`);
+    }
+  }
+  if(k.cap){ [-1,1].forEach(s=>H.push(`<path d="M${n(100+s*(W+1))} ${n(T+52)} C${n(100+s*(W+3))} ${n(T+36)} ${n(100+s*(W+1))} ${n(T+28)} ${n(100+s*(W-4))} ${n(T+24)} L${n(100+s*(W-3))} ${n(T+52)}Z" fill="${hairC}" opacity=".85"/>`)); }
+  P.push(...H);
+  // 14. glasses
+  if(k.glasses){ const fc=k.frame, sw=k.glasses==='half'?1.1:1.7;
+    [-1,1].forEach(s=>{ const x=100+s*EG;
+      if(k.glasses==='round') P.push(`<circle cx="${n(x)}" cy="${n(EY)}" r="9.6" fill="#cfe6ff" fill-opacity=".07" stroke="${fc}" stroke-width="${sw}"/>`);
+      else P.push(`<rect x="${n(x-11)}" y="${n(EY-7.2)}" width="22" height="14.4" rx="4.5" fill="#cfe6ff" fill-opacity=".07" stroke="${fc}" stroke-width="${sw}"/>`);
+      if(k.glasses==='half') P.push(`<path d="M${n(x-11)} ${n(EY-5)} C${n(x-6)} ${n(EY-8.6)} ${n(x+6)} ${n(EY-8.6)} ${n(x+11)} ${n(EY-5)}" stroke="${fc}" stroke-width="2.6" fill="none"/>`);
+      P.push(`<path d="M${n(100+s*(EG+11))} ${n(EY-3)} L${n(100+s*(W-1))} ${n(EY-1)}" stroke="${fc}" stroke-width="1.4"/>`,
+        `<path d="M${n(x-6)} ${n(EY-4)} l4 -2" stroke="#ffffff" stroke-width="1" opacity=".35"/>`); });
+    P.push(`<path d="M${n(100-EG+10)} ${n(EY-2.5)} C97 ${n(EY-5.5)} 103 ${n(EY-5.5)} ${n(100+EG-10)} ${n(EY-2.5)}" stroke="${k.frame}" stroke-width="1.5" fill="none"/>`); }
+  // 15. headwear
+  if(k.head==='ghutra'){
+    const fill = k.ghutra==='red' ? `url(#${id}k)` : k.ghutra==='massar' ? `url(#${id}m)` : '#f6f5f1';
+    P.push(`<path d="${clothD(T-14, T+18)}" fill="${fill}" stroke="#cfccc4" stroke-width=".8"/>`,
+      `<path d="M${n(100-W-6)} 120 C${n(100-W-8)} 150 ${n(100-W-14)} 180 ${n(100-W-22)} 206 M${n(100+W+6)} 120 C${n(100+W+8)} 150 ${n(100+W+14)} 180 ${n(100+W+22)} 206 M${n(100-W*.5)} ${n(T-8)} C${n(100-W*.3)} ${n(T+2)} ${n(100-W*.2)} ${n(T+10)} ${n(100-W*.18)} ${n(T+17)}" stroke="#000000" stroke-opacity=".1" stroke-width="1.4" fill="none"/>`);
+    if(k.ghutra!=='massar') P.push(`<path d="M${n(100-W-11)} ${n(T+3)} C${n(100-W*.5)} ${n(T+15)} ${n(100+W*.5)} ${n(T+15)} ${n(100+W+11)} ${n(T+3)}" stroke="#141414" stroke-width="4.6" fill="none" stroke-linecap="round"/><path d="M${n(100-W-10)} ${n(T-3)} C${n(100-W*.5)} ${n(T+9)} ${n(100+W*.5)} ${n(T+9)} ${n(100+W+10)} ${n(T-3)}" stroke="#1c1c1c" stroke-width="4" fill="none" stroke-linecap="round"/>`);
+  }
+  if(k.head==='scarf') P.push(`<path d="${clothD(T-11, T+14)}" fill="${k.scarf}"/>`,
+    `<path d="M${n(100-W-6)} 118 C${n(100-W-9)} 150 ${n(100-W-14)} 182 ${n(100-W-22)} 208 M${n(100+W+6)} 118 C${n(100+W+9)} 150 ${n(100+W+14)} 182 ${n(100+W+22)} 208 M${n(100-W*.6)} ${n(T-6)} C${n(100-W*.2)} ${n(T-9)} ${n(100+W*.3)} ${n(T-8)} ${n(100+W*.7)} ${n(T-2)}" stroke="#ffffff" stroke-opacity=".1" stroke-width="1.6" fill="none"/>`,
+    `<path d="M${n(100-W+2)} ${n(T+30)} C${n(100-W*.5)} ${n(T+15)} ${n(100+W*.5)} ${n(T+15)} ${n(100+W-2)} ${n(T+30)}" stroke="#000000" stroke-opacity=".18" stroke-width="2" fill="none"/>`);
+  if(k.cap){ const cc=lvMix(S,'#000000',.08);
+    P.push(`<path d="M${n(100-W-14)} ${n(T+6)} C${n(100-W-12)} ${n(T-24)} ${n(100+W+12)} ${n(T-24)} ${n(100+W+14)} ${n(T+6)} C${n(100+W+6)} ${n(T+15)} ${n(100-W-6)} ${n(T+15)} ${n(100-W-14)} ${n(T+6)}Z" fill="${cc}"/>`,
+      `<path d="M${n(100-W-2)} ${n(T+9)} L${n(100+W+2)} ${n(T+9)} L${n(100+W+1)} ${n(T+22)} L${n(100-W-1)} ${n(T+22)}Z" fill="${k.capBand}"/>`,
+      `<path d="M${n(100-W-2)} ${n(T+10)} L${n(100+W+2)} ${n(T+10)}" stroke="#d4af37" stroke-width="1.6"/>`,
+      `<path d="M${n(100-W+2)} ${n(T+21)} C${n(100-W*.4)} ${n(T+34)} ${n(100+W*.4)} ${n(T+34)} ${n(100+W-2)} ${n(T+21)} C${n(100+W*.3)} ${n(T+27)} ${n(100-W*.3)} ${n(T+27)} ${n(100-W+2)} ${n(T+21)}Z" fill="#0c0c0c"/>`,
+      `<path d="M${n(100-W*.5)} ${n(T+25)} C${n(100-W*.2)} ${n(T+29)} ${n(100+W*.2)} ${n(T+29)} ${n(100+W*.5)} ${n(T+25)}" stroke="#ffffff" stroke-opacity=".25" stroke-width="1" fill="none"/>`,
+      `<circle cx="100" cy="${n(T+2)}" r="6.5" fill="#d4af37" stroke="#8a6d1d" stroke-width=".8"/><path d="M100 ${n(T-2.5)} l1.4 3 3.2 .3 -2.4 2.1 .8 3.1 -3 -1.7 -3 1.7 .8 -3.1 -2.4 -2.1 3.2 -.3Z" fill="#8a6d1d"/>`);
+  }
+  const svg=`<svg class="lv ${cls||''}" style="--bd:-${(lvHash(L.name)%55)/10}s" viewBox="${variant==='call'?'-14 2 228 274':'18 14 164 164'}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${defs}${P.join('')}</svg>`;
+  _lvCache.set(key, svg);
+  return svg;
+}
+
+// ── who they are ──
+function leaderTraitRoll(c, r, force){
+  const law=c.governmentLaw||'autocracy', w={...(TRAIT_BY_GOV[law]||TRAIT_BY_GOV.autocracy)};
+  if(c.ai===1){ w.hawk=(w.hawk||1)*2; w.nationalist=(w.nationalist||1)*1.4; }
+  const out=force?[force]:[];
+  while(out.length<2){
+    const ww={...w}; out.forEach(t=>{ delete ww[t]; TRAIT_CLASH.forEach(([a,b])=>{ if(a===t) delete ww[b]; if(b===t) delete ww[a]; }); });
+    if(!Object.keys(ww).length) break;
+    out.push(lvPick(r, ww));
+  }
+  return out;
+}
+function leaderNameFor(c, fem, r, keepLast){
+  const P=minNamePool(c.abbr, c.region||'N.America'), pk=a=>a[Math.floor(r()*a.length)];
+  const used=new Set(CLIST.map(x=>x.leader?.name).filter(Boolean));
+  for(let i=0;i<12;i++){
+    const given=pk(fem?P.f:P.m), li=Math.floor(r()*P.l.length);
+    let last = keepLast || (fem && P.lf ? P.lf[li % P.lf.length] : P.l[li]);
+    if(fem && P.fem && !keepLast) last=feminineSurname(last, P.fem);
+    const full = P.pat ? `${given} ${fem?P.pat[1]:P.pat[0]} ${last}` : P.fam ? `${last} ${given}` : `${given} ${last}`;
+    if(!used.has(full) && given!==last) return { full, last };
+  }
+  const g=pk(P.m), l=pk(P.l); return { full:`${g} ${l}`, last:l };
+}
+// why: 'start' (2010 incumbent), 'succession', 'coup', 'independence'
+function makeLeader(c, why){
+  if(!c) return null;
+  const prev=c.leader, gen=(prev?.gen||0)+1, r=lvRng(lvHash(c.abbr+':'+gen+':'+Math.random()));
+  const law=c.governmentLaw||'autocracy', mon=!!LEADER_MONARCH[c.abbr];
+  const femP = mon || law==='theocracy' ? 0 : law==='militarism' ? 0.04 : ['W.Europe','Oceania'].includes(c.region) ? 0.32 : ['N.America','S.America','E.Europe'].includes(c.region) ? 0.24 : 0.16;
+  const fem = r() < femP;
+  const age = Math.round(mon ? lvRange(r,44,82) : law==='democracy'||law==='free_market' ? lvRange(r,44,68) : law==='militarism' ? lvRange(r,48,70) : lvRange(r,48,76));
+  const yr=G.year||2010, maxTenure = why==='start' ? (mon?28:law==='democracy'||law==='free_market'?6:law==='technocracy'?8:18) : 0;
+  const since = why==='start' ? Math.max(yr-age+38, yr-Math.floor(r()*(maxTenure+1))) : yr;
+  const nm = leaderNameFor(c, fem, r, mon && prev?.last ? prev.last : null);
+  const L = { name:nm.full, last:nm.last, fem, born:yr-age, since, gen, why:why||'start',
+              traits: leaderTraitRoll(c, r, why==='coup' ? 'loyal' : null),
+              rank: law==='militarism' && !fem ? lvPick(r,{General:4,'Field Marshal':1,Admiral:.6}) : null };
+  L.look = genLeaderLook(c, L, r);
+  c.leader = L;
+  return L;
+}
+function ensureLeaders(){ CLIST.forEach(c=>{ if(!c.leader?.look) makeLeader(c,'start'); }); }
+function leaderTitle(c){
+  const L=c?.leader; if(!L) return '';
+  if(LEADER_MONARCH[c.abbr]) return LEADER_MONARCH[c.abbr];
+  if(c.governmentLaw==='theocracy') return 'Supreme Leader';
+  if(c.governmentLaw==='militarism') return L.rank || 'President';
+  if(c.abbr==='DEU'||c.abbr==='AUT') return 'Chancellor';
+  if(c.abbr==='PRK') return 'Chairman';
+  if(c.governmentLaw==='technocracy') return 'Premier';
+  if(LEADER_PM.has(c.abbr) && c.governmentLaw!=='autocracy') return 'Prime Minister';
+  return 'President';
+}
+function leaderFull(c){ return c?.leader ? `${leaderTitle(c)} ${c.leader.name}` : (c?.name||''); }
+function leaderHas(c, t){ return !!c?.leader?.traits?.includes(t); }
+function leaderMod(c, key){
+  const L=c?.leader; if(!L || c===G.player) return 1;
+  return (L.traits||[]).reduce((m,t)=>m*(LEADER_TRAITS[t]?.m?.[key] ?? 1), 1);
+}
+function leaderTraitChips(c){
+  return (c.leader?.traits||[]).map(t=>{ const T=LEADER_TRAITS[t]; return T ? `<span class="ldr-chip" title="${mEsc(T.desc)}">${T.ico} ${T.name}</span>` : ''; }).join('');
+}
+// Nation panel card
+function leaderCardHTML(c){
+  const L=c?.leader; if(!L || c===G.player) return '';
+  const age=G.year-L.born, yrs=G.year-L.since;
+  const tenure = L.why==='coup' ? `took power ${L.since}` : L.why==='independence' ? `leading since independence (${L.since})` : yrs<=0 ? `took office ${L.since}` : `in office since ${L.since}`;
+  const lc=L.lastCall;
+  return `<div class="ldr-card">
+    <div class="ldr-av">${leaderAvatarSVG(c,'card')}</div>
+    <div class="ldr-body">
+      <div class="ldr-t">${mEsc(leaderTitle(c))}</div>
+      <div class="ldr-n">${mEsc(L.name)}</div>
+      <div class="ldr-s">Age ${age} · ${tenure}</div>
+      <div class="ldr-chips">${leaderTraitChips(c)}</div>
+      <div class="ldr-d">${(L.traits||[]).map(t=>LEADER_TRAITS[t]?.desc).filter(Boolean).join(' ')}</div>
+      ${lc?`<div class="ldr-lc">📞 Last call ${mEsc(lc.date)}: ${mEsc(lc.what)} · <b style="color:${lc.ok?'var(--green)':'var(--red2)'}">${lc.ok?'accepted':'declined'}</b></div>`:''}
+    </div></div>`;
+}
+// Phone bottom sheet line
+function leaderSheetHTML(c){
+  const L=c?.leader; if(!L || c===G.player) return '';
+  return `<div class="cs-ldr"><span class="cs-ldr-av">${leaderAvatarSVG(c,'sheet')}</span><span style="min-width:0"><b>${mEsc(leaderFull(c))}</b><br><small>${(L.traits||[]).map(t=>LEADER_TRAITS[t]?`${LEADER_TRAITS[t].ico} ${LEADER_TRAITS[t].name}`:'').join(' · ')}</small></span></div>`;
+}
+function leaderShortLine(c){ const L=c?.leader; if(!L) return ''; return `${mEsc(leaderFull(c))} ${(L.traits||[]).map(t=>LEADER_TRAITS[t]?.ico||'').join('')}`; }
+
+// Leaders change over time: terms end, monarchs and strongmen grow old (checked monthly per country)
+function leaderTurnover(c){
+  const L=c.leader; if(!L || c===G.player || c.annexedBy) return;
+  const yrs=G.year-L.since, age=G.year-L.born, law=c.governmentLaw;
+  let annual = LEADER_MONARCH[c.abbr] ? (age>78?0.12:0.01)
+             : ['democracy','free_market','technocracy'].includes(law) ? (yrs>=4?0.30:0.03)
+             : (yrs>=10?0.10:0.02);
+  if(age>80) annual+=0.15;
+  if(Math.random() >= annual/12) return;
+  const old=leaderFull(c);
+  makeLeader(c,'succession');
+  const p=G.player, close = p && (getDiplo(p,c.abbr).embassyStatus==='active' || p.wars.has(c.id));
+  if(close || c.gdp>300) addWorldEv('i','🎙️ New Leader',`${c.flag}${c.name}: ${leaderFull(c)} takes over from ${old}.`, c.flag, '🎙️');
+  if(close) addEv('i','🎙️ New Leader',`${leaderFull(c)} now leads ${c.name} (${(c.leader.traits||[]).map(t=>LEADER_TRAITS[t]?.name).join(', ')}).`);
+}
+
+// ═══ SECURE VIDEO CALLS — leaders phone you with proposals and peace offers ═══
+const CALL_KIND = {
+  embassy:{ ico:'🏛️', title:'Embassy proposal', subj:'Opening embassies', what:'embassies' },
+  trade:  { ico:'📦', title:'Trade route',      subj:'A trade route', what:'trade route' },
+  ally:   { ico:'🤝', title:'Alliance offer',   subj:'A formal alliance', what:'alliance' },
+  pact:   { ico:'🛡️', title:'Defensive pact',   subj:'A defensive pact', what:'defensive pact' },
+  peace:  { ico:'🕊️', title:'Peace offer',      subj:'Ending the war', what:'peace offer' },
+  terms:  { ico:'🕊️', title:'Peace terms',      subj:'Ending the war', what:'peace terms' },
+};
+const CALL_LINES = {
+  greet:{ hawk:['Commander. I will keep this short.','Commander. Let us not waste time.'],
+          dove:['Commander, thank you for taking my call.','Good to see you, Commander. I hope you are well.'],
+          merchant:['Commander! Good to connect. I have a deal for you.','Commander, I think there is money to be made here, for both of us.'],
+          pragmatist:['Commander, thank you for your time.','Commander. I have a practical proposal for you.'],
+          nationalist:['Commander. {C} has a proposal for {P}.','Commander. I speak for the people of {C}.'],
+          diplomat:['Commander, a pleasure as always.','Commander, it is good to talk directly.'],
+          isolationist:['Commander. We do not make calls like this often, so please hear me out.','Commander. I will be direct.'],
+          loyal:['Commander, my friend. Thank you for answering.','Commander. Friends should talk more often.'] },
+  ask:{ embassy:{ default:'I would like us to open embassies in each other\'s capitals. {C} will cover the construction costs.',
+                  merchant:'Our companies keep asking why we have no embassy in {P}. Let us fix that. We will pay for the buildings.',
+                  diplomat:'Every good relationship starts with an embassy. Let us open one in each capital, and {C} will cover the cost.',
+                  hawk:'Our governments need a direct channel. An embassy in each capital, at our expense.' },
+        trade:{ default:'Let us open a trade route. Your goods, our markets: both treasuries win.',
+                merchant:'Our ports are ready and our buyers are waiting. Open a trade route with {C} and your exporters will thank you.',
+                hawk:'Our industry needs reliable suppliers. A trade route with {P} would suit us both.',
+                nationalist:'{C} is ready to buy from {P}. A trade route, on fair terms.' },
+        ally:{ default:'Our nations want the same things. I am proposing a formal alliance.',
+               hawk:'The world is getting more dangerous. I want {P} at our side: a formal alliance.',
+               loyal:'We have been good friends for a while now. Let us make it official with an alliance.',
+               diplomat:'An alliance between {C} and {P} would steady the whole region. Will you join us?' },
+        pact:{ default:'We are allies already. Let us make it binding with a defensive pact: an attack on one is an attack on both.',
+               hawk:'Alliances are words. A defensive pact is steel. If anyone attacks {P}, {C} fights beside you, and the same in return.',
+               loyal:'I want our people to know we will never stand alone. Sign a defensive pact with us.' },
+        peace:{ default:'This war has cost us both enough. We will stop the fighting and pay {amt} in reparations.',
+                hawk:'Neither of us gains by dragging this out. Peace now, and {amt} for your treasury.',
+                dove:'Too many lives have been lost. Let us end this today. {C} will pay {amt} to make it right.',
+                nationalist:'{C} is prepared to end this war and pay {amt}. Do not mistake this for weakness.',
+                broke:'This war has cost us both enough. Our treasury is empty, but I am offering peace today.' },
+        terms:{ default:'Your forces are struggling, Commander. End the war now for {amt}, and we can both rebuild.',
+                hawk:'Your army is beaten. Pay {amt} and withdraw, or we keep going.',
+                nationalist:'{C} has won this fight. Pay {amt} and we will stop here.',
+                white:'Enough blood has been spilled. Let us end this war today. No reparations, no conditions.' } },
+  yes:{ default:'Excellent. My office will handle the details.', hawk:'Good. Do not make me regret it.', dove:'Thank you, Commander. Our people will remember this.',
+        merchant:'Wonderful. A good day for both our economies.', nationalist:'Agreed. {C} keeps its word.', diplomat:'Splendid. This is how good relations are built.',
+        loyal:'Thank you, my friend.', isolationist:'Very well. It is agreed.', pragmatist:'Good. Then it is settled.' },
+  yesPeace:{ default:'Then it is over. Let us both start rebuilding.', hawk:'Done. The guns go quiet today.', dove:'Thank you. Tonight our people can sleep easier.' },
+  no:{ default:'Noted. Perhaps another time.', hawk:'That is a mistake, Commander. {C} will remember it.', nationalist:'{C} does not forget a snub, Commander.',
+       dove:'I understand. The door stays open.', merchant:'Your loss, Commander. It was a good offer.', diplomat:'Disappointing, but I respect your decision.',
+       isolationist:'Very well. We will not ask again soon.', loyal:'I am sorry to hear that. I thought we were closer.', pragmatist:'Understood. We will revisit it later.' },
+  noPeace:{ default:'Then we will settle this on the battlefield.', dove:'I am sorry to hear it. My offer stands a while longer.', hawk:'So be it. You will regret this, Commander.' },
+};
+function moneyWords(b){ const r1=v=>(Math.round(v*10)/10).toString().replace(/\.0$/,'');
+  return b>=1000 ? `${r1(b/1000)} trillion dollars` : b>=1 ? `${r1(b)} billion dollars` : `${Math.max(1,Math.round(b*1000))} million dollars`; }
+function callLine(c, set, kind, vars){
+  const L=c.leader, tr=L?.traits||[], S=CALL_LINES[set], pool = kind ? S[kind] : S;
+  let line;
+  if(set==='greet'){ const g=pool[tr[0]]||pool.pragmatist; line=g[(L.gen+G.totalDays)%g.length]; }
+  else if(vars?.variant && pool[vars.variant]) line=pool[vars.variant];
+  else line = pool[tr[0]] || pool[tr[1]] || pool.default;
+  const p=G.player;
+  return line.replace(/\{C\}/g, c.name).replace(/\{P\}/g, p?.name||'your country').replace(/\{amt\}/g, vars?.amt!=null ? moneyWords(vars.amt) : '');
+}
+// What the deal does, shown on the proposal card
+function callTerms(c, kind, amt){
+  const p=G.player, r=Math.round(c.rels[p.id]??50);
+  switch(kind){
+    case 'embassy': return `Embassies in both capitals, built at ${mEsc(c.name)}'s expense and ready in ${10+envoyDays(p,c)} days. An embassy lets you trade and negotiate with them.`;
+    case 'trade':   return `A trade route opens straight away: your exports start flowing to their market. Relations +5.`;
+    case 'ally':    return `Allies pay ${Math.round(ALLY_TRADE_BONUS*100)}% more for your exports, buy more of them and stand together in war. Relations +10.`;
+    case 'pact':    return `Each side comes to the other's defence if attacked. Relations +10.`;
+    case 'peace':   return amt>0 ? `The war ends and ${mEsc(c.name)} pays you ${fmtShort(amt)} in reparations.` : `The war ends. ${mEsc(c.name)} has nothing left to pay.`;
+    case 'terms':   return amt>0 ? `The war ends and you pay ${mEsc(c.name)} ${fmtShort(amt)}. Your treasury: ${fmtShort(p.treasury)}.` : `The war ends with no reparations on either side.`;
+  }
+  return '';
+}
+function leaderSting(c){ return Math.max(1, Math.min(7, Math.round(3*leaderMod(c,'sting')))); }   // relations lost when you refuse
+function leaderWaitDays(c){ return Math.round(182*leaderMod(c,'wait')); }                          // before they ask the same again
+function monthsText(days){ const m=Math.max(1,Math.round(days/30.4)); return `${m} month${m===1?'':'s'}`; }
+function callRefuseCost(c, kind){
+  if(kind==='peace'||kind==='terms') return 'Refusing: the war goes on.';
+  return `Refusing: relations −${leaderSting(c)}, and they won't ask again for ${monthsText(leaderWaitDays(c))}.`;
+}
+
+let _call=null, _ringT=null;
+function callRing(on){
+  clearInterval(_ringT); _ringT=null; if(!on || !ATLAS_VOICE.on) return;
+  const beep=()=>{ try{ _chimeCtx=_chimeCtx||new (window.AudioContext||window.webkitAudioContext)(); const ac=_chimeCtx, t=ac.currentTime;
+    [[0,.4],[.55,.95]].forEach(([s,e])=>[440,480].forEach(f=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0,t+s); g.gain.linearRampToValueAtTime(.022,t+s+.03); g.gain.setValueAtTime(.022,t+e-.05); g.gain.linearRampToValueAtTime(0,t+e);
+      o.connect(g).connect(ac.destination); o.start(t+s); o.stop(t+e+.02); })); }catch(e){} };
+  beep(); _ringT=setInterval(beep, 2800);
+}
+// Opens the incoming-call screen. kind: embassy | trade | ally | pact | peace | terms
+function leaderCall(c, kind, opts={}){
+  const p=G.player; if(!p || !c || c===p) return false;
+  if(!c.leader?.look) makeLeader(c,'start');
+  if(document.getElementById('diplo-req')) return false;
+  const K=CALL_KIND[kind]; if(!K) return false;
+  _call={ cid:c.id, kind, amt:opts.amt||0, phase:'ring', done:false, timers:[], t0:0, callback:!!opts.callback };
+  if(!opts.callback) noteProposal(p, c, kind);          // on record until answered, so a call that never reaches you isn't lost
+  pauseForModal();
+  const L=c.leader;
+  const d=document.createElement('div'); d.id='diplo-req'; d.className='hud-modal-wrap vc-wrap';
+  d.innerHTML=`<div class="vc" role="dialog" aria-label="Incoming call from ${mEsc(leaderFull(c))}">
+    <div class="vc-top"><span class="vc-lock">🔒 SECURE LINE</span><span class="vc-chan">ATLAS DIPLOMATIC CHANNEL</span>
+      <span class="vc-time" id="vc-time">--:--</span><span class="vc-sig"><i></i><i></i><i></i><i></i></span></div>
+    <div class="vc-feed ringing" id="vc-feed">
+      <div class="vc-bg"><span class="vc-flag fe">${c.flag}</span></div>
+      <div class="vc-person">${leaderAvatarSVG(c,'call')}</div>
+      <div class="vc-scan"></div>
+      <div class="vc-live"><b></b>LIVE</div>
+      <div class="vc-pip"><span class="fe">${p.flag}</span><small>COMMANDER</small></div>
+      <div class="vc-lower"><span class="fe">${c.flag}</span><div><div class="vc-ln">${mEsc(leaderFull(c))}</div><div class="vc-lc">${mEsc(c.name)} · ${(L.traits||[]).map(t=>LEADER_TRAITS[t]?`${LEADER_TRAITS[t].ico} ${LEADER_TRAITS[t].name}`:'').join(' · ')}</div></div></div>
+      <div class="vc-ring">
+        <div class="vc-ring-av"><i></i><i></i>${leaderAvatarSVG(c,'ring')}</div>
+        <div class="vc-ring-k">INCOMING SECURE CALL</div>
+        <div class="vc-ring-n">${mEsc(leaderFull(c))}</div>
+        <div class="vc-ring-c"><span class="fe">${c.flag}</span> ${mEsc(c.name)}</div>
+        <div class="vc-ring-s">Subject: ${K.ico} ${K.subj}</div>
+      </div>
+    </div>
+    <div class="vc-under" id="vc-under">
+      <div class="vc-btns">
+        <button class="vc-b no" onclick="leaderCallReject()" aria-label="Decline call"><span>✕</span>Decline</button>
+        <button class="vc-b yes" onclick="leaderCallPickUp()" aria-label="Answer call"><span>📞</span>Answer</button>
+      </div>
+      ${kind==='peace'||kind==='terms' ? '' : `<button class="vc-hold" onclick="leaderCallReject(true)">📵 Hold all calls for 3 months</button>`}
+    </div></div>`;
+  document.body.appendChild(d);
+  try{ applyTwemoji(d); }catch(e){}
+  if(opts.callback) return true;                        // you're calling them: the line connects straight away
+  callRing(true);
+  atlasAlert(`Commander, incoming call from ${leaderFull(c)} of ${c.name}.`);
+  addEv('i',`📞 Incoming Call`,`${leaderFull(c)} of ${c.name}: ${K.subj.toLowerCase()}.`);
+  setTimeout(()=>d.querySelector('.vc-b.yes')?.focus(),60);
+  return true;
+}
+function callTimerTick(){ const el=document.getElementById('vc-time'); if(!el||!_call?.t0) return; const s=Math.floor((performance.now()-_call.t0)/1000); el.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+function leaderCallPickUp(){
+  const st=_call; if(!st || st.phase!=='ring') return;
+  const c=CTRY[st.cid], p=G.player; if(!c){ leaderCallEnd(); return; }
+  callRing(false); st.phase='live'; st.t0=performance.now();
+  st.timers.push(setInterval(callTimerTick, 1000)); callTimerTick();
+  const feed=document.getElementById('vc-feed'); feed?.classList.remove('ringing'); feed?.classList.add('connecting');
+  setTimeout(()=>feed?.classList.remove('connecting'), 650);
+  const K=CALL_KIND[st.kind], peace=st.kind==='peace'||st.kind==='terms';
+  const short = st.kind==='terms' && st.amt>0 && p.treasury < st.amt;
+  const variant = st.kind==='peace' && !(st.amt>0) ? 'broke' : st.kind==='terms' && !(st.amt>0) ? 'white' : null;
+  document.getElementById('vc-under').innerHTML=`
+    <div class="vc-sub" id="vc-sub"></div>
+    <div class="vc-deal">
+      <div class="vc-deal-h">${K.ico} ${K.title}</div>
+      <div class="vc-deal-b">${callTerms(c, st.kind, st.amt)}</div>
+      <div class="vc-deal-f">Their relations with you: <b>${Math.round(c.rels[p.id]??50)}</b> · ${callRefuseCost(c, st.kind)}</div>
+    </div>
+    <div class="vc-btns">
+      <button class="vc-b no" onclick="leaderCallAnswer(false)"><span>✕</span>${peace?'Fight on':'Decline'}</button>
+      <button class="vc-b yes" onclick="leaderCallAnswer(true)" ${short?'disabled title="Not enough in the treasury"':''}><span>✓</span>${short?`Need ${fmtShort(st.amt)}`:peace?'Accept peace':'Accept'}</button>
+    </div>`;
+  const line = callLine(c,'greet') + ' ' + callLine(c,'ask',st.kind,{ amt:st.amt, variant });
+  setTimeout(()=>leaderSpeak(c, line), 450);
+}
+function leaderCallReject(hold){
+  const st=_call; if(!st || st.phase!=='ring') return;
+  const c=CTRY[st.cid], p=G.player; st.done=true; callRing(false);
+  if(c && p){
+    const kind=st.kind;
+    if(kind==='peace'||kind==='terms') addEv('w','📵 Call Declined',`You didn't take ${leaderFull(c)}'s call about ending the war.`);
+    else {
+      (p.diploReqCooldown=p.diploReqCooldown||{})[c.abbr+':'+kind]=G.totalDays+60;
+      if(hold){ p.callsHeldUntil=G.totalDays+90; addEv('i','📵 Calls on Hold',`Your office is holding diplomatic calls for 3 months. Peace talks still come through.`); }
+      else relShift(c,p,-1);
+      addEv('i','📵 Missed Call',`${leaderFull(c)} of ${c.name}: ${CALL_KIND[kind]?.subj.toLowerCase()||'a proposal'}.${hold?'':' Relations −1.'} You can call back for ${DIPLO_OFFER_DAYS} days from Foreign → Missed Calls.`, `reviewProposal('${c.abbr}','${kind}')`);
+    }
+  }
+  leaderCallEnd(true);
+}
+function leaderCallAnswer(yes){
+  const st=_call; if(!st || st.phase!=='live' || st.done) return;
+  const c=CTRY[st.cid], p=G.player; if(!c||!p){ leaderCallEnd(); return; }
+  st.done=true; st.phase='closing';
+  const peace=st.kind==='peace'||st.kind==='terms';
+  if(st.kind==='peace') applyPeaceOffer(c, st.amt, yes);
+  else if(st.kind==='terms') applyPeaceTerms(c, st.amt, yes);
+  else answerDiploRequest(c.id, st.kind, yes);
+  if(c.leader) c.leader.lastCall={ date:fmtDate(), what:CALL_KIND[st.kind].what, ok:!!yes };
+  const line = callLine(c, yes ? (peace?'yesPeace':'yes') : (peace?'noPeace':'no'));
+  const u=document.getElementById('vc-under');
+  if(u) u.innerHTML=`<div class="vc-sub" id="vc-sub"></div><div class="vc-result ${yes?'ok':'bad'}">${yes?'✓':'✕'} ${yes?(peace?'Peace agreed':'Agreement reached'):(peace?'You chose to fight on':'Proposal declined')}</div>
+    <div class="vc-btns"><button class="vc-b end" onclick="leaderCallEnd()"><span>⏹</span>End call</button></div>`;
+  leaderSpeak(c, line, ()=>{ const t=setTimeout(()=>leaderCallEnd(), 900); st.timers.push(t); });
+  colorMap(); lpRender(); topbarUpdate();
+}
+function leaderCallEnd(quick){
+  const st=_call; if(!st) return; _call=null;
+  callRing(false); st.timers.forEach(t=>{ clearTimeout(t); clearInterval(t); });
+  try{ if(st.utter){ st.utter.onend=st.utter.onerror=null; } speechSynthesis.cancel(); }catch(e){}
+  const d=document.getElementById('diplo-req');
+  const done=()=>{ d?.remove(); resumeFromModal(); try{ renderDiplo(); lpRender(); }catch(e){} };
+  if(d && !quick){ d.classList.add('ending'); setTimeout(done, 380); } else done();
+}
+
+// Voices: an English voice with an accent that fits the country where the device has one, never ATLAS's own
+const LEADER_ACCENT = { GBR:['en-GB'], IRL:['en-IE','en-GB'], USA:['en-US'], CAN:['en-CA','en-US'], AUS:['en-AU'], NZL:['en-NZ','en-AU'], IND:['en-IN'], PAK:['en-IN'], BGD:['en-IN'],
+  LKA:['en-IN'], NPL:['en-IN'], ZAF:['en-ZA'], NGA:['en-NG'], GHA:['en-GH','en-NG'], KEN:['en-KE'], TZA:['en-TZ','en-KE'], UGA:['en-KE'], PHL:['en-PH'], SGP:['en-SG'], MYS:['en-SG'], HKG:['en-HK'] };
+const LEADER_ACCENT_REGION = { 'S.Asia':['en-IN'], 'W.Africa':['en-NG'], 'E.Africa':['en-KE'], 'S.Africa':['en-ZA'], 'Africa':['en-NG','en-ZA'], 'Oceania':['en-AU'], 'SE.Asia':['en-SG','en-PH'] };
+const VOICE_FEM_RE=/\b(female|woman|Sonia|Libby|Hazel|Susan|Samantha|Zira|Aria|Jenny|Emma|Kate|Serena|Karen|Moira|Tessa|Fiona|Martha|Victoria|Ava|Allison|Neerja|Heera|Natasha|Clara|Leah|Ezinne|Asilia|Imani|Luna|Rosa|Michelle|Ana|Sara|Maisie|Abbi|Bella|Hollie|Olivia|Elsie|Veena|Rishi|Joanna|Salli|Kimberly|Kendra|Ivy|Nicole|Amy|Raveena|Aditi|Yan|Rosie|Emily|Jessa|Molly|Libby)\b/i;
+const VOICE_MALE_RE=/\b(male|man|Ryan|Thomas|Daniel|Arthur|George|Oliver|Guy|Christopher|Brian|Eric|Andrew|Davis|Jason|Tony|Liam|Prabhat|Ravi|William|Connor|Mitchell|Abeo|Chilemba|Elimu|Luke|James|Wayne|Rehaan|Matthew|Joey|Justin|Russell|Geraint|Fred|Alex|Aaron|Gordon|Lee|Rishi|Steffan|Sam)\b/i;
+function leaderVoice(c){
+  const vs=atlasVoices(); if(!vs.length) return null;
+  const L=c.leader, want=LEADER_ACCENT[c.abbr]||LEADER_ACCENT_REGION[c.region]||['en-GB','en-US'], av=atlasVoice();
+  const scored=vs.map(v=>{ const lang=(v.lang||'').replace('_','-'); let s=0;
+    const i=want.findIndex(w=>lang.toLowerCase()===w.toLowerCase()); if(i>=0) s+=40-i*8;
+    const f=VOICE_FEM_RE.test(v.name), m=VOICE_MALE_RE.test(v.name);
+    if(L.fem ? f : m) s+=30; else if(L.fem ? m : f) s-=40;
+    if(/natural|neural|online|premium|enhanced/i.test(v.name)) s+=10;
+    if(av && v.name===av.name) s-=60;
+    return { v, s }; }).sort((a,b)=>b.s-a.s);
+  const top=scored.filter(x=>x.s>=scored[0].s-12).slice(0,4);
+  return top[lvHash(L.name)%top.length].v;
+}
+// Leader talks: typed subtitles plus speech (if voice is on), mouth moving while they talk
+function leaderSpeak(c, text, onDone){
+  const st=_call; if(!st) return;
+  const sub=document.getElementById('vc-sub'), feed=document.getElementById('vc-feed');
+  let finished=false; const fin=()=>{ if(finished) return; finished=true; feed?.classList.remove('talking'); onDone?.(); };
+  if(sub){ sub.textContent=''; const chars=[...text]; let i=0;
+    const step=()=>{ if(!document.body.contains(sub)) return; sub.textContent=chars.slice(0,i+=2).join(''); if(i<chars.length) st.timers.push(setTimeout(step, 26)); };
+    step(); }
+  feed?.classList.add('talking');
+  const v = ATLAS_VOICE.on && _wlVoice && ('speechSynthesis' in window) ? leaderVoice(c) : null;
+  const fallback=Math.min(12000, 900+text.length*55);
+  if(v){
+    try{
+      ATLAS_VOICE.gen++; ATLAS_VOICE.queue=[]; ATLAS_VOICE.speaking=false; voiceMeter(false); speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(text), L=c.leader, age=G.year-L.born, h=lvHash(L.name);
+      u.voice=v; u.lang=v.lang; u.rate=0.97+(h%7)/100; u.pitch=Math.max(0.7, Math.min(1.25, (L.fem?1.06:0.94) - (age-55)*0.004 + ((h>>3)%9-4)/100 + (leaderHas(c,'hawk')?-0.04:0)));
+      u.onend=u.onerror=fin; st.utter=u; speechSynthesis.speak(u);
+      st.timers.push(setTimeout(fin, fallback+4000));
+    }catch(e){ st.timers.push(setTimeout(fin, fallback)); }
+  } else st.timers.push(setTimeout(fin, fallback));
+}
+
+// ── effects of the answers ──
+function applyPeaceOffer(c, amt, yes){
+  const p=G.player;
+  if(yes && p.wars.has(c.id)){ const pay=Math.min(amt||0, Math.max(0,c.treasury)); c.treasury-=pay; p.treasury+=pay; endWar(p,c);
+    addEv('d','🕊️ Peace',`War with ${c.flag}${c.name} ended${pay>0?`. You received ${fmtBil(pay)}`:''}. Reopen embassies and trade through Foreign Affairs.`); }
+  else if(!yes) addEv('w','⚔️ Offer Refused',`You refused ${leaderFull(c)}'s peace offer. The war with ${c.flag}${c.name} goes on.`);
+}
+function applyPeaceTerms(c, amt, yes){
+  const p=G.player;
+  if(yes && p.wars.has(c.id)){ const pay=Math.min(amt||0, Math.max(0,p.treasury)); p.treasury-=pay; c.treasury+=pay; endWar(p,c);
+    addEv('d','🕊️ Peace',`War with ${c.flag}${c.name} ended${pay>0?` on their terms: you paid ${fmtBil(pay)}`:' with no reparations'}.`); }
+  else if(!yes) addEv('w','⚔️ Terms Refused',`You rejected ${leaderFull(c)}'s terms. The war with ${c.flag}${c.name} goes on.`);
+}
+
+// ── peace talks: twice a month the other side of each of your wars may phone ──
+//    losing → offers peace and reparations; winning (after two months) → demands reparations (Peacemakers ask for none)
+function leaderPeaceTick(p){
+  if(G.totalDays%15!==7 || document.getElementById('diplo-req') || !p.wars?.size) return;
+  for(const id of p.wars){
+    const c=CTRY[id]; if(!c || c.annexedBy || c===p) continue;
+    const w=(G.wars||[]).find(x=>(x.a===p.id&&x.b===c.id)||(x.a===c.id&&x.b===p.id)), age=G.totalDays-(w?.startDay??G.totalDays);
+    if(age<30 || (p._offerSeen?.[c.id]!=null && G.totalDays-p._offerSeen[c.id]<60)) continue;
+    const me=Math.max(1,p.mil_strength||0), them=Math.max(1,c.mil_strength||0);
+    if(them < me*0.9 && Math.random() < 0.22*leaderMod(c,'offerPeace')*(c.appr<40?1.4:1)){ offerPeaceToPlayer(c); return; }
+    if(them > me*1.15 && age>=60 && Math.random() < 0.16*leaderMod(c,'offerPeace')){ offerTermsToPlayer(c); return; }
+  }
+}
+function offerTermsToPlayer(c){
+  const p=G.player; if(!p.wars.has(c.id)) return;
+  const ask = leaderHas(c,'dove') ? 0 : Math.round(Math.max(PEACE_COST, p.gdp*0.006)*leaderMod(c,'demand')*10)/10;
+  if(leaderCall(c,'terms',{ amt:ask })) (p._offerSeen=p._offerSeen||{})[c.id]=G.totalDays;
+}
+
+// ═══ AI DIPLOMATIC REQUESTS — leaders phone you with proposals (about one call every two months).
+//     Who calls and what they ask for depends on their personality (see LEADER_TRAITS). ═══
 function aiDiplomaticRequests(p){
   tickProposals(p);
   if(G.totalDays%30!==12 || Math.random()>0.5) return;
-  if(document.getElementById('diplo-req')) return;
+  if(document.getElementById('diplo-req') || (p.callsHeldUntil||0)>G.totalDays) return;
   const D=a=>p.diplomacy?.[a]||{};
   const relTo=c=>c.rels[p.id]??50;
   const cool=p.diploReqCooldown||{};
   const cands=[];
-  const okReq=(c,kind)=>!(cool[c.abbr+':'+kind]>G.totalDays) && !(p.proposals||[]).some(o=>o.abbr===c.abbr && o.kind===kind);   // declined in the last 6 months (or still waiting for your answer) → they wait
+  const okReq=(c,kind)=>!(cool[c.abbr+':'+kind]>G.totalDays) && !(p.proposals||[]).some(o=>o.abbr===c.abbr && o.kind===kind);   // declined recently (or a missed call still waiting) → they wait
   CLIST.forEach(c=>{
     if(c===p || c.annexedBy || c.vassalOf || c.wars.has(p.id) || p.wars.has(c.id)) return;
-    const d=D(c.abbr), r=relTo(c);
-    const add=x=>{ if(okReq(x.c,x.kind)) cands.push(x); };
+    const d=D(c.abbr), r=relTo(c), rate=leaderMod(c,'callRate');
+    const add=x=>{ if(okReq(x.c,x.kind)) cands.push({ ...x, w:Math.max(1,x.w)*rate*leaderMod(c,'w_'+x.kind) }); };
     if(d.embassyStatus==='none' || !d.embassyStatus){ if(r>=55) add({c,kind:'embassy',w:r}); return; }
     if(d.embassyStatus!=='active') return;
     if(!p.trades.has(c.id) && r>=50) add({c,kind:'trade',w:r+10});
@@ -10890,13 +11717,8 @@ function aiDiplomaticRequests(p){
   for(const x of cands){ if((r-=x.w)<=0){ pick=x; break; } }
   showDiploRequest(pick.c, pick.kind);
 }
-const DIPLO_REQ_TEXT = {
-  embassy:{ ico:'🏛️', title:'Embassy Proposal', body:c=>`${c.name} proposes opening embassies in each other's capitals. They will cover the construction costs. An embassy lets you trade and negotiate with them.` },
-  trade:  { ico:'📦', title:'Trade Agreement',  body:c=>`${c.name} wants to open a trade route with you. Your exports would start flowing to their market.` },
-  pact:   { ico:'🛡️', title:'Defensive Pact',   body:c=>`${c.name} proposes a defensive pact: each side comes to the other's aid if attacked.` },
-  ally:   { ico:'🤝', title:'Alliance Offer',   body:c=>`${c.name} proposes a formal alliance. Allies pay ${Math.round(ALLY_TRADE_BONUS*100)}% more for your exports and stand together in war.` },
-};
-// Offers stay open for a month: if you miss the pop-up (or tap "Later"), answer from Foreign → Proposals
+function showDiploRequest(c, kind){ return leaderCall(c, kind); }
+// Missed calls: a proposal you didn't pick up stays open for a month under Foreign → Proposals, where you can call back
 const DIPLO_OFFER_DAYS = 30;
 function diploProposalValid(p, c, kind){
   if(!p || !c || c.annexedBy || c.vassalOf || c.wars?.has(p.id) || p.wars?.has(c.id)) return false;
@@ -10906,8 +11728,14 @@ function diploProposalValid(p, c, kind){
   if(kind==='trade') return !p.trades.has(c.id);
   if(kind==='pact')  return !d.defensivePact;
   if(kind==='ally')  return d.relationship!=='ally' && !p.allies.has(c.id);
-  return true;
+  return false;
 }
+function noteProposal(p, c, kind){
+  if(!p || !c || !['embassy','trade','ally','pact'].includes(kind)) return;
+  p.proposals=(p.proposals||[]).filter(o=>!(o.abbr===c.abbr && o.kind===kind));
+  p.proposals.push({ abbr:c.abbr, kind, day:G.totalDays, until:G.totalDays+DIPLO_OFFER_DAYS });
+}
+function dropProposal(p, c, kind){ if(p?.proposals) p.proposals=p.proposals.filter(o=>!(o.abbr===c.abbr && o.kind===kind)); }
 function pendingProposals(p){
   return (p?.proposals||[]).filter(o=>G.totalDays<=o.until && diploProposalValid(p, CLIST.find(x=>x.abbr===o.abbr), o.kind));
 }
@@ -10917,65 +11745,36 @@ function tickProposals(p){
     const c=CLIST.find(x=>x.abbr===o.abbr);
     if(!diploProposalValid(p,c,o.kind)) return false;                 // overtaken by events (war, annexation, already agreed)
     if(G.totalDays>o.until){
-      (p.diploReqCooldown=p.diploReqCooldown||{})[o.abbr+':'+o.kind]=G.totalDays+90;
-      addEv('i','📨 Offer Lapsed',`${c.name}'s ${DIPLO_REQ_TEXT[o.kind].title.toLowerCase()} lapsed without an answer.`);
-      if(document.getElementById('diplo-req')?.dataset.key===o.abbr+':'+o.kind){ document.getElementById('diplo-req').remove(); resumeFromModal(); }
+      if(_call?.cid===c.id) return true;                              // on the phone about it right now
+      addEv('i','📵 Offer Lapsed',`${leaderFull(c)}'s ${CALL_KIND[o.kind]?.what||'proposal'} lapsed: you never called back.`);
       return false;
     }
     return true;
   });
 }
-function diploEmblem(c, size){
-  return `<div class="dr-av" style="${size?`width:${size}px;height:${size}px;font-size:${Math.round(size*0.56)}px;`:''}"><span class="fe">${c.flag}</span></div>`;
-}
-function showDiploRequest(c, kind, review){
-  const p=G.player, T=DIPLO_REQ_TEXT[kind]; if(!p || !c || !T) return;
-  const key=c.abbr+':'+kind;
-  if(!review){
-    atlasAlert(`Commander, ${c.name} has sent us a proposal: ${T.title.toLowerCase()}.`);
-    p.proposals=(p.proposals||[]).filter(o=>!(o.abbr===c.abbr && o.kind===kind));
-    p.proposals.push({ abbr:c.abbr, kind, day:G.totalDays, until:G.totalDays+DIPLO_OFFER_DAYS });
-  }
-  const o=(p.proposals||[]).find(x=>x.abbr===c.abbr && x.kind===kind), left=o ? Math.max(0,o.until-G.totalDays) : DIPLO_OFFER_DAYS;
-  const rel=Math.round(c.rels[p.id]??50), law=GOVERNMENT_LAWS[c.governmentLaw]?.name;
-  document.getElementById('diplo-req')?.remove();
-  pauseForModal();
-  const d=document.createElement('div'); d.id='diplo-req'; d.className='hud-modal-wrap'; d.dataset.key=key;
-  d.innerHTML=`<div class="hud-modal" style="width:440px;">
-    <div class="hud-modal-h"><span>📨 ${T.ico} ${T.title}</span></div>
-    <div class="dr-who">${diploEmblem(c)}
-      <div style="min-width:0;"><div class="dr-name">${mEsc(c.name)}</div>
-        <div class="dr-sub">${[c.region, law].filter(Boolean).join(' · ')}</div>
-        <div class="dr-rel"><span>Relations with you</span><i><b style="width:${Math.max(2,Math.min(100,rel))}%;background:${rel>=75?'var(--green)':rel>=50?'var(--teal)':rel>=30?'var(--gold)':'var(--red2)'}"></b></i><em>${rel}</em></div></div></div>
-    <div style="font-size:13.5px;color:var(--text2);line-height:1.55;">${T.body(c)}</div>
-    <div style="font-size:var(--fs-xs);color:var(--text3);margin-top:6px;">Open for ${left} more day${left===1?'':'s'}. "Later" keeps it under Foreign → Proposals.</div>
-    <div class="hud-row" style="justify-content:space-between;gap:6px;"><button class="hud-btn" onclick="proposalLater()">Later</button>
-      <span style="display:flex;gap:6px;"><button class="hud-btn" onclick="answerDiploRequest(${c.id},'${kind}',false)">Decline</button>
-      <button class="hud-btn pri" onclick="answerDiploRequest(${c.id},'${kind}',true)">Accept</button></span></div></div>`;
-  document.body.appendChild(d);
-  if(!review){ addEv('i',`📨 ${T.title}`,`${c.name} has sent a proposal. It stays open for ${DIPLO_OFFER_DAYS} days under Foreign → Proposals.`, `reviewProposal('${c.abbr}','${kind}')`); renderDiplo?.(); }
-}
-function proposalLater(){ document.getElementById('diplo-req')?.remove(); resumeFromModal(); renderDiplo(); if(typeof rpRender==='function') rpRender(); }
+// Call a leader back about a proposal you missed: the line connects straight away
 function reviewProposal(abbr, kind){
   const p=G.player, c=CLIST.find(x=>x.abbr===abbr); if(!p || !c) return;
-  if(!pendingProposals(p).some(o=>o.abbr===abbr && o.kind===kind)){ addEv('i','📨 Proposal',`${c.name}'s offer is no longer open.`); return; }
-  showDiploRequest(c, kind, true);
+  if(!pendingProposals(p).some(o=>o.abbr===abbr && o.kind===kind)){ addEv('i','📵 Proposal',`${c.name}'s offer is no longer open.`); renderDiplo(); return; }
+  if(leaderCall(c, kind, { callback:true })) leaderCallPickUp();
 }
 function proposalsHtml(p){
   const list=pendingProposals(p); if(!list.length) return '';
-  return `<div class="sec" style="margin-top:0;">📨 Proposals (${list.length})</div>
-    <div class="dr-list">${list.map(o=>{ const c=CLIST.find(x=>x.abbr===o.abbr), T=DIPLO_REQ_TEXT[o.kind], left=o.until-G.totalDays;
-      return `<button class="dr-item" onclick="reviewProposal('${o.abbr}','${o.kind}')">${diploEmblem(c,34)}
-        <span style="flex:1;min-width:0;text-align:left;"><b>${mEsc(c.name)}</b><small>${T.ico} ${T.title} · ${left} day${left===1?'':'s'} left</small></span><span class="dr-go">Review ›</span></button>`; }).join('')}</div>`;
+  return `<div class="sec" style="margin-top:0;">📵 Missed Calls (${list.length})</div>
+    <div class="dr-list">${list.map(o=>{ const c=CLIST.find(x=>x.abbr===o.abbr), K=CALL_KIND[o.kind], left=o.until-G.totalDays;
+      return `<button class="dr-item" onclick="reviewProposal('${o.abbr}','${o.kind}')"><span class="dr-av">${leaderAvatarSVG(c,'sheet')||`<span class="fe">${c.flag}</span>`}</span>
+        <span style="flex:1;min-width:0;text-align:left;"><b>${mEsc(leaderFull(c))}</b><small><span class="fe">${c.flag}</span> ${mEsc(c.name)} · ${K.ico} ${K.title} · ${left} day${left===1?'':'s'} left</small></span><span class="dr-go">📞 Call back</span></button>`; }).join('')}</div>`;
 }
+// Effects of your answer (the call screen shows the conversation)
 function answerDiploRequest(id, kind, yes){
-  const p=G.player, c=CTRY[id]; document.getElementById('diplo-req')?.remove(); resumeFromModal(); if(!c) return;
-  const open=(p.proposals||[]).some(o=>o.abbr===c.abbr && o.kind===kind);
-  p.proposals=(p.proposals||[]).filter(o=>!(o.abbr===c.abbr && o.kind===kind));
-  if(open && !diploProposalValid(p,c,kind)){ addEv('i','📨 Proposal',`${c.name}'s offer is no longer open.`); renderDiplo(); return; }
-  if(!yes){ relShift(c,p,-3);
-    (p.diploReqCooldown=p.diploReqCooldown||{})[c.abbr+':'+kind]=G.totalDays+182;
-    addEv('i','📨 Declined',`You turned down ${c.name}'s ${DIPLO_REQ_TEXT[kind].title.toLowerCase()}. They won't ask again for 6 months.`); return; }
+  const p=G.player, c=CTRY[id]; if(!c) return;
+  dropProposal(p, c, kind);
+  if(!diploProposalValid(p,c,kind)){ addEv('i','📵 Proposal',`${c.name}'s offer is no longer open.`); renderDiplo(); return; }
+  if(!yes){
+    const sting=leaderSting(c), wait=leaderWaitDays(c);
+    relShift(c,p,-sting);
+    (p.diploReqCooldown=p.diploReqCooldown||{})[c.abbr+':'+kind]=G.totalDays+wait;
+    addEv('i','📨 Declined',`You turned down ${leaderFull(c)}'s ${CALL_KIND[kind]?.what||'proposal'}. Relations −${sting}; ${c.name} won't ask again for ${monthsText(wait)}.`); return; }
   if(kind==='embassy'){
     const d=getDiplo(p,c.abbr); const days=10+envoyDays(p,c);
     d.embassyStatus='building'; d.embassyDaysRemaining=days; d.embassyDaysTotal=days;
@@ -10988,6 +11787,13 @@ function answerDiploRequest(id, kind, yes){
   }
   renderDiplo(); lpRender();
 }
+// The losing side of a war with you phones to offer peace and reparations (scaled by its leader)
+function offerPeaceToPlayer(c){
+  const p=G.player; if(!p.wars.has(c.id) || (p._offerSeen?.[c.id]!=null && G.totalDays-p._offerSeen[c.id]<60)) return;
+  const amt=Math.round(Math.min(Math.max(0,c.treasury), Math.max(PEACE_COST, c.gdp*0.004)*leaderMod(c,'repay'))*10)/10;
+  if(leaderCall(c,'peace',{ amt: amt>=0.05 ? amt : 0 })) (p._offerSeen=p._offerSeen||{})[c.id]=G.totalDays;
+}
+function answerPeaceOffer(id, yes){ const c=CTRY[id]; if(!c) return; applyPeaceOffer(c, PEACE_COST, yes); colorMap(); lpRender(); topbarUpdate(); }
 
 
 // ═══ AMBASSADORS — $10M/year each, +5 relations every 6 months (needs an open embassy) ═══
@@ -13072,7 +13878,7 @@ const INTEL_OPS = [
       if((t.rels[p.id]??50) < 40){
         t.rels[p.id]=100; if(t.relBase) t.relBase[p.id]=Math.max(t.relBase[p.id]??50,85); p.rels[t.id]=Math.max(p.rels[t.id]??50,80);
         if(t.wars?.has(p.id)) endWar(p,t);
-        addWorldEv('w','🗡️ Regime Change',`A new government seizes power in ${t.name}.`,'🗡️','');
+        makeLeader(t,'coup'); addWorldEv('w','🗡️ Regime Change',`A new government seizes power in ${t.name}: ${leaderFull(t)} takes over.`,'🗡️','');
         return { ok:true, text:`Regime change in ${t.name}: the new government is friendly to ${p.name}. Relations now 100.` };
       }
       return { ok:true, text:`Disinformation campaign in ${t.name}: approval and stability falling.` }; } },
@@ -13814,6 +14620,7 @@ function vassalizeCountry(targetId){
   const p=G.player, c=CTRY[targetId]; if(!p||!c) return;
   c.vassalOf=p.abbr;
   c.annexedBy=null;
+  unscPurgeVassals();
   // Vassal: player gets UN voting rights proxy, resources shared but country keeps name
   p.unVotes=(p.unVotes||1)+1;
   // Trade automatically opened
@@ -13952,7 +14759,7 @@ const PEACE_COST = 2;         // $B paid when a peace treaty is accepted
 const PEACE_RETRY_DAYS = 30;
 function peaceChance(from, to){      // chance that `to` accepts peace from `from` — driven by how they feel about you
   const rel = to.rels[from.id] ?? 0;
-  return Math.max(0.05, Math.min(0.95, rel / 80));                // 40 relations → 50%, 76+ → 95%
+  return Math.max(0.05, Math.min(0.95, rel / 80 * leaderMod(to,'peace')));   // 40 relations → 50%, 76+ → 95% (× the leader's temperament)
 }
 
 // ═══ MONEY INPUT — type any amount: 750000, 250M, 2.5B, 1.2T, $40,000,000 ═══
@@ -14200,27 +15007,6 @@ function aiSeekPeace(weak, strong){
   if(strong===G.player){ offerPeaceToPlayer(weak); return; }
   if(Math.random()<ch){ endWar(weak,strong); }
 }
-function offerPeaceToPlayer(c){
-  const p=G.player; if(!p.wars.has(c.id) || (p._offerSeen?.[c.id]!=null && G.totalDays-p._offerSeen[c.id]<60)) return;
-  (p._offerSeen=p._offerSeen||{})[c.id]=G.totalDays;
-  pauseForModal();
-  const d=document.createElement('div'); d.id='peace-offer';
-  d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9450;display:flex;align-items:center;justify-content:center;';
-  d.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--green);border-radius:6px;width:400px;padding:16px 18px;">
-    <div style="font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:600;letter-spacing:.03em;color:var(--green);font-size:var(--fs-lg);margin-bottom:6px;">🕊️ Peace Offer</div>
-    <div style="font-size:var(--fs-md);color:var(--text);margin-bottom:12px;">${c.flag}${c.name} offers to end the war and pay you ${fmtBil(PEACE_COST)}.</div>
-    <div style="display:flex;gap:6px;"><button class="eab success" onclick="answerPeaceOffer(${c.id},true)">Accept</button>
-      <button class="eab danger" onclick="answerPeaceOffer(${c.id},false)">Fight on</button></div></div>`;
-  document.body.appendChild(d);
-}
-function answerPeaceOffer(id, yes){
-  const p=G.player, c=CTRY[id];
-  document.getElementById('peace-offer')?.remove(); resumeFromModal();
-  if(!c) return;
-  if(yes && p.wars.has(c.id)){ const amt=Math.min(PEACE_COST,Math.max(0,c.treasury)); c.treasury-=amt; p.treasury+=amt; endWar(p,c); addEv('d','🕊️ Peace',`War with ${c.flag}${c.name} ended. You received ${fmtBil(amt)}.`); }
-  else addEv('w','⚔️ Offer Refused',`You refused peace with ${c.flag}${c.name}.`);
-  colorMap(); lpRender(); topbarUpdate();
-}
 const ALLIANCE_MIN_REL = 75;
 const PACT_MIN_REL = 90;          // defensive pacts (player and AI) need an alliance and relations of 90+
 // Weekly: alliances whose relations fall under 75 dissolve — except treaty blocs (NATO, GCC, defence coalitions)
@@ -14368,8 +15154,34 @@ function resolveDefeat(att, def){
   if(!decisive){ if(Math.random()<0.12) settlePeace(att, def, 0.05); return; }
   const conquest = hostile && (broken || crushing) && Math.random() < (att.ai===1 ? 0.28 : 0.14) * (neighbour ? 1 : 0.3);
   if(conquest) annexTerritory(att, def);
-  else if(Math.random()<0.25) { def.vassalOf=att.abbr; endWar(att,def); addWorldEv('i','⛓️ Vassal',`${def.flag}${def.name} becomes a vassal of ${att.flag}${att.name}.`,att.flag,'⛓️'); }
   else settlePeace(att, def, 0.08);
+}
+
+// When a country is annexed its vassal states become fully independent again
+function freeVassalsOf(c, X){
+  const freed=CLIST.filter(t=>t!==c && t.vassalOf===c.abbr && !t.annexedBy);
+  if(!freed.length) return [];
+  freed.forEach(t=>{
+    t.vassalOf=null; t.unMember=true;
+    if(X && X!==t){ t.rels[X.id]=Math.min(100,(t.rels[X.id]??50)+10); }   // grateful to whoever brought the overlord down
+  });
+  const names=freed.map(t=>`${t.flag}${t.name}`).join(', ');
+  addWorldEv('d','🗽 Vassals Freed',`${names} ${freed.length>1?'regain':'regains'} full independence: ${c.name}, ${freed.length>1?'their':'its'} overlord, no longer exists.`, freed[0].flag, '🗽');
+  if(X===G.player) addEv('d','🗽 Vassals Freed',`Annexing ${c.name} sets its vassal state${freed.length>1?'s':''} free: ${noFlags(names)} ${freed.length>1?'are':'is'} now independent (relations +10 with you).`);
+  return freed;
+}
+// Safety net for saves and any path that removes an overlord without going through annexation.
+// Only the player keeps vassal states: any an AI country holds (from older versions) are released.
+function freeOrphanVassals(){
+  const p=G.player, lords=new Set();
+  CLIST.forEach(t=>{ if(!t.vassalOf || t.annexedBy) return; const lord=CLIST.find(x=>x.abbr===t.vassalOf);
+    if(!lord || lord.annexedBy) freeVassalsOf(lord||{abbr:t.vassalOf, name:'its overlord'}, lord?.annexedBy ? CLIST.find(x=>x.abbr===lord.annexedBy) : null);
+    else if(lord!==p) lords.add(lord); });
+  lords.forEach(lord=>{
+    const freed=CLIST.filter(t=>t.vassalOf===lord.abbr && !t.annexedBy); if(!freed.length) return;
+    freed.forEach(t=>{ t.vassalOf=null; t.unMember=true; });
+    addWorldEv('i','🗽 Vassals Released',`${lord.flag}${lord.name} releases ${freed.map(t=>`${t.flag}${t.name}`).join(', ')}: ${freed.length>1?'they are':'it is'} fully independent again.`, lord.flag, '🗽');
+  });
 }
 
 // ── ANNEXATION (any country) ──
@@ -14382,6 +15194,7 @@ function annexTerritory(X, c){
   gainXP(X, null, VET.warWinXP);
   // Lands the conquered state had itself annexed pass to the new conqueror (who may set them free)
   const subs=CLIST.filter(t=>t!==c && t.annexedBy===c.abbr);
+  freeVassalsOf(c, X);                                               // its vassals answer to no one now: they go free
   subs.forEach(t=>{ t.annexedBy=X.abbr; Object.entries(t._ceded?.nrDep||{}).forEach(([k,v])=>{ if(c._ceded?.nrDep) c._ceded.nrDep[k]=Math.max(0,(c._ceded.nrDep[k]||0)-v); }); });
   // Full control of strategic resources, industry and stockpiles
   c._ceded = { nrDep:{...c.nrDep}, gd:{...c.gd_fac}, nr:{...c.nr_fac} };   // what came with the land (handed on if it is gifted)
@@ -14421,17 +15234,18 @@ function freshStartState(t, X){
   t.nukes=0; t.nukes0=0;
   t.freedOn=G.totalDays; t.freedUnits={...t.mil_units};
   calcMilStrength(t);
+  makeLeader(t,'independence');
   loseP5Seat(t, X);
 }
 // A permanent Security Council seat passes on when its holder is conquered or reborn from scratch
-function loseP5Seat(t, heirPref){
+function loseP5Seat(t, heirPref, why){
   if(!G.un?.p5?.includes(t.abbr)) return;
-  let heir = heirPref && !heirPref.annexedBy && !G.un.p5.includes(heirPref.abbr) ? heirPref : null;
-  if(!heir) heir = unMembers().filter(x=>x!==t && !G.un.p5.includes(x.abbr)).sort((a,b)=>powerScore(b)-powerScore(a))[0];
+  let heir = heirPref && !heirPref.annexedBy && !heirPref.vassalOf && !G.un.p5.includes(heirPref.abbr) ? heirPref : null;
+  if(!heir) heir = unMembers().filter(x=>x!==t && !x.vassalOf && !G.un.p5.includes(x.abbr)).sort((a,b)=>powerScore(b)-powerScore(a))[0];
   if(!heir) return;
   G.un.p5 = G.un.p5.map(a=>a===t.abbr ? heir.abbr : a);
   G.un.elected = (G.un.elected||[]).filter(s=>s.abbr!==heir.abbr);
-  addWorldEv('w','🛡️ Security Council',`${heir.flag}${heir.name} takes ${t.flag}${t.name}'s permanent P5 seat.`,heir.flag,'🛡️');
+  addWorldEv('w','🛡️ Security Council',`${heir.flag}${heir.name} takes ${t.flag}${t.name}'s permanent P5 seat${why==='vassal'?` (${t.name} is now a vassal state)`:''}.`,heir.flag,'🛡️');
   if(heir===G.player) showCrisisPopup('🛡️','Permanent Seat Won',`You inherit ${t.name}'s permanent seat and veto on the UN Security Council.`);
 }
 // Freeing a nation earns lasting worldwide praise: every country +30 or more (bigger nations freed → more), and the
@@ -14581,12 +15395,12 @@ function aiConsiderWar(c){
   // Rivals at 10–20 occasionally go to war too (much less likely)
   // Rivals at 10–30 (incl. old enemies after a peace, which resets relations to 20) still fight from time to time
   const cold = cand.length ? [] : CLIST.filter(b=>b!==c && !b.annexedBy && !b.vassalOf && !c.allies.has(b.id) && !c.pacts?.has(b.id) && (c.rels[b.id]??50) < 30 && reach(b));
-  if(!cand.length){ if(!cold.length || Math.random() > (c.ai===1 ? 0.0035 : 0.0010)) return; cand.push(...cold); }
+  if(!cand.length){ if(!cold.length || Math.random() > (c.ai===1 ? 0.0035 : 0.0010) * leaderMod(c,'war')) return; cand.push(...cold); }
   else {
     const worst = Math.min(...cand.map(b=>c.rels[b.id]??50));
     const hate = 1 + Math.max(0,10-worst)/10;                        // ×1 at 10, ×2 at 0
     // with such an enemy in reach: militaristic states ~1.5 wars/yr, others ~0.5/yr (provoked ×3)
-    if(Math.random() > (c.ai===1 ? 0.011 : 0.0038) * (provoked ? 3 : 1) * hate) return;   // ~3× the old rate
+    if(Math.random() > (c.ai===1 ? 0.011 : 0.0038) * (provoked ? 3 : 1) * hate * leaderMod(c,'war')) return;   // hawks ×1.6, peacemakers ×0.5   // ~3× the old rate
   }
   const defence = b => (b.mil_strength||0) + [...(b.allies||[])].reduce((s,id)=>s+(CTRY[id]?.mil_strength||0)*0.5,0);
   // A modest edge is enough to gamble on, except against a nuclear power: then it wants a much bigger edge
@@ -14631,7 +15445,25 @@ function getUNCouncil(){
   return [
     ...G.un.p5.map(a=>({abbr:a, c:CLIST.find(x=>x.abbr===a), permanent:true})),
     ...G.un.elected.map(s=>({abbr:s.abbr, c:CLIST.find(x=>x.abbr===s.abbr), permanent:false, end:s.end})),
-  ].filter(m=>m.c && !m.c.annexedBy);
+  ].filter(m=>m.c && !m.c.annexedBy && !m.c.vassalOf);
+}
+// A vassal answers to its overlord, so it can't hold a Security Council seat. A permanent seat passes to the
+// overlord (or, if the overlord already has one, to the strongest free member); an elected seat goes to another
+// member of the same regional group for the rest of the term.
+function unscPurgeVassals(){
+  if(!G.un) return;
+  G.un.p5.slice().forEach(a=>{ const c=CLIST.find(x=>x.abbr===a); if(c?.vassalOf && !c.annexedBy) loseP5Seat(c, CLIST.find(x=>x.abbr===c.vassalOf), 'vassal'); });
+  const taken=new Set([...G.un.p5, ...G.un.elected.map(e=>e.abbr)]);
+  G.un.elected = G.un.elected.map(s=>{
+    const c=CLIST.find(x=>x.abbr===s.abbr); if(!c?.vassalOf || c.annexedBy) return s;
+    const lord=CLIST.find(x=>x.abbr===c.vassalOf);
+    const pick=unMembers().filter(x=>!x.vassalOf && !taken.has(x.abbr) && UN_GROUP(x)===UN_GROUP(c))
+      .sort((a,b)=>Math.sqrt(Math.max(1,b.gdp))*(1+((b.rels[c.id]??50)/100)) - Math.sqrt(Math.max(1,a.gdp))*(1+((a.rels[c.id]??50)/100)))[0];
+    if(pick) taken.add(pick.abbr);
+    addWorldEv('w','🛡️ Security Council',`${c.flag}${c.name} loses its Security Council seat as a vassal of ${lord?.name||'another power'}${pick?`; ${pick.flag}${pick.name} serves out the term`:''}.`,c.flag,'🛡️');
+    if(pick===G.player) addEv('d','🛡️ Security Council Seat',`You take ${c.name}'s elected seat on the Security Council for the rest of its term.`);
+    return pick ? { abbr:pick.abbr, end:s.end } : null;
+  }).filter(Boolean);
 }
 function powerScore(c){
   const g=effectiveGDP(c), maxG=Math.max(...CLIST.map(effectiveGDP),1);
@@ -14641,12 +15473,13 @@ function powerScore(c){
 // Yearly: rotate 5 elected seats by regional group; P5 can be displaced by a rising annexing power
 function unAnnualSession(){
   if(!G.un) initUN();
+  unscPurgeVassals();
   const onCouncil = new Set([...G.un.p5, ...G.un.elected.map(s=>s.abbr)]);
   G.un.elected = G.un.elected.map(s=>{
     const old = CLIST.find(x=>x.abbr===s.abbr);
-    if(G.totalDays < s.end && old && !old.annexedBy) return s;
+    if(G.totalDays < s.end && old && !old.annexedBy && !old.vassalOf) return s;
     const grp = old ? UN_GROUP(old) : 'AP';
-    const pool = unMembers().filter(x=>!onCouncil.has(x.abbr) && UN_GROUP(x)===grp && x!==old);
+    const pool = unMembers().filter(x=>!onCouncil.has(x.abbr) && !x.vassalOf && UN_GROUP(x)===grp && x!==old);
     if(!pool.length) return s;
     const weight = x => Math.sqrt(Math.max(1,x.gdp)) * (1 + (CLIST.reduce((a,o)=>a+(o.rels[x.id]??50),0)/CLIST.length)/50) * (0.5+Math.random());
     const pick = pool.sort((a,b)=>weight(b)-weight(a))[0];
@@ -14656,7 +15489,7 @@ function unAnnualSession(){
   // P5 challenge
   const p5c = G.un.p5.map(a=>CLIST.find(x=>x.abbr===a)).filter(Boolean);
   const weakest = p5c.sort((a,b)=>powerScore(a)-powerScore(b))[0];
-  const riser = unMembers().filter(x=>!G.un.p5.includes(x.abbr) && CLIST.some(t=>t.annexedBy===x.abbr))
+  const riser = unMembers().filter(x=>!G.un.p5.includes(x.abbr) && !x.vassalOf && CLIST.some(t=>t.annexedBy===x.abbr))
                   .sort((a,b)=>powerScore(b)-powerScore(a))[0];
   if(weakest && riser && powerScore(riser) > powerScore(weakest)*1.1){
     G.un.p5 = G.un.p5.map(a=>a===weakest.abbr ? riser.abbr : a);
@@ -14764,6 +15597,8 @@ function unVoteOf(v, res){
     if(Math.min(ra,rb)<20 && Math.abs(ra-rb)>30){ const hatedLosing = ra<rb ? lead<-0.15 : lead>0.15; if(hatedLosing) return 'abstain'; }   // happy to watch a rival lose
     return 'yes';                                                          // otherwise peace is popular
   }
+  const helpsTarget = ['lift_sanctions','humanitarian','repeal'].includes(res.type);
+  if(T && v===T) return helpsTarget ? 'yes' : 'no';                         // nobody votes to sanction or invade itself, not even at an ally's request
   if(T && v!==T && (v.rels[T.id]??50) >= UN_LOYAL_REL){
     const helps = ['lift_sanctions','humanitarian','repeal'].includes(res.type);   // repeals of measures on T help T
     return helps ? 'yes' : 'no';
@@ -14775,6 +15610,7 @@ function unVoteOf(v, res){
     const helpsT = ['lift_sanctions','humanitarian','repeal'].includes(res.type);
     const sideT = allyT && (!allyP || (v.rels[T.id]??50) >= (v.rels[P.id]??50));
     if(sideT) return helpsT ? 'yes' : 'no';
+    if(allyT && !helpsT && res.type==='invasion') return 'abstain';         // torn between two allies: never votes to invade one of them
     return 'yes';
   }
   if(res.type==='repeal'){
@@ -16066,6 +16902,8 @@ async function loadGame(slot, fromObj){
   CLIST.forEach(t=>{ if(t.annexedOn && !t.annexedBy && t.freedOn==null){ freshStartState(t, null); } });
   if(st.custom){ COALITIONS.CUSTOM = { ...st.custom, eligible:()=>false }; } else delete COALITIONS.CUSTOM;
   G.player = CTRY[st.player];
+  ensureLeaders();                                     // saves from before world leaders
+  try{ freeOrphanVassals(); unscPurgeVassals(); }catch(e){}   // vassals: only the player keeps them, and none sit on the Security Council
   if(!CLIST.some(x=>x.nukes0!=null)) seedNuclear();   // saves from before nuclear weapons existed
   setTimeout(maybePromptLaunchCodes, 1500);
   G._crisisQueue=[]; G._pendingUN=null;
@@ -16310,7 +17148,7 @@ function showCountrySheet(id){
   s.innerHTML=`<div class="msh-grab"></div>
     <div class="cs-h"><span class="cs-f">${c.flag}</span><div style="min-width:0;flex:1"><div class="cs-n">${mEsc(c.name)}</div><div class="cs-s">${mEsc(sub)}</div></div>
       <span class="cs-tag ${tagCls}">${tag}</span><button class="cs-x" onclick="closeCountrySheet()" aria-label="Close">✕</button></div>
-    ${relHtml}<div class="cs-mini">${mini}</div><div class="cs-acts">${acts}</div>
+    ${c!==p?leaderSheetHTML(c):''}${relHtml}<div class="cs-mini">${mini}</div><div class="cs-acts">${acts}</div>
     ${c!==p?`<button class="cs-more" onclick="selCtry(${c.id})">FULL DETAILS ›</button>`:''}`;
   s.dataset.cid=c.id; s.classList.add('on'); document.body.classList.add('csheet-open');
   try{ applyTwemoji(s); }catch(e){}
@@ -16424,7 +17262,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 184;
+const ATLAS_BUILD = 185;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
