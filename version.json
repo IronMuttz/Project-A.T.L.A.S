@@ -1,7 +1,7 @@
 {
-  "version": 185,
+  "version": 186,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "World leaders now in the app: every country has a head of government with a portrait and personality, and proposals come as secure video calls (missed calls can be returned from Foreign \u2192 Missed Calls for 30 days). UN: a country never votes for its own sanctions or invasion; vassals can't sit on the Security Council. Annexing a country frees its vassals; only the player can make vassal states."
+  "notes": "Small island nations: Seychelles, Cabo Verde, Samoa, Tonga, Antigua & Barbuda, Dominica, Kiribati, Micronesia, Marshall Is., Palau, Tuvalu and Nauru join; all 27 small states now have real outlines and a ring marker on the map. AI countries keep fighting: old rivalries no longer heal away and leaders start rows, so wars and conquests continue past 2013. Annexed lands count for NATO/EU and other blocs, and pay you tourism levy (develop their landmarks). Intel targets the nation you select. Fixed female leaders' hair looking like whiskers."
 }
