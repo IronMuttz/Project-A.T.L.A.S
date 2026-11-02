@@ -662,7 +662,7 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .wl-upd-t{ min-width:0; flex:1 1 auto; }
 @media (max-width: 420px){ .wl-upd{ font-size:14px; gap:8px; padding-left:12px; } .wl-upd-b{ padding:10px 12px; font-size:13px; } }
 @media (max-width: 900px) and (orientation: landscape){ .wl-upd{ top:calc(74px + env(safe-area-inset-top,0px)); padding-top:5px; padding-bottom:5px; } .wl-upd small{ -webkit-line-clamp:1; } }
-@media (prefers-reduced-motion: reduce){ #welcome *{animation:none !important;transition:none !important;} .wl-draw{stroke-dashoffset:0;} .wl-log div{opacity:1;} .wl-go{opacity:1;transform:none;} }
+@media (prefers-reduced-motion: reduce){ #welcome *:not(.wl-spin){animation:none !important;transition:none !important;} .wl-spin{animation-duration:calc(var(--t,60s) * 2) !important;} .wl-draw{stroke-dashoffset:0;} .wl-log div{opacity:1;} .wl-go{opacity:1;transform:none;} }
 
 /* ══════════════ HUD THEME — matches the ATLAS welcome screen ══════════════ */
 :root{
@@ -5931,7 +5931,7 @@ function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 // ═══════════════════════════════════════════════════════════════════
 //   WELCOME — "ATLAS" holographic briefing before country selection
 // ═══════════════════════════════════════════════════════════════════
-let _wlRAF=null, _wlVoice=true, _wlSpoke=false;
+let _wlRAF=null, _wlTimer=null, _wlVoice=true, _wlSpoke=false;
 // ATLAS voice. Browsers only allow speech after the first tap/key, so an early line waits for it.
 // ═══ ATLAS VOICE — a calm British AI butler. Picks the most natural male English voice the device offers
 //     (Edge/Windows "Natural" neural voices, Google UK English Male, Apple Daniel/Arthur…), speaks sentence
@@ -6111,27 +6111,37 @@ function showWelcome(){
 
   // Wireframe globe, rotating, drawn from the game's own world map
   const cv=document.getElementById('wl-globe'), ctx=cv.getContext('2d');
-  const size=()=>{ const r=cv.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1); cv.width=r.width*dpr; cv.height=r.height*dpr; return [cv.width,cv.height]; };
+  const size=()=>{ const r=cv.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr); return [cv.width,cv.height]; };
   let [cw,ch]=size();
+  try{ W._globeRO?.disconnect(); if(window.ResizeObserver){ W._globeRO=new ResizeObserver(()=>{ if(W.classList.contains('on')) [cw,ch]=size(); }); W._globeRO.observe(cv); } }catch(e){}
   const land=topojson.merge(WORLD_ATLAS_TOPO, WORLD_ATLAS_TOPO.objects.countries.geometries);   // one outline: far cheaper to redraw every frame
   const slow = isMobile?.() || (navigator.hardwareConcurrency||8) <= 4; let lastDraw=0;
   const grat=d3.geoGraticule10();
   const proj=d3.geoOrthographic().clipAngle(90);
   const path=d3.geoPath(proj,ctx);
   const t0=performance.now();
-  const draw=now=>{
-    if(slow && now-lastDraw < 32){ _wlRAF=requestAnimationFrame(draw); return; }   // phones: ~30 fps is plenty for a slow spin
-    lastDraw=now;
+  // Reduce Motion (common on iPhones) still gets a slow, gentle turn rather than a frozen globe.
+  const spin = reduce ? 3 : 9;
+  const render=()=>{
+    const now=performance.now(); lastDraw=now;
+    if(cw<4 || ch<4){ [cw,ch]=size(); if(cw<4 || ch<4) return; }   // laid out late (iOS): measure again
     const t=(now-t0)/1000;
-    proj.scale(Math.min(cw,ch)/2-2).translate([cw/2,ch/2]).rotate([reduce?-70:-70+t*9,-18]);
+    proj.scale(Math.min(cw,ch)/2-2).translate([cw/2,ch/2]).rotate([-70+t*spin,-18]);
     ctx.clearRect(0,0,cw,ch);
     ctx.beginPath(); path({type:'Sphere'}); ctx.fillStyle='rgba(8,40,60,.55)'; ctx.fill();
     ctx.beginPath(); path(grat); ctx.strokeStyle=`rgba(${THEME.acc},.13)`; ctx.lineWidth=1; ctx.stroke();
     ctx.beginPath(); path(land); ctx.fillStyle=`rgba(${THEME.acc},.16)`; ctx.fill(); ctx.strokeStyle=`rgba(${THEME.acc2},.75)`; ctx.lineWidth=0.8; ctx.stroke();
     ctx.beginPath(); path({type:'Sphere'}); ctx.strokeStyle=`rgba(${THEME.acc},.6)`; ctx.lineWidth=1.5; ctx.stroke();
-    if(!reduce) _wlRAF=requestAnimationFrame(draw);
   };
-  _wlRAF=requestAnimationFrame(draw);
+  const loop=now=>{
+    if(!W.classList.contains('on')) return;
+    if(!(slow && now-lastDraw < 30)) render();   // phones: ~30 fps is plenty for a slow spin
+    _wlRAF=requestAnimationFrame(loop);
+  };
+  cancelAnimationFrame(_wlRAF); clearInterval(_wlTimer);
+  render(); _wlRAF=requestAnimationFrame(loop);
+  // Backup clock: some iOS web views pause requestAnimationFrame (embedded frames, power saving). Keep turning anyway.
+  _wlTimer=setInterval(()=>{ if(!W.classList.contains('on')){ clearInterval(_wlTimer); return; } if(performance.now()-lastDraw > 120) render(); }, 60);
   W._resizeGlobe=()=>{ if(W.classList.contains('on')) [cw,ch]=size(); };
   window.addEventListener('resize', W._resizeGlobe);
 
@@ -6284,7 +6294,7 @@ function leaveWelcome(action){
   document.removeEventListener('keydown', W._onKey);
   W.classList.add('leaving');
   const slot=_wlLatest?.slot;
-  setTimeout(()=>{ W.classList.remove('on','leaving'); cancelAnimationFrame(_wlRAF); if(action==='continue' && slot) loadGame(slot); else showIntro(); }, 650);
+  setTimeout(()=>{ W.classList.remove('on','leaving'); cancelAnimationFrame(_wlRAF); clearInterval(_wlTimer); if(action==='continue' && slot) loadGame(slot); else showIntro(); }, 650);
 }
 
 
@@ -17712,7 +17722,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 188;
+const ATLAS_BUILD = 189;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();

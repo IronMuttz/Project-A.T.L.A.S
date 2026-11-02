@@ -1,7 +1,7 @@
 {
-  "version": 188,
+  "version": 189,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Consumption: every country's demand for goods now grows each year and rises with happiness and approval (falls in war or revolt), for AI markets and your home market alike; the trade panel shows foreign demand across your partners. Routes: landlocked countries are supplied by ship to the nearest port then by road (e.g. via Tanzania to Zambia) when that is quicker, and land routes cross borders directly instead of detouring through each capital (Pakistan to Mongolia across annexed China no longer goes via Beijing). Troop travel uses the same routes."
+  "notes": "v189: iPhone start screen \u2014 globe keeps turning with Reduce Motion on (gentle spin) and when iOS pauses the animation clock; canvas re-measures if laid out late"
 }
