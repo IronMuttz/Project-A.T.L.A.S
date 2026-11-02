@@ -810,6 +810,14 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .pp-sides{ display:flex; align-items:center; gap:8px; font-size:15px; color:#e8fbff; font-weight:600; flex-wrap:wrap; } .pp-sides i{ font-style:normal; color:#ff4d5e; }
 .pp-meta{ font-size:12.5px; color:var(--text2); } .pp-row .hud-btn{ justify-self:start; }
 /* Nuclear launch alert */
+#nuke-salvo{ position:fixed; left:0; right:0; margin:0 auto; width:max-content; max-width:calc(100vw - 20px); bottom:calc(18px + env(safe-area-inset-bottom,0px)); z-index:9965; display:flex; align-items:center; gap:12px;
+  padding:9px 10px 9px 14px; border-radius:10px; background:rgba(40,4,8,.94); border:1px solid #ff4d5e; box-shadow:0 0 24px rgba(255,77,94,.45); color:#ffd9dc; font-family:'IBM Plex Sans Condensed',sans-serif; animation:nsPulse 1.6s ease-in-out infinite; }
+#nuke-salvo .ns-ico{ font-size:24px; }
+#nuke-salvo b{ display:block; letter-spacing:.14em; font-size:14px; color:#ff6b78; }
+#nuke-salvo small{ display:block; font-size:12.5px; color:#ffc2c7; }
+#nuke-salvo button{ margin-left:6px; padding:9px 16px; border-radius:7px; border:1px solid #ff8a95; background:#ff4d5e; color:#fff; font:700 13px 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.08em; cursor:pointer; }
+@keyframes nsPulse{ 0%,100%{ box-shadow:0 0 18px rgba(255,77,94,.35); } 50%{ box-shadow:0 0 30px rgba(255,77,94,.7); } }
+body.mob #nuke-salvo{ bottom:calc(74px + env(safe-area-inset-bottom,0px)); }
 #nuke-banner{ position:fixed; left:0; right:0; margin:0 auto; width:max-content; top:calc(74px + env(safe-area-inset-top,0px)); z-index:9960; display:flex; align-items:center; gap:12px;
   max-width:min(calc(100vw - 24px),560px); box-sizing:border-box; padding:10px 18px 10px 14px; border-radius:10px; background:rgba(40,4,8,.92); border:1px solid #ff4d5e; color:#ffe3e6;
   box-shadow:0 0 0 1px rgba(255,77,94,.25), 0 0 36px rgba(255,40,60,.45); pointer-events:none; animation:nbIn .35s ease both, nbPulse 1s ease-in-out .35s infinite; }
@@ -1481,6 +1489,15 @@ body.mob .rrow{ min-height:36px; }
 .vc-b.yes{ background:rgba(76,242,176,.16); border-color:var(--green); color:var(--green); }
 .vc-b.yes:hover:not(:disabled){ background:rgba(76,242,176,.28); box-shadow:0 0 16px rgba(76,242,176,.35); }
 .vc-b.no{ background:rgba(255,77,94,.12); border-color:var(--red2); color:var(--red2); }
+.vc-b.neg{ background:rgba(255,179,71,.12); border-color:#ffb347; color:#ffb347; }
+.vc-b.neg:hover{ background:rgba(255,179,71,.24); box-shadow:0 0 16px rgba(255,179,71,.3); }
+.vc-final{ margin-left:8px; padding:1px 7px; border-radius:4px; background:rgba(255,77,94,.18); color:var(--red2); font-size:11px; letter-spacing:.12em; }
+.vc-neg-row{ display:flex; gap:8px; margin:8px 0 6px; }
+.vc-neg-row input{ flex:1; min-width:0; padding:9px 11px; border-radius:6px; border:1px solid var(--border2); background:var(--bg3); color:var(--text); font:600 16px 'IBM Plex Sans Condensed',sans-serif; }
+.vc-neg-row input.bad{ border-color:var(--red2); }
+.vc-neg-go{ padding:9px 16px; border-radius:6px; border:1px solid #ffb347; background:rgba(255,179,71,.18); color:#ffb347; font:700 14px 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.06em; cursor:pointer; }
+.vc-neg-chips{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
+.vc-neg-chips button{ padding:6px 11px; border-radius:14px; border:1px solid var(--border2); background:rgba(var(--acc-rgb),.07); color:var(--text); font:600 13px 'IBM Plex Sans Condensed',sans-serif; cursor:pointer; }
 .vc-b.no:hover{ background:rgba(255,77,94,.24); box-shadow:0 0 16px rgba(255,77,94,.3); }
 .vc-b.end{ background:rgba(var(--acc-rgb),.1); border-color:var(--teal2); color:var(--teal); }
 .vc-b:disabled{ opacity:.45; cursor:not-allowed; }
@@ -12257,26 +12274,103 @@ function leaderCallPickUp(){
     setTimeout(()=>leaderSpeak(c, g, null, emo), 450);
     return;
   }
-  const K=CALL_KIND[st.kind], peace=st.kind==='peace'||st.kind==='terms';
-  const short = st.kind==='terms' && st.amt>0 && p.treasury < st.amt;
-  const variant = st.kind==='peace' && !(st.amt>0) ? 'broke' : st.kind==='terms' && !(st.amt>0) ? 'white' : null;
-  document.getElementById('vc-under').innerHTML=`
-    <div class="vc-sub" id="vc-sub"></div>
-    <div class="vc-deal">
-      <div class="vc-deal-h">${K.ico} ${K.title}</div>
-      <div class="vc-deal-b">${callTerms(c, st.kind, st.amt)}</div>
-      <div class="vc-deal-f">Their relations with you: <b>${Math.round(c.rels[p.id]??50)}</b> · ${callRefuseCost(c, st.kind)}</div>
-    </div>
-    <div class="vc-btns">
-      <button class="vc-b no" onclick="leaderCallAnswer(false)"><span>✕</span>${peace?'Fight on':'Decline'}</button>
-      <button class="vc-b yes" onclick="leaderCallAnswer(true)" ${short?'disabled title="Not enough in the treasury"':''}><span>✓</span>${short?`Need ${fmtShort(st.amt)}`:peace?'Accept peace':'Accept'}</button>
-    </div>`;
+  const peace=st.kind==='peace'||st.kind==='terms';
+  document.getElementById('vc-under').innerHTML=`<div class="vc-sub" id="vc-sub"></div><div id="vc-dealbox">${callDealHTML(c, st)}</div>`;
   const [line] = st.first||callFirstLine(c, st);
   setTimeout(()=>leaderSpeak(c, line), 450);
   if(hdvOn()) setTimeout(()=>{ if(_call!==st || st.phase!=='live') return;   // both possible answers, made while you decide
     hdvPrefetchLeader(c, callLine(c, peace?'yesPeace':'yes')+' '+callLine2(c, CALL_LINES2.more[0]), 'warm', 2);
     hdvPrefetchLeader(c, callLine(c, peace?'noPeace':'no'), ['hawk','nationalist'].some(t=>leaderHas(c,t))?'angry':'calm', 2); }, 500);
 }
+// The offer on the table and your answers (re-drawn as a peace deal is haggled over)
+function callDealHTML(c, st){
+  const p=G.player, K=CALL_KIND[st.kind], peace=st.kind==='peace'||st.kind==='terms';
+  const short = st.kind==='terms' && st.amt>0 && p.treasury < st.amt;
+  const canCounter = peace && st.amt>0 && !st.neg?.over;
+  return `<div class="vc-deal">
+      <div class="vc-deal-h">${K.ico} ${K.title}${st.neg?.final?' <span class="vc-final">FINAL OFFER</span>':''}</div>
+      <div class="vc-deal-b">${callTerms(c, st.kind, st.amt)}</div>
+      <div class="vc-deal-f">Their relations with you: <b>${Math.round(c.rels[p.id]??50)}</b> · ${callRefuseCost(c, st.kind)}</div>
+    </div>
+    <div class="vc-btns">
+      <button class="vc-b no" onclick="leaderCallAnswer(false)"><span>✕</span>${peace?'Fight on':'Decline'}</button>
+      ${canCounter?`<button class="vc-b neg" onclick="leaderCallCounterUI()"><span>💬</span>Counter</button>`:''}
+      <button class="vc-b yes" onclick="leaderCallAnswer(true)" ${short?'disabled title="Not enough in the treasury"':''}><span>✓</span>${short?`Need ${fmtShort(st.amt)}`:peace?'Accept peace':'Accept'}</button>
+    </div>`;
+}
+function callDealRender(){ const st=_call, box=document.getElementById('vc-dealbox'); if(!st || !box) return; box.innerHTML=callDealHTML(CTRY[st.cid], st); }
+
+// ── Haggling over reparations: name your price; they accept, meet you partway, or dig in ──
+// How far they'll go is hidden: it depends on how badly the war is going for them, their treasury and their temperament.
+const NEG_LINES = {
+  acceptThey:{ default:'{amt}. Agreed. Let us end this today.', hawk:'{amt}. Take it, and silence your guns.', merchant:'{amt}. A hard bargain, but a deal is a deal.', dove:'{amt}. Agreed. No more funerals.' },
+  acceptYou:{ default:'{amt} will do. The war is over.', hawk:'{amt}. Fine. Pay it and we are done.', merchant:'{amt}. Done. Pleasure doing business, Commander.' },
+  counterThey:{ default:'That is too much, Commander. {amt} is as far as I can go.', hawk:'You ask too much. {amt}, and not a dollar more.', merchant:'Let us be realistic. I can do {amt}.' },
+  counterYou:{ default:'Too little, Commander. Make it {amt} and we have peace.', hawk:'You are in no position to bargain. {amt}.', merchant:'Closer. {amt}, and we can both go home.' },
+  final:{ default:'{amt}. That is my final offer, Commander.', hawk:'{amt}. Final. Take it or keep bleeding.' },
+  insult:{ default:'Do not insult me, Commander. My offer stands: {amt}.', hawk:'Is this a joke? {amt}, or we keep fighting.', dove:'That is not a serious offer. Mine stands: {amt}.' },
+  broke:{ default:'We do not have that kind of money. {amt} is everything we can pay.' },
+};
+function negLine(c, set, amt){ const S=NEG_LINES[set], tr=c.leader?.traits||[]; return callLine2(c, (S[tr[0]]||S[tr[1]]||S.default).replace(/\{amt\}/g, moneyWords(amt))); }
+function negLimits(c, st){
+  if(st.neg) return st.neg;
+  const p=G.player, me=Math.max(1,p.mil_strength||0), them=Math.max(1,c.mil_strength||0), fuzz=0.9+Math.random()*0.2;
+  const tough = (leaderHas(c,'hawk')||leaderHas(c,'nationalist')) ? 0.8 : leaderHas(c,'dove') ? 1.25 : 1;
+  if(st.kind==='peace'){                    // they pay you: how high will they go?
+    const d=Math.max(0, Math.min(1, (me/them-1)/2));
+    st.neg={ limit:Math.min(Math.max(st.amt, c.treasury||0), st.amt*(1.25+1.5*d)*tough*fuzz), left:3 };
+  } else {                                  // you pay them: how low will they come?
+    const d=Math.max(0, Math.min(1, (them/me-1)/2));
+    st.neg={ limit:st.amt*Math.min(1, (0.35+0.5*d)/tough*fuzz), left:3 };
+  }
+  st.neg.limit=Math.max(0, st.neg.limit);
+  return st.neg;
+}
+function negInput(v){ return v>=1 ? (Math.round(v*10)/10)+'B' : Math.round(v*1000)+'M'; }
+function leaderCallCounterUI(){
+  const st=_call, box=document.getElementById('vc-dealbox'); if(!st || !box || st.phase!=='live' || st.done) return;
+  const p=G.player, they=st.kind==='peace', a=st.amt;
+  const chips = they ? [a*1.5, a*2, a*3] : [0, a*0.25, a*0.5];
+  box.innerHTML=`<div class="vc-deal">
+      <div class="vc-deal-h">💬 Your counter-offer</div>
+      <div class="vc-deal-b">${they?`They offer <b>${fmtShort(a)}</b>. How much do you want ${mEsc(CTRY[st.cid].name)} to pay?`:`They demand <b>${fmtShort(a)}</b>. How much will you pay? Your treasury: ${fmtShort(Math.max(0,p.treasury))}.`}</div>
+      <div class="vc-neg-row"><input id="vc-neg-in" type="text" inputmode="decimal" autocomplete="off" placeholder="${they?'e.g. '+negInput(a*2):'e.g. '+negInput(a*0.5)}" onkeydown="if(event.key==='Enter') leaderCallCounter()">
+        <button class="vc-neg-go" onclick="leaderCallCounter()">Propose</button></div>
+      <div class="vc-neg-chips">${chips.map(v=>`<button onclick="document.getElementById('vc-neg-in').value='${negInput(v)}'; leaderCallCounter()">${v>0?fmtShort(v):'Nothing'}</button>`).join('')}</div>
+      <div class="vc-deal-f" id="vc-neg-msg">Type an amount like 30B, 750M or 1.2T. ${3-(st.neg?3-st.neg.left:0)} offer${(st.neg?.left??3)===1?'':'s'} left before they stop haggling.</div>
+    </div>
+    <div class="vc-btns"><button class="vc-b no" onclick="callDealRender()"><span>↩</span>Back</button></div>`;
+  setTimeout(()=>document.getElementById('vc-neg-in')?.focus({ preventScroll:true }), 60);
+}
+function leaderCallCounter(){
+  const st=_call; if(!st || st.phase!=='live' || st.done) return;
+  const c=CTRY[st.cid], p=G.player, they=st.kind==='peace', inp=document.getElementById('vc-neg-in'), msg=document.getElementById('vc-neg-msg');
+  let x=parseMoney(inp?.value);
+  if(!isFinite(x) || x<0){ inp?.classList.add('bad'); if(msg) msg.textContent='Enter an amount, like 30B or 750M.'; return; }
+  x=Math.round(x*100)/100;
+  if(!they && x>Math.max(0,p.treasury)){ inp?.classList.add('bad'); if(msg) msg.textContent=`You only have ${fmtShort(Math.max(0,p.treasury))} in the treasury.`; return; }
+  const N=negLimits(c, st); N.left--;
+  const good = they ? x<=st.amt || x<=N.limit : x>=st.amt || x>=N.limit;
+  if(good){                                                         // they take it: the deal closes at your number
+    st.amt=x; st.neg.over=true;
+    leaderCallAnswer(true, negLine(c, they?'acceptThey':'acceptYou', x));
+    return;
+  }
+  let set, emo;
+  const far = they ? x > N.limit*2.2 : x < N.limit*0.35;
+  if(they && x > Math.max(0,c.treasury) && N.limit >= Math.max(0,c.treasury)*0.97){ set='broke'; emo='upset'; st.amt=Math.round(N.limit*10)/10; N.over=true; N.final=true; }
+  else if(far){ set='insult'; emo='angry'; relShift(c,p,-3); N.over=true; }
+  else if(N.left<=0){ set='final'; emo='cold'; st.amt=Math.round(N.limit*10)/10; N.over=true; N.final=true; }
+  else {
+    const mid = they ? Math.min(N.limit, (st.amt+x)/2) : Math.max(N.limit, (st.amt+x)/2);
+    st.amt=Math.round(mid*10)/10;
+    if(Math.abs(st.amt-N.limit) <= Math.max(0.1, N.limit*0.03)){ set='final'; emo='cold'; N.over=true; N.final=true; }
+    else { set=they?'counterThey':'counterYou'; emo='cold'; }
+  }
+  callDealRender();
+  leaderSpeak(c, negLine(c, set, st.amt), null, emo);
+}
+
 // What a leader says first on picking up (worked out while the phone rings, so an HD voice can be made in advance)
 function callFirstLine(c, st){
   const p=G.player;
@@ -12300,7 +12394,7 @@ function leaderCallReject(hold){
   }
   leaderCallEnd(true);
 }
-function leaderCallAnswer(yes){
+function leaderCallAnswer(yes, said){
   const st=_call; if(!st || st.phase!=='live' || st.done) return;
   const c=CTRY[st.cid], p=G.player; if(!c||!p){ leaderCallEnd(); return; }
   st.done=true; st.phase='closing';
@@ -12309,7 +12403,7 @@ function leaderCallAnswer(yes){
   else if(st.kind==='terms') applyPeaceTerms(c, st.amt, yes);
   else answerDiploRequest(c.id, st.kind, yes);
   if(c.leader) c.leader.lastCall={ date:fmtDate(), what:CALL_KIND[st.kind].what, ok:!!yes };
-  const line = callLine(c, yes ? (peace?'yesPeace':'yes') : (peace?'noPeace':'no'));
+  const line = said || callLine(c, yes ? (peace?'yesPeace':'yes') : (peace?'noPeace':'no'));
   const u=document.getElementById('vc-under');
   const more = yes ? askOptions(p, c, FOLLOW_UPS[st.kind]||[]) : [];
   if(more.length){                                           // the line stays open: raise something of your own
@@ -12456,8 +12550,9 @@ function leaderSpeak(c, text, onDone, emo){
   sub?.classList.toggle('hot', emo==='angry'||emo==='threat');
   let finished=false; const fin=()=>{ if(finished) return; finished=true; feed?.classList.remove('talking'); onDone?.(); };
   // subtitles type out across the time the line takes to say
-  const typeSub=ms=>{ if(!sub) return; sub.textContent=''; const chars=[...text]; let i=0; const per=Math.max(14, Math.min(70, ms/Math.max(1,chars.length/2)));
-    const step=()=>{ if(!document.body.contains(sub)) return; sub.textContent=chars.slice(0,i+=2).join(''); if(i<chars.length) st.timers.push(setTimeout(step, per)); };
+  const subGen=st.subGen=(st.subGen||0)+1;                    // a newer line takes over the subtitles
+  const typeSub=ms=>{ if(!sub || st.subGen!==subGen) return; sub.textContent=''; const chars=[...text]; let i=0; const per=Math.max(14, Math.min(70, ms/Math.max(1,chars.length/2)));
+    const step=()=>{ if(!document.body.contains(sub) || st.subGen!==subGen) return; sub.textContent=chars.slice(0,i+=2).join(''); if(i<chars.length) st.timers.push(setTimeout(step, per)); };
     step(); };
   if(ATLAS_VOICE.on && _wlVoice && hdvOn()){                // HD voice pack: a natural voice that carries the emotion
     ATLAS_VOICE.gen++; ATLAS_VOICE.queue=[]; ATLAS_VOICE.speaking=false; voiceMeter(false); try{ speechSynthesis.cancel(); }catch(e){} hdvStop(); hdvCancel('atlas');
@@ -12467,16 +12562,16 @@ function leaderSpeak(c, text, onDone, emo){
     let started=false, i=0;
     const words=()=>{ if(!started){ started=true; typeSub(text.length*13); } };
     if(sub) sub.textContent='…';
-    st.timers.push(setTimeout(()=>{ if(!finished && _call===st) words(); }, 2500));   // a slower device: show the words now, the voice follows
+    st.timers.push(setTimeout(()=>{ if(!finished && _call===st && st.subGen===subGen) words(); }, 2500));   // a slower device: show the words now, the voice follows
     const nextClip=()=>{
-      if(finished || _call!==st) return;
+      if(finished || _call!==st || st.subGen!==subGen) return;               // a newer line has taken over
       if(i>=parts.length){ st.timers.push(setTimeout(fin, 150)); return; }
       const first=i===0;
       hdvWait(hdvSynth(parts[i++], hv, P.speed, 'call', 0), 20000).then(a=>{
-        if(finished || _call!==st) return;
+        if(finished || _call!==st || st.subGen!==subGen) return;
         words(); feed?.classList.add('talking');
         hdvPlay(a, { rate:P.rate, vol:E.vol, onEnd:()=>{ feed?.classList.remove('talking'); if(_call===st) st.timers.push(setTimeout(nextClip, 110)); } });
-      }).catch(e=>{ if(finished || _call!==st) return;
+      }).catch(e=>{ if(finished || _call!==st || st.subGen!==subGen) return;
         if(first && e?.message!=='slow') leaderSpeakSys(c, text, emo, st, typeSub, fin);   // engine trouble: the device voice takes over
         else { words(); st.timers.push(setTimeout(fin, 1200)); } });
     };
@@ -13096,7 +13191,8 @@ function nuclearStrike(att, def, quiet, aim){
   const instant = G._ff || document.visibilityState==='hidden';
   if(!instant){
     (G.nukeAnims=G.nukeAnims||[]).push({ from:[att.lon,att.lat], to:impactAt, t0:performance.now(), seed:Math.random()*1000, big:true });
-    focusNuke(att, def, impactAt);                                        // any launch, AI or player: the camera follows it
+    if(G._nukeSalvo){ nukeSound('launch'); nukeBanner(att, def, att===G.player, def===G.player); }   // salvo: the view stays where you're aiming
+    else focusNuke(att, def, impactAt);                                   // any launch, AI or player: the camera follows it
     if(att===G.player) addEv('w','☢️ ICBM Away',`Nuclear ICBM launched at ${def.name} (${fmtShort(ATOMIC.launchCost)}). Impact in seconds. Every country's relations with you fell by ${ATOMIC.relHit}.`);
     if(def===G.player) addEv('w','☢️ INCOMING',`${att.name} has launched an ICBM at you.`);
   }
@@ -13196,10 +13292,37 @@ function armNuke(){
   addEv('w','☢️ Targeting','Click the country to strike on the map. Press Esc to cancel.');
   if(isMobile()) openMobile('map');
 }
-function cancelNuke(){ G._nukeTargeting=false; document.body.classList.remove('nuke-aim'); }
+function cancelNuke(){ G._nukeTargeting=false; G._nukeSalvo=false; document.body.classList.remove('nuke-aim'); document.getElementById('nuke-salvo')?.remove(); }
+// Salvo: once the first strike is confirmed, every further click on the map fires another ICBM at once,
+// until Done / Esc, or until the ICBMs or the money run out
+function nukeSalvoBar(){
+  const p=G.player; let b=document.getElementById('nuke-salvo');
+  if(!G._nukeSalvo){ b?.remove(); return; }
+  if(!b){ b=document.createElement('div'); b.id='nuke-salvo'; document.body.appendChild(b); }
+  const n=p.nukes||0, can=Math.min(n, Math.floor(Math.max(0,p.treasury)/ATOMIC.launchCost));
+  b.innerHTML=`<span class="ns-ico">☢️</span><div><b>SALVO ARMED</b><small>${n} ICBM${n===1?'':'s'} left · ${fmtShort(ATOMIC.launchCost)} each${can<n?` · money for ${can}`:''} · ${isMobile()?'tap':'click'} a target to fire</small></div><button onclick="cancelNuke()">Done</button>`;
+}
+function nukeSalvoFire(t, aim){
+  const p=G.player;
+  if((p.nukes||0)<1){ cancelNuke(); addEv('w','☢️ Salvo','No ICBMs left.'); return; }
+  if(p.treasury<ATOMIC.launchCost){ cancelNuke(); addEv('w','☢️ Salvo',`Not enough money for another launch (${fmtShort(ATOMIC.launchCost)} each).`); return; }
+  nuclearStrike(p, t, false, aim && isFinite(aim[0]) ? aim : null);
+  if((p.nukes||0)<1 || p.treasury<ATOMIC.launchCost){ cancelNuke(); addEv('w','☢️ Salvo',(p.nukes||0)<1?'Last ICBM away. The arsenal is empty.':'Salvo over: the treasury can\'t pay for another launch.'); }
+  else nukeSalvoBar();
+}
+function nukeLaunchConfirmed(id){
+  const p=G.player, t=CTRY[id]; document.getElementById('nuke-modal')?.remove(); resumeFromModal();
+  const a=G._aimMarker; G._aimMarker=null; if(!t) return;
+  const more=(p.nukes||0)>1 && p.treasury>=ATOMIC.launchCost*2;
+  if(more){ G._nukeSalvo=true; G._nukeTargeting=true; document.body.classList.add('nuke-aim'); }
+  nuclearStrike(p, t, false, a);
+  if(more) nukeSalvoBar();
+}
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && G._nukeTargeting) cancelNuke(); });
 function confirmNukeTarget(id, aim){
-  const p=G.player, t=CTRY[id]; cancelNuke(); if(!t || t===p) return;
+  const p=G.player, t=CTRY[id];
+  if(G._nukeSalvo){ if(t && t!==p) nukeSalvoFire(t, aim); return; }     // salvo armed: fire straight away
+  cancelNuke(); if(!t || t===p) return;
   G._aimMarker = aim && isFinite(aim[0]) ? aim : [t.lon,t.lat];      // red crosshair on the map while you decide
   pauseForModal(); document.getElementById('nuke-modal')?.remove();
   const m=document.createElement('div'); m.id='nuke-modal'; m.className='hud-modal-wrap';
@@ -13210,9 +13333,10 @@ function confirmNukeTarget(id, aim){
       Expected: about <b>${fmtNum(Math.round(icbmCasualties(t).now*1e6))}</b> dead immediately and <b>${fmtNum(Math.round(icbmCasualties(t).later*1e6))}</b> more from fallout over 30 days; GDP −${ICBM.gdpHit*100}%, forces −${ICBM.forcesHit*100}%, stability −30.<br>
       Consequences for you: relations <b style="color:var(--red2)">−${ATOMIC.relHit} with every country</b>, +${ATOMIC.infamy} infamy (UN sanctions likely), and war with ${t.name} if not already.
       ${hasNukes(t)?`<br><b style="color:var(--red2)">${t.name} has nuclear weapons and will probably retaliate.</b>`:''}
-      <br>Launch cost: ${fmtShort(ATOMIC.launchCost)} · ICBMs remaining after launch: ${(p.nukes||0)-1}</div>
+      <br>Launch cost: ${fmtShort(ATOMIC.launchCost)} · ICBMs remaining after launch: ${(p.nukes||0)-1}
+      ${(p.nukes||0)>1?`<br><b style="color:#ffb347">Salvo:</b> after this launch, every ${isMobile()?'tap':'click'} on the map fires another ICBM straight away, until you press Done or Esc.`:''}</div>
     <div class="hud-row" style="justify-content:flex-end;"><button class="hud-btn" onclick="document.getElementById('nuke-modal').remove();resumeFromModal();G._aimMarker=null;">Abort</button>
-      <button class="hud-btn pri" style="background:var(--red2);border-color:var(--red2);color:#fff;" onclick="document.getElementById('nuke-modal').remove();resumeFromModal();const a=G._aimMarker;G._aimMarker=null;nuclearStrike(G.player,CTRY[${id}],false,a)">☢️ Launch</button></div></div>`;
+      <button class="hud-btn pri" style="background:var(--red2);border-color:var(--red2);color:#fff;" onclick="nukeLaunchConfirmed(${id})">☢️ Launch</button></div></div>`;
   document.body.appendChild(m);
 }
 // AI: losing nuclear powers may strike; ambitious militaristic states may start a program
@@ -18138,7 +18262,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 191;
+const ATLAS_BUILD = 192;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();

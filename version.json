@@ -1,7 +1,7 @@
 {
-  "version": 191,
+  "version": 192,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v191: Smoother play \u2014 each game day takes about half the work it did (map borders are redrawn only when they change, panels no longer force the page to re-measure itself on every update, annexed-land lookups are cached), so the game no longer stutters on each tick. Voices: no more pause after \"Mr.\"/\"Mrs.\"/\"Dr.\" or inside numbers; HD voices start sooner (long sentences are spoken in clause-sized pieces) and any line a leader or ATLAS has said before plays instantly, even after a restart."
+  "notes": "v192: Nuclear salvo \u2014 confirm your first strike, then every click (or tap) on the map fires another ICBM straight away until you press Done or Esc, or the missiles or money run out; your view stays where you're aiming. Peace talks: when a leader offers reparations or demands them, press Counter and name your price (or pick 1.5\u00d7/2\u00d7/3\u00d7); they accept, meet you partway, give a final offer, or take offence if you push too far \u2014 how far they'll go depends on how the war is going, their treasury and their temperament. Subtitles no longer flicker when a leader replies quickly."
 }
