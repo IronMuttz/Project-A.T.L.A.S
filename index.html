@@ -1779,6 +1779,8 @@ body.mob .rrow{ min-height:36px; }
   const desc=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
   const pending=new Map();   // id → typed state for boxes a nested panel fills in a moment later
   const keepScroll=new Map();   // scroll container → position to restore once a multi-step re-render finishes
+  const scrolledEls=new Set();  // boxes currently scrolled away from the top/left
+  document.addEventListener('scroll', e=>{ const t=e.target; if(t && t.nodeType===1){ if(t.scrollTop>0 || t.scrollLeft>0) scrolledEls.add(t); else scrolledEls.delete(t); } }, { capture:true, passive:true });
   const put=(el,st)=>{ if(el.readOnly || el.disabled) return;
     el.value=st.v; el.dataset.typed='1';
     if(el.id && typeof moneyPreview==='function' && document.getElementById(el.id+'-prev')) try{ moneyPreview(el.id); }catch(e){}
@@ -1793,11 +1795,15 @@ body.mob .rrow{ min-height:36px; }
       // A panel often re-renders in steps (outer panel, then sections inside it). While the outer step's
       // content is still short the scroll position is briefly clamped, so the inner steps must reuse the
       // position saved by the first step instead of saving the clamped one.
+      // Only boxes the player has actually scrolled are checked (a scroll listener keeps that list), so a render
+      // never forces the browser to lay the page out just to read scroll positions.
       const scr=[];
-      if(this.isConnected){
-        const save=(key,el)=>{ if(keepScroll.has(key)) scr.push([key,...keepScroll.get(key)]); else if(el.scrollTop>0) scr.push([key,el.scrollTop,el.scrollLeft]); };
-        for(let el=this; el && el!==document.documentElement; el=el.parentElement) save(el,el);
-        if(this.querySelectorAll) this.querySelectorAll('[id]').forEach(el=>save(el.id,el));
+      if(this.isConnected && (scrolledEls.size || keepScroll.size)){
+        const seen=new Set();
+        const save=(key,el)=>{ if(seen.has(key)) return; seen.add(key); if(keepScroll.has(key)) scr.push([key,...keepScroll.get(key)]); else if(el.scrollTop>0 || el.scrollLeft>0) scr.push([key,el.scrollTop,el.scrollLeft]); };
+        const consider=el=>{ if(!el || !el.isConnected) return; if(el===this || el.contains(this)) save(el,el); else if(el.id && this.contains(el)) save(el.id,el); };
+        keepScroll.forEach((_,k)=>consider(typeof k==='string' ? document.getElementById(k) : k));
+        scrolledEls.forEach(el=>{ if(!el.isConnected) scrolledEls.delete(el); else consider(el); });
       }
       setInner.call(this,v);
       if(scr.length){
@@ -4846,7 +4852,8 @@ function realmPop(c, map){ return (c?.pop||0) + ((map||annexedPopMap())[c?.abbr]
 // Lands a country has annexed (none for a land that is itself annexed)
 function realmTerritories(c){
   if(!c || c.annexedBy) return [];
-  return (G._territories?.[c.abbr] || CLIST).filter(t=>t.annexedBy===c.abbr);
+  if(!G._territories || G._terrDay!==G.totalDays) refreshTerritoryCache();      // rebuilt once a day (and on every annexation/release)
+  return (G._territories[c.abbr] || []).filter(t=>t.annexedBy===c.abbr);
 }
 function territoryCollect(t){ return t.taxExempt ? 0 : (t.revolution ? 0.5 : 1); }
 function realmGDP(c){ return (c?.gdp||0) + realmTerritories(c).reduce((s,t)=>s+(t.gdp||0),0); }
@@ -6052,9 +6059,9 @@ function atlasSay(line, opts={}){
     if(opts.interrupt!==false && !opts.alert){ ATLAS_VOICE.gen++; try{ speechSynthesis.cancel(); }catch(e){} hdvStop(); hdvCancel('atlas'); ATLAS_VOICE.queue=[]; ATLAS_VOICE.speaking=false; }
     if(opts.alert && ATLAS_VOICE.queue.length>2) return;               // never pile up alerts
     // Sentence by sentence: short natural pauses make the delivery fluid instead of one flat run
-    const parts=String(line).replace(/\s+/g,' ').match(/[^.!?]+[.!?]*/g)||[line];
+    const hd=hdvOn(), parts=hd ? hdvSplit(line).map(t=>hdvChunks(t)) : hdvSplit(line).map(t=>[t]);
     const wasIdle=!ATLAS_VOICE.speaking && !window.speechSynthesis?.speaking;
-    parts.map(t=>t.trim()).filter(Boolean).forEach((t,i,a)=>ATLAS_VOICE.queue.push({ text:t, pause:i<a.length-1?220:120, alert:!!opts.alert }));
+    parts.forEach((ch,i)=>ch.forEach((t,j)=>ATLAS_VOICE.queue.push({ text:t, pause:j<ch.length-1?70:i<parts.length-1?220:120, alert:!!opts.alert })));
     if(hdvOn()) ATLAS_VOICE.queue.forEach((q,i)=>hdvSynth(q.text, hdvAtlasVoice(), 1, 'atlas', (q.alert?1:0)+(i?1:0)).catch(()=>{}));   // start making them during the chime (alerts never hold up a leader on the line)
     if(wasIdle || (opts.interrupt!==false && !opts.alert)){ ATLAS_VOICE.speaking=true; atlasChime(); const g=ATLAS_VOICE.gen; setTimeout(()=>{ if(g===ATLAS_VOICE.gen) atlasSpeakNext(); }, 260); }
   };
@@ -6095,7 +6102,7 @@ const HDV_MODEL='onnx-community/Kokoro-82M-v1.0-ONNX';
 const HDV_POOL={ gb:{ m:['bm_george','bm_fable','bm_lewis','bm_daniel'], f:['bf_emma','bf_isabella','bf_alice'] },
                  us:{ m:['am_michael','am_fenrir','am_puck','am_eric'], f:['af_heart','af_bella','af_nicole','af_sarah','af_kore','af_aoede'] } };
 const HDV_ATLAS=[['bm_george','George · British'],['bm_fable','Fable · British'],['bm_lewis','Lewis · British'],['am_michael','Michael · American'],['am_fenrir','Fenrir · American'],['bf_emma','Emma · British'],['af_heart','Heart · American']];
-const HDV={ state:'off', pct:0, msg:'', err:'', worker:null, seq:0, pend:new Map(), cache:new Map(), src:null, user:false };
+const HDV={ state:'off', pct:0, msg:'', err:'', worker:null, seq:0, pend:new Map(), cache:new Map(), src:null, user:false, clipPuts:0 };
 function hdvAllVoices(){ return [...new Set(Object.values(HDV_POOL).flatMap(g=>[...g.m,...g.f]))]; }
 function hdvSupported(){ try{ return !!(window.Worker && window.WebAssembly && window.caches && window.isSecureContext && (window.AudioContext||window.webkitAudioContext) && URL.createObjectURL); }catch(e){ return false; } }
 function hdvInClaude(){ return !!window.claude?.use; }          // the Claude app's sandbox blocks the downloads
@@ -6210,7 +6217,7 @@ function hdvMsg(m){
   else if(m.type==='start'){ const p=HDV.pend.get(m.id); if(p) p.running=true; }
   else if(m.type==='audio' || m.type==='fail'){
     const p=HDV.pend.get(m.id); if(!p) return; HDV.pend.delete(m.id);
-    if(m.type==='audio'){ const secs=m.pcm.length/m.rate; if(secs>0.6 && m.ms){ const r=m.ms/1000/secs; HDV.rtf = HDV.rtf ? HDV.rtf*0.7+r*0.3 : r; } p.res({ pcm:m.pcm, rate:m.rate }); }
+    if(m.type==='audio'){ const secs=m.pcm.length/m.rate; if(secs>0.6 && m.ms){ const r=m.ms/1000/secs; HDV.rtf = HDV.rtf ? HDV.rtf*0.7+r*0.3 : r; } p.res({ pcm:m.pcm, rate:m.rate }); hdvClipPut(p.key, m.pcm, m.rate); }
     else p.rej(new Error(m.msg));
   }
 }
@@ -6236,7 +6243,7 @@ function hdvRemove(){
   HDV.pend.forEach(p=>p.rej(new Error('removed'))); HDV.pend.clear(); HDV.cache.clear();
   HDV.state='off'; HDV.pct=0; HDV.err='';
   hdvSetPref('never'); try{ localStorage.removeItem(HDV_DONE_KEY); }catch(e){}
-  ['transformers-cache','kokoro-voices','atlas-voice-pack'].forEach(k=>{ try{ caches.delete(k); }catch(e){} });
+  ['transformers-cache','kokoro-voices','atlas-voice-pack','atlas-voice-clips'].forEach(k=>{ try{ caches.delete(k); }catch(e){} });
   hdvRender(); hdvToast('🎧 HD voice pack removed. ATLAS is back on your device\'s voices.');
 }
 // One line of speech → { pcm, rate }. Recent lines are kept, so repeats and prefetches cost nothing.
@@ -6250,12 +6257,30 @@ function hdvSynth(text, voice, speed=1, tag='atlas', pri=1){
     return hit.pr; }
   if(!HDV.worker || HDV.state!=='ready') return Promise.reject(new Error('not ready'));
   const id=++HDV.seq;
-  const pr=new Promise((res,rej)=>{ HDV.pend.set(id,{ res, rej, key, tag, pri }); HDV.worker.postMessage({ type:'speak', id, text, voice, speed, pri }); });
+  const pr=new Promise((res,rej)=>{ HDV.pend.set(id,{ res, rej, key, tag, pri });
+    hdvClipGet(key).then(hit=>{ const p=HDV.pend.get(id); if(!p) return;                // dropped while we looked
+      if(hit){ HDV.pend.delete(id); res(hit); }
+      else HDV.worker?.postMessage({ type:'speak', id, text, voice, speed, pri:p.pri }); }); });
   const ent={ pr, id }; HDV.cache.set(key,ent); pr.catch(()=>{ if(HDV.cache.get(key)===ent) HDV.cache.delete(key); });
   while(HDV.cache.size>40) HDV.cache.delete(HDV.cache.keys().next().value);
   return pr;
 }
 // Drop lines of one kind that are still waiting their turn (never the one being spoken), except those still wanted
+const HDV_CLIPS='atlas-voice-clips', HDV_CLIP_MAX=400;
+function hdvClipUrl(key){ return 'https://atlas.voice/clip/'+lvHash(key).toString(36)+lvHash([...key].reverse().join('')).toString(36)+'-'+key.length; }
+async function hdvClipGet(key){
+  try{ const c=await caches.open(HDV_CLIPS), r=await c.match(hdvClipUrl(key)); if(!r) return null;
+    const i16=new Int16Array(await r.arrayBuffer()), pcm=new Float32Array(i16.length);
+    for(let i=0;i<i16.length;i++) pcm[i]=i16[i]/32767;
+    return { pcm, rate:+r.headers.get('x-rate')||24000 }; }
+  catch(e){ return null; }
+}
+async function hdvClipPut(key, pcm, rate){
+  try{ const i16=new Int16Array(pcm.length); for(let i=0;i<pcm.length;i++) i16[i]=Math.max(-1,Math.min(1,pcm[i]))*32767;
+    const c=await caches.open(HDV_CLIPS); await c.put(hdvClipUrl(key), new Response(i16.buffer, { headers:{ 'x-rate':String(rate) } }));
+    if(++HDV.clipPuts % 25 === 0){ const ks=await c.keys(); for(let i=0;i<ks.length-HDV_CLIP_MAX;i++) await c.delete(ks[i]); } }   // oldest go first (~20 MB kept)
+  catch(e){}
+}
 function hdvCancel(tag, keep){
   const ids=[];
   HDV.pend.forEach((p,id)=>{ if(p.tag!==tag || p.running || keep?.has(p.key)) return;
@@ -6301,8 +6326,31 @@ function leaderHDProsody(c, emo){
   return { speed, rate };
 }
 // Start making a leader's line before it's needed (while their call rings)
-function hdvPrefetchLeader(c, text, emo, pri=1){ if(!hdvOn() || !ATLAS_VOICE.on || !text) return; const v=leaderHDVoice(c), sp=leaderHDProsody(c,emo).speed; hdvSplit(text).forEach((t,i)=>hdvSynth(t, v, sp, 'call', i?pri+1:pri).catch(()=>{})); }
-function hdvSplit(text){ return (String(text).replace(/\s+/g,' ').match(/[^.!?]+[.!?]*["”']?/g)||[text]).map(t=>t.trim()).filter(Boolean); }
+function hdvPrefetchLeader(c, text, emo, pri=1){ if(!hdvOn() || !ATLAS_VOICE.on || !text) return; const v=leaderHDVoice(c), sp=leaderHDProsody(c,emo).speed; hdvChunks(text).forEach((t,i)=>hdvSynth(t, v, sp, 'call', i?pri+1:pri).catch(()=>{})); }
+// Sentences, for speaking one at a time. Titles are spelled out first (so "Mr. President" is never cut after "Mr."),
+// and a full stop only ends a sentence when a new one follows: not in 1.5, U.S. or J. Smith.
+function speechText(text){ return String(text??'').replace(/\s+/g,' ').trim().replace(/\bMr\.\s/g,'Mister ').replace(/\bMrs\.\s/g,'Missus ').replace(/\bMs\.\s/g,'Miz ').replace(/\bDr\.\s/g,'Doctor ').replace(/\bSt\.\s/g,'Saint '); }
+function hdvSplit(text){
+  const t=speechText(text), out=[], re=/[.!?…]+["”’')]*\s+/g; let start=0, m;
+  while((m=re.exec(t))){
+    const end=m.index+m[0].length;
+    if(!/["“(A-Z0-9]/.test(t[end]||'')) continue;                                        // next word isn't a sentence start
+    if(t[m.index]==='.' && /(^|[\s.])[A-Z]$/.test(t.slice(start, m.index))) continue;   // initials
+    out.push(t.slice(start, end).trim()); start=end;
+  }
+  out.push(t.slice(start).trim());
+  return out.filter(Boolean);
+}
+// For the HD voice: long sentences go in clause-sized pieces, so the first words are ready sooner
+function hdvChunks(text){
+  return hdvSplit(text).flatMap(s=>{
+    if(s.length<=72) return [s];
+    const bits=s.match(/.+?(?:[,;:—](?=\s)|$)/g)||[s], out=[]; let cur='';
+    bits.forEach(b=>{ b=b.trim(); if(!b) return; cur=cur ? cur+' '+b : b; if(cur.length>=30){ out.push(cur); cur=''; } });
+    if(cur){ if(out.length && cur.length<20) out[out.length-1]+=' '+cur; else out.push(cur); }
+    return out;
+  });
+}
 
 // ── UI: settings section, download pill, first-start offer ──
 function hdvToast(msg, bad){
@@ -6942,13 +6990,16 @@ function markSelected(id){
 }
 // Shrink stat figures that don't fit their box (long GDP / treasury numbers) so the grid never spills
 function fitStatValues(root){
-  (root||document).querySelectorAll('.sg .sg-v').forEach(el=>{
-    el.style.removeProperty('--fit'); el.style.fontSize=el.dataset.fs0 || el.style.fontSize || '';
-    if(!el.dataset.fs0) el.dataset.fs0=el.style.fontSize||'';
-    const avail=el.clientWidth; if(!avail) return;
-    let fs=parseFloat(getComputedStyle(el).fontSize), n=0;
-    while(el.scrollWidth>avail+0.5 && fs>9 && n++<12){ fs=Math.max(9, fs*avail/el.scrollWidth*0.98); el.style.setProperty('font-size', fs.toFixed(1)+'px', 'important'); }
-  });
+  // All writes, then all reads, then all writes: the page is laid out once per round, not once per value
+  const els=[...(root||document).querySelectorAll('.sg .sg-v')]; if(!els.length) return;
+  els.forEach(el=>{ el.style.removeProperty('--fit'); el.style.fontSize=el.dataset.fs0 || el.style.fontSize || ''; if(!el.dataset.fs0) el.dataset.fs0=el.style.fontSize||''; });
+  let todo=els.map(el=>({ el, avail:el.clientWidth })).filter(x=>x.avail);
+  todo.forEach(x=>{ x.fs=parseFloat(getComputedStyle(x.el).fontSize); x.sw=x.el.scrollWidth; });
+  for(let n=0; n<12 && todo.length; n++){
+    todo=todo.filter(x=>x.sw>x.avail+0.5 && x.fs>9);
+    todo.forEach(x=>{ x.fs=Math.max(9, x.fs*x.avail/x.sw*0.98); x.el.style.setProperty('font-size', x.fs.toFixed(1)+'px', 'important'); });
+    todo.forEach(x=>{ x.sw=x.el.scrollWidth; });
+  }
 }
 window.addEventListener('resize', ()=>{ clearTimeout(window._fitT); window._fitT=setTimeout(()=>fitStatValues(), 150); });
 // Which state a map shape belongs to (2010 territories + annexations) — shapes of one realm share no border line
@@ -7268,6 +7319,11 @@ function colorMap(){
     }
   });
 
+  // The border meshes are the costly part (the whole world's geometry): rebuild them only when borders change
+  const meshSig=[...controlledIds].sort((a,b)=>a-b).join(',')+'|'+CLIST.filter(c=>c.annexedBy).map(c=>c.id+':'+c.annexedBy).join(',')
+    +'|'+(G.proj ? G.proj.scale().toFixed(2)+','+G.proj.translate().join(',') : '');
+  if(meshSig===G._meshSig && G.mapG.select('#country-mesh').node() && G.mapG.select('#territory-border').node()){ markSelected(G.selectedCid); return; }
+  G._meshSig=meshSig;
   // Draw merged territory border — thick outer edge of player + annexed + vassal
   drawTerritoryBorder(controlledIds);
 
@@ -12405,7 +12461,7 @@ function leaderSpeak(c, text, onDone, emo){
     step(); };
   if(ATLAS_VOICE.on && _wlVoice && hdvOn()){                // HD voice pack: a natural voice that carries the emotion
     ATLAS_VOICE.gen++; ATLAS_VOICE.queue=[]; ATLAS_VOICE.speaking=false; voiceMeter(false); try{ speechSynthesis.cancel(); }catch(e){} hdvStop(); hdvCancel('atlas');
-    const P=leaderHDProsody(c, emo), hv=leaderHDVoice(c), parts=hdvSplit(text);
+    const P=leaderHDProsody(c, emo), hv=leaderHDVoice(c), parts=hdvChunks(text);
     hdvCancel('call', new Set(parts.map(t=>hdvKey(t, hv, P.speed))));                 // whatever they were going to say instead is dropped
     parts.forEach((t,j)=>hdvSynth(t, hv, P.speed, 'call', j?1:0).catch(()=>{}));   // sentence by sentence: the first one starts sooner
     let started=false, i=0;
@@ -15536,8 +15592,8 @@ function seedRealRelations(){
 // toward neutral only as far as 15 points above where it started. Aid, coalitions and alliances can still mend them.
 let _rivalCap=null;
 function rivalCap(a, b){
-  if(!_rivalCap){ _rivalCap={}; REL_PAIRS_2010.forEach(([x,y,v])=>{ if(v<40){ _rivalCap[x+'|'+y]=_rivalCap[y+'|'+x]=Math.min(50, v+15); } }); }
-  return _rivalCap[a.abbr+'|'+b.abbr] ?? 50;
+  if(!_rivalCap){ _rivalCap={}; REL_PAIRS_2010.forEach(([x,y,v])=>{ if(v<40){ const cap=Math.min(50, v+15); (_rivalCap[x]=_rivalCap[x]||{})[y]=cap; (_rivalCap[y]=_rivalCap[y]||{})[x]=cap; } }); }
+  return _rivalCap[a.abbr]?.[b.abbr] ?? 50;
 }
 // Daily: relations drift back toward their real baseline, minus aggression reputation
 const REL_STRONG = 90, AGGRO_MEMORY = 180;   // relations 90+ hold; aggressive acts lift that protection for 180 days
@@ -16125,7 +16181,7 @@ function releaseTerritory(c, how){
 function refreshTerritoryCache(){
   const rev={}, terr={};
   CLIST.forEach(t=>{ if(!t.annexedBy) return; (terr[t.annexedBy]=terr[t.annexedBy]||[]).push(t); if(t.revolution) rev[t.annexedBy]=(rev[t.annexedBy]||0)+1; });
-  G._revolts=rev; G._territories=terr;
+  G._revolts=rev; G._territories=terr; G._terrDay=G.totalDays;
 }
 function tickTerritories(){
   refreshTerritoryCache();
@@ -18082,7 +18138,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 190;
+const ATLAS_BUILD = 191;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();

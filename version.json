@@ -1,7 +1,7 @@
 {
-  "version": 190,
+  "version": 191,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v190: HD Voice Pack \u2014 natural human voices for ATLAS and every world leader (Kokoro neural voices, about 125 MB, downloaded once and works offline). Offered the first time you start a game; also in Settings \u2192 HD Voice Pack, where you can pick ATLAS's voice or remove the pack. Leaders get accents by region, voices that suit them, and emotion in their delivery; their opening line is prepared while the phone rings. The installed PC app now runs the voices on several CPU cores."
+  "notes": "v191: Smoother play \u2014 each game day takes about half the work it did (map borders are redrawn only when they change, panels no longer force the page to re-measure itself on every update, annexed-land lookups are cached), so the game no longer stutters on each tick. Voices: no more pause after \"Mr.\"/\"Mrs.\"/\"Dr.\" or inside numbers; HD voices start sooner (long sentences are spoken in clause-sized pieces) and any line a leader or ATLAS has said before plays instantly, even after a restart."
 }
