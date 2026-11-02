@@ -1,7 +1,7 @@
 {
-  "version": 189,
+  "version": 190,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v189: iPhone start screen \u2014 globe keeps turning with Reduce Motion on (gentle spin) and when iOS pauses the animation clock; canvas re-measures if laid out late"
+  "notes": "v190: HD Voice Pack \u2014 natural human voices for ATLAS and every world leader (Kokoro neural voices, about 125 MB, downloaded once and works offline). Offered the first time you start a game; also in Settings \u2192 HD Voice Pack, where you can pick ATLAS's voice or remove the pack. Leaders get accents by region, voices that suit them, and emotion in their delivery; their opening line is prepared while the phone rings. The installed PC app now runs the voices on several CPU cores."
 }

@@ -662,6 +662,33 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .wl-upd-t{ min-width:0; flex:1 1 auto; }
 @media (max-width: 420px){ .wl-upd{ font-size:14px; gap:8px; padding-left:12px; } .wl-upd-b{ padding:10px 12px; font-size:13px; } }
 @media (max-width: 900px) and (orientation: landscape){ .wl-upd{ top:calc(74px + env(safe-area-inset-top,0px)); padding-top:5px; padding-bottom:5px; } .wl-upd small{ -webkit-line-clamp:1; } }
+#hdv-pill{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:30000;display:flex;align-items:center;gap:7px;padding:6px 11px;border-radius:16px;
+  background:rgba(6,20,30,.92);border:1px solid rgba(var(--acc-rgb),.5);color:var(--text);font:600 12px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.04em;box-shadow:0 2px 12px rgba(0,0,0,.5);cursor:pointer;}
+#hdv-pill i{display:block;width:70px;height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;}
+#hdv-pill u, .hdv-bar u{display:block;height:100%;background:var(--teal);transition:width .3s;}
+#hdv-pill em{font-style:normal;color:var(--teal);min-width:30px;text-align:right;}
+#hdv-pill.mini b, #hdv-pill.mini i{display:none;}
+@media (max-width: 900px){ #hdv-pill{ bottom:calc(64px + env(safe-area-inset-bottom,0px)); } }
+.hdv-offer{position:fixed;inset:0;z-index:30001;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;}
+.hdv-card{background:var(--bg2);border:1px solid rgba(var(--acc-rgb),.55);border-radius:10px;max-width:410px;width:100%;padding:22px 22px 14px;text-align:center;box-shadow:0 0 40px rgba(var(--acc-rgb),.18);max-height:calc(100% - 8px);overflow:auto;}
+.hdv-ico{font-size:40px;line-height:1.1;}
+.hdv-h{font:700 20px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.08em;color:var(--teal);margin:6px 0 8px;text-transform:uppercase;}
+.hdv-p{font-size:14px;line-height:1.5;color:var(--text2);}
+.hdv-l{text-align:left;font-size:13px;line-height:1.55;color:var(--text2);margin:12px 0 14px;padding-left:18px;}
+.hdv-l .warn{color:#ffb347;}
+.hdv-btns{display:flex;gap:8px;}
+.hdv-b{flex:1;padding:11px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font:700 14px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.05em;cursor:pointer;}
+.hdv-b.yes{flex:1.4;background:rgba(var(--acc-rgb),.18);border-color:var(--teal);color:var(--teal);}
+.hdv-never{margin-top:10px;background:none;border:none;color:var(--text3);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;}
+.hdv-toast{position:fixed;left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:30002;width:max-content;max-width:min(92vw,460px);padding:10px 16px;border-radius:8px;
+  background:rgba(6,20,30,.96);border:1px solid var(--teal);color:var(--text);font-size:13px;line-height:1.4;box-shadow:0 4px 18px rgba(0,0,0,.5);transition:opacity .5s;pointer-events:none;}
+.hdv-toast.bad{border-color:var(--red2);}
+.hdv-toast.out{opacity:0;}
+.hdv-d{font-size:10.5px;color:var(--text3);line-height:1.35;margin:3px 0;}
+.hdv-d.ok{color:var(--green);font-size:11.5px;}
+.hdv-d.warn{color:#ffb347;}
+.hdv-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;margin:6px 0 2px;}
+.uip-reset.hdv-go{border-color:var(--teal);color:var(--teal);}
 @media (prefers-reduced-motion: reduce){ #welcome *:not(.wl-spin){animation:none !important;transition:none !important;} .wl-spin{animation-duration:calc(var(--t,60s) * 2) !important;} .wl-draw{stroke-dashoffset:0;} .wl-log div{opacity:1;} .wl-go{opacity:1;transform:none;} }
 
 /* ══════════════ HUD THEME — matches the ATLAS welcome screen ══════════════ */
@@ -5925,6 +5952,7 @@ async function boot(){
   setLd(80,'Building nations...'); await sleep(200);
   setLd(100,'Ready.'); await sleep(200);
   showWelcome();
+  hdvAutoStart();
 }
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
@@ -5969,7 +5997,7 @@ function setPlayerTitle(t){
   if(G.player){ addEv('i','🎖️ Title',`ATLAS and foreign leaders will now address you as ${t}.`); }
   else { const g=document.getElementById('wl-greet'); if(g) g.textContent=g.textContent.replace(/,\s.*\.$/, `, ${t}.`); }
 }
-function saveVoicePrefs(){ try{ const {on,alerts,name}=ATLAS_VOICE; localStorage.setItem(VOICE_PREF_KEY, JSON.stringify({on,alerts,name})); }catch(e){} }
+function saveVoicePrefs(){ try{ const {on,alerts,name,hd,hdVoice}=ATLAS_VOICE; localStorage.setItem(VOICE_PREF_KEY, JSON.stringify({on,alerts,name,hd,hdVoice})); }catch(e){} }
 function voiceScore(v){
   const n=v.name, l=v.lang||''; let s=0;
   if(!/^en/i.test(l)) return -999;
@@ -5998,24 +6026,36 @@ function voiceMeter(on){ document.body.classList.toggle('atlas-speaking', !!on);
 function atlasSpeakNext(){
   const Q=ATLAS_VOICE.queue; if(!Q.length){ ATLAS_VOICE.speaking=false; voiceMeter(false); return; }
   const s=Q.shift(); ATLAS_VOICE.speaking=true; voiceMeter(true);
+  const gen=ATLAS_VOICE.gen, next=()=>{ if(gen===ATLAS_VOICE.gen) setTimeout(atlasSpeakNext, s.pause||140); };
+  if(hdvOn()){                                                        // HD voice pack: natural neural voice
+    const hv=hdvAtlasVoice();
+    hdvWait(hdvSynth(s.text, hv, 1, 'atlas', s.alert?1:0), 20000)
+      .then(a=>{ if(gen===ATLAS_VOICE.gen) hdvPlay(a, { onEnd:next }); })
+      .catch(e=>{ if(gen===ATLAS_VOICE.gen){ if(e?.message==='slow') next(); else atlasSysSpeak(s, next); } });   // never switch voices mid-speech for a slow line
+    return;
+  }
+  atlasSysSpeak(s, next);
+}
+function atlasSysSpeak(s, next){
+  if(!('speechSynthesis' in window)){ next(); return; }
   const u=new SpeechSynthesisUtterance(s.text), v=atlasVoice();
   if(v){ u.voice=v; u.lang=v.lang; }
   const neural=v && /natural|neural|online/i.test(v.name);
   u.rate = neural ? 1.0 : 0.96; u.pitch = neural ? 0.95 : 0.86; u.volume=1;
-  const gen=ATLAS_VOICE.gen;
-  u.onend=u.onerror=()=>{ if(gen===ATLAS_VOICE.gen) setTimeout(atlasSpeakNext, s.pause||140); };
+  u.onend=u.onerror=next;
   try{ speechSynthesis.speak(u); }catch(e){ ATLAS_VOICE.speaking=false; voiceMeter(false); }
 }
 function atlasSay(line, opts={}){
-  if(!ATLAS_VOICE.on || !_wlVoice || !('speechSynthesis' in window) || !line) return;
+  if(!ATLAS_VOICE.on || !_wlVoice || !(('speechSynthesis' in window) || hdvOn()) || !line) return;
   line = titled(line).replace(/\bMr\.\s/g,'Mister ').replace(/\bMrs\.\s/g,'Missus ');
   const go=()=>{
-    if(opts.interrupt!==false && !opts.alert){ ATLAS_VOICE.gen++; speechSynthesis.cancel(); ATLAS_VOICE.queue=[]; ATLAS_VOICE.speaking=false; }
+    if(opts.interrupt!==false && !opts.alert){ ATLAS_VOICE.gen++; try{ speechSynthesis.cancel(); }catch(e){} hdvStop(); hdvCancel('atlas'); ATLAS_VOICE.queue=[]; ATLAS_VOICE.speaking=false; }
     if(opts.alert && ATLAS_VOICE.queue.length>2) return;               // never pile up alerts
     // Sentence by sentence: short natural pauses make the delivery fluid instead of one flat run
     const parts=String(line).replace(/\s+/g,' ').match(/[^.!?]+[.!?]*/g)||[line];
-    const wasIdle=!ATLAS_VOICE.speaking && !speechSynthesis.speaking;
-    parts.map(t=>t.trim()).filter(Boolean).forEach((t,i,a)=>ATLAS_VOICE.queue.push({ text:t, pause:i<a.length-1?220:120 }));
+    const wasIdle=!ATLAS_VOICE.speaking && !window.speechSynthesis?.speaking;
+    parts.map(t=>t.trim()).filter(Boolean).forEach((t,i,a)=>ATLAS_VOICE.queue.push({ text:t, pause:i<a.length-1?220:120, alert:!!opts.alert }));
+    if(hdvOn()) ATLAS_VOICE.queue.forEach((q,i)=>hdvSynth(q.text, hdvAtlasVoice(), 1, 'atlas', (q.alert?1:0)+(i?1:0)).catch(()=>{}));   // start making them during the chime (alerts never hold up a leader on the line)
     if(wasIdle || (opts.interrupt!==false && !opts.alert)){ ATLAS_VOICE.speaking=true; atlasChime(); const g=ATLAS_VOICE.gen; setTimeout(()=>{ if(g===ATLAS_VOICE.gen) atlasSpeakNext(); }, 260); }
   };
   if(navigator.userActivation && !navigator.userActivation.hasBeenActive){
@@ -6033,16 +6073,294 @@ function atlasAlert(line){
 function fillTitlePickers(){ document.querySelectorAll('.title-pick').forEach(el=>{ el.innerHTML=titleOptions(playerTitle()); }); }
 document.addEventListener('DOMContentLoaded', ()=>{ try{ fillTitlePickers(); }catch(e){} });
 function fillVoicePicker(){
-  try{ fillTitlePickers(); const t=document.getElementById('uip-themes'); if(t) t.innerHTML=themeSwatches(); }catch(e){}
+  try{ fillTitlePickers(); const t=document.getElementById('uip-themes'); if(t) t.innerHTML=themeSwatches(); hdvRender(); }catch(e){}
   const sel=document.getElementById('uip-voice'); if(!sel) return;
   const vs=atlasVoices().sort((a,b)=>voiceScore(b)-voiceScore(a)), cur=atlasVoice();
   sel.innerHTML = vs.length ? vs.map(v=>`<option value="${v.name.replace(/"/g,'&quot;')}" ${cur&&v.name===cur.name?'selected':''}>${v.name.replace(/^Microsoft /,'')} (${v.lang})</option>`).join('') : '<option>No English voices on this device</option>';
   const on=document.getElementById('uip-voice-on'), al=document.getElementById('uip-voice-alerts');
   if(on) on.checked=ATLAS_VOICE.on; if(al) al.checked=ATLAS_VOICE.alerts;
 }
-function setVoicePref(k,v){ ATLAS_VOICE[k]=v; saveVoicePrefs(); if(k==='on' && !v){ try{ speechSynthesis.cancel(); }catch(e){} ATLAS_VOICE.queue=[]; voiceMeter(false); } }
+function setVoicePref(k,v){ ATLAS_VOICE[k]=v; saveVoicePrefs(); if((k==='on'||k==='hd') && !v) hdvStop(); if(k==='on' && !v){ try{ speechSynthesis.cancel(); }catch(e){} ATLAS_VOICE.queue=[]; voiceMeter(false); } }
 function testAtlasVoice(){ atlasSay(`Good ${dayPart()}, Commander. All systems are online.${G.player?' '+G.player.name+' awaits your orders.':''}`); }
 function dayPart(){ const hr=new Date().getHours(); return hr<5?'evening':hr<12?'morning':hr<17?'afternoon':'evening'; }
+// ═══ HD VOICE PACK — Kokoro-82M neural voices (open source, Apache-2.0). Downloaded once to the device (~125 MB:
+//     voice engine from jsDelivr, model and voices from Hugging Face), kept in the browser's Cache Storage, then run
+//     offline in a background worker so the game never stutters. ATLAS and every leader get a natural human voice;
+//     the device's own voices stay as the fallback while the pack is off, still loading, or not supported. ═══
+const HDV_KEY='atlas_hd', HDV_DONE_KEY='atlas_hd_done', HDV_MB=125;
+const HDV_LIB=['https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.web.js','https://unpkg.com/kokoro-js@1.2.1/dist/kokoro.web.js'];
+const HDV_ORT=['https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/','https://unpkg.com/@huggingface/transformers@3.5.1/dist/'];
+const HDV_MODEL='onnx-community/Kokoro-82M-v1.0-ONNX';
+// The better-rated Kokoro voices, by accent and gender. Leaders draw from these; ATLAS picks one of HDV_ATLAS.
+const HDV_POOL={ gb:{ m:['bm_george','bm_fable','bm_lewis','bm_daniel'], f:['bf_emma','bf_isabella','bf_alice'] },
+                 us:{ m:['am_michael','am_fenrir','am_puck','am_eric'], f:['af_heart','af_bella','af_nicole','af_sarah','af_kore','af_aoede'] } };
+const HDV_ATLAS=[['bm_george','George · British'],['bm_fable','Fable · British'],['bm_lewis','Lewis · British'],['am_michael','Michael · American'],['am_fenrir','Fenrir · American'],['bf_emma','Emma · British'],['af_heart','Heart · American']];
+const HDV={ state:'off', pct:0, msg:'', err:'', worker:null, seq:0, pend:new Map(), cache:new Map(), src:null, user:false };
+function hdvAllVoices(){ return [...new Set(Object.values(HDV_POOL).flatMap(g=>[...g.m,...g.f]))]; }
+function hdvSupported(){ try{ return !!(window.Worker && window.WebAssembly && window.caches && window.isSecureContext && (window.AudioContext||window.webkitAudioContext) && URL.createObjectURL); }catch(e){ return false; } }
+function hdvInClaude(){ return !!window.claude?.use; }          // the Claude app's sandbox blocks the downloads
+function hdvPref(){ try{ return localStorage.getItem(HDV_KEY)||''; }catch(e){ return ''; } }
+function hdvSetPref(v){ try{ v ? localStorage.setItem(HDV_KEY,v) : localStorage.removeItem(HDV_KEY); }catch(e){} }
+function hdvOn(){ return HDV.state==='ready' && ATLAS_VOICE.hd!==false; }
+function hdvAtlasVoice(){ return HDV_ATLAS.some(([k])=>k===ATLAS_VOICE.hdVoice) ? ATLAS_VOICE.hdVoice : 'bm_george'; }
+
+// Runs inside the worker (serialised with toString), so it may only use what it defines itself.
+function hdvWorkerMain(){
+  const PACK='atlas-voice-pack', VOICE_BYTES=522240;
+  let tts=null, busy=false, lastPost=0;
+  const queue=[];                                               // lines waiting: lowest pri first (0 = needed right now), then oldest
+  const post=(m,t)=>self.postMessage(m,t||[]);
+  const W={ lib:2.14e6, mjs:4.5e4, wasm:2.16e7, model:9.24e7, voices:0 }, D={ lib:0, mjs:0, wasm:0, model:0, voices:0 };
+  const prog=(k,got,tot,msg)=>{ D[k]=got; if(tot>W[k]) W[k]=tot; const now=Date.now(); if(now-lastPost<200 && got<tot) return; lastPost=now;
+    const T=Object.values(W).reduce((a,b)=>a+b,0), G=Object.values(D).reduce((a,b)=>a+b,0);
+    post({ type:'progress', pct:Math.min(99, Math.floor(G/T*100)), msg, mb:Math.round(G/1e6), total:Math.round(T/1e6) }); };
+  // Cache first; otherwise download (with byte progress) from each mirror in turn, and keep it for next time.
+  async function grab(urls, onBytes){
+    let c=null; try{ c=await caches.open(PACK); }catch(e){}
+    if(c){ try{ const hit=await c.match(urls[0]); if(hit){ const b=await hit.blob(); onBytes(b.size,b.size); return b; } }catch(e){} }
+    let err=null;
+    for(const u of urls){
+      try{
+        const r=await fetch(u); if(!r.ok) throw new Error('HTTP '+r.status+' from '+new URL(u).host);
+        const total=+(r.headers.get('content-length')||0); let b;
+        if(r.body && r.body.getReader){ const rd=r.body.getReader(), parts=[]; let got=0;
+          for(;;){ const { done, value }=await rd.read(); if(done) break; parts.push(value); got+=value.length; onBytes(got, Math.max(total,got)); }
+          b=new Blob(parts); }
+        else { b=await r.blob(); onBytes(b.size,b.size); }
+        if(c){ try{ await c.put(urls[0], new Response(b)); }catch(e){} }
+        return b;
+      }catch(e){ err=e; }
+    }
+    throw err||new Error('download failed');
+  }
+  async function init(m){
+    // Several CPU cores when the page is cross-origin isolated (the installed PC app); one core otherwise or after a failed try
+    try{ if(m.single) Object.defineProperty(self, 'crossOriginIsolated', { value:false, configurable:true });
+      else if(m.threads>0) Object.defineProperty(self.navigator, 'hardwareConcurrency', { value:m.threads*2, configurable:true }); }catch(e){}
+    W.voices=m.voices.length*VOICE_BYTES;
+    const lib=await grab(m.lib, (g,t)=>prog('lib',g,t,'Voice engine'));
+    const mjs=await grab(m.ort.map(b=>b+'ort-wasm-simd-threaded.jsep.mjs'), (g,t)=>prog('mjs',g,t,'Audio runtime'));
+    const wasm=await grab(m.ort.map(b=>b+'ort-wasm-simd-threaded.jsep.wasm'), (g,t)=>prog('wasm',g,t,'Audio runtime'));
+    const K=await import(URL.createObjectURL(new Blob([lib],{type:'text/javascript'})));
+    K.env.wasmPaths={ mjs:URL.createObjectURL(new Blob([mjs],{type:'text/javascript'})), wasm:URL.createObjectURL(new Blob([wasm],{type:'application/wasm'})) };
+    tts=await K.KokoroTTS.from_pretrained(m.model, { dtype:'q8', device:'wasm',
+      progress_callback:e=>{ if(e && e.status==='progress' && /\.onnx$/.test(e.file||'')) prog('model', e.loaded||0, e.total||0, 'Voice model'); } });
+    prog('model', W.model, W.model, 'Voices');
+    // kokoro-js keeps voices in this cache under these URLs; fetch every one now so the pack works offline
+    let vc=null; try{ vc=await caches.open('kokoro-voices'); }catch(e){}
+    let n=0;
+    for(const v of m.voices){
+      const u=m.voiceBase+v+'.bin';
+      try{ if(!(vc && await vc.match(u))){ const r=await fetch(u); if(!r.ok) throw new Error('HTTP '+r.status); const ab=await r.arrayBuffer(); if(vc) await vc.put(u, new Response(ab)); } }
+      catch(e){ if(!n) throw e; }
+      prog('voices', ++n*VOICE_BYTES, W.voices, 'Voices');
+    }
+    await tts.generate('Ready.', { voice:m.voices[0] });       // warm up, so the first real line comes out quickly
+    post({ type:'ready', threads:self.crossOriginIsolated ? Math.min(4, Math.ceil((navigator.hardwareConcurrency||1)/2)) : 1 });
+  }
+  async function pump(){
+    if(busy || !queue.length) return;
+    queue.sort((a,b)=>a.pri-b.pri || a.id-b.id);
+    const m=queue.shift(); busy=true;
+    try{ await speak(m); }catch(err){ post({ type:'fail', id:m.id, msg:String(err&&err.message||err) }); }
+    busy=false; setTimeout(pump, 0);                            // let any cancel/bump messages land before choosing the next line
+  }
+  async function speak(m){
+    if(!tts) throw new Error('not ready');
+    post({ type:'start', id:m.id });
+    const t0=performance.now(), a=await tts.generate(m.text, { voice:m.voice, speed:m.speed||1 });
+    const pcm=a.audio instanceof Float32Array ? a.audio : Float32Array.from(a.audio);
+    post({ type:'audio', id:m.id, pcm, rate:a.sampling_rate||24000, ms:performance.now()-t0 }, [pcm.buffer]);
+  }
+  self.onmessage=e=>{ const m=e.data||{};
+    if(m.type==='init') init(m).catch(err=>post({ type:'error', msg:String(err&&err.message||err) }));
+    else if(m.type==='cancel'){ const drop=new Set(m.ids||[]); for(let i=queue.length-1;i>=0;i--) if(drop.has(queue[i].id)) queue.splice(i,1); }
+    else if(m.type==='bump'){ const q=queue.find(x=>x.id===m.id); if(q) q.pri=Math.min(q.pri, m.pri); }
+    else if(m.type==='speak'){ queue.push(m); setTimeout(pump, 0); }
+  };
+}
+function hdvStart(user){
+  if(user) HDV.user=true;
+  if(HDV.worker && HDV.state!=='error') return;
+  if(!hdvSupported()){ HDV.state='unsupported'; hdvRender(); return; }
+  hdvSetPref('on');
+  if(user){ try{ navigator.storage?.persist?.(); }catch(e){} }
+  let w;
+  try{ w=new Worker(URL.createObjectURL(new Blob(['('+hdvWorkerMain.toString()+')()'],{type:'text/javascript'})), { type:'module' }); }
+  catch(e){ HDV.state='error'; HDV.err='This browser can\'t run the voice engine. Try Chrome, Edge or the A.T.L.A.S app.'; hdvRender(); return; }
+  HDV.worker=w; HDV.state='loading'; HDV.pct=0; HDV.msg='Starting'; HDV.err=''; hdvRender();
+  w.onmessage=e=>hdvMsg(e.data||{});
+  w.onerror=e=>{ e.preventDefault?.(); hdvFail(e.message||'worker error'); };
+  let threads=0; try{ threads=+localStorage.getItem('atlas_hd_threads')||0; }catch(e){}
+  w.postMessage({ type:'init', lib:HDV_LIB, ort:HDV_ORT, model:HDV_MODEL, voiceBase:`https://huggingface.co/${HDV_MODEL}/resolve/main/voices/`, voices:hdvAllVoices(), single:!!HDV.single, threads });
+}
+function hdvMsg(m){
+  if(m.type==='progress'){ HDV.pct=m.pct; HDV.msg=m.msg; HDV.mb=m.mb; HDV.total=m.total; hdvRender(); }
+  else if(m.type==='ready'){
+    let fresh=true; try{ fresh=!localStorage.getItem(HDV_DONE_KEY); localStorage.setItem(HDV_DONE_KEY,'1'); }catch(e){}
+    HDV.state='ready'; HDV.pct=100; HDV.threads=m.threads||1; hdvRender();
+    if(fresh || HDV.user){
+      hdvToast('🎧 HD voices installed. ATLAS and every leader now speak with a natural voice, even offline.');
+      if(G.player) addEv('i','🎧 HD Voices Ready','ATLAS and foreign leaders now speak with natural voices. Change ATLAS\'s voice under Settings → HD Voice Pack.');
+      atlasSay(`Voice pack installed, ${playerTitle()}. This is how I sound now.`);
+    }
+    HDV.user=false;
+  }
+  else if(m.type==='error') hdvFail(m.msg);
+  else if(m.type==='start'){ const p=HDV.pend.get(m.id); if(p) p.running=true; }
+  else if(m.type==='audio' || m.type==='fail'){
+    const p=HDV.pend.get(m.id); if(!p) return; HDV.pend.delete(m.id);
+    if(m.type==='audio'){ const secs=m.pcm.length/m.rate; if(secs>0.6 && m.ms){ const r=m.ms/1000/secs; HDV.rtf = HDV.rtf ? HDV.rtf*0.7+r*0.3 : r; } p.res({ pcm:m.pcm, rate:m.rate }); }
+    else p.rej(new Error(m.msg));
+  }
+}
+function hdvErrText(msg){
+  msg=String(msg||'');
+  if(/SyntaxError|Unexpected|Invalid regular expression|lookbehind/i.test(msg)) return 'This browser is too old for HD voices (iPhone needs iOS 16.4 or newer).';
+  if(/memory|allocation|RangeError/i.test(msg)) return 'Not enough free memory on this device to run the voice model.';
+  if(/fetch|network|HTTP|Load failed|import|module script/i.test(msg)) return 'Couldn\'t reach the download servers (jsDelivr / Hugging Face). Check your connection and try again.';
+  return 'The voice pack couldn\'t start ('+msg.slice(0,80)+').';
+}
+function hdvFail(msg){
+  if(!HDV.single && window.crossOriginIsolated && HDV.state==='loading'){   // multi-core start failed: try again on one core
+    HDV.single=true; try{ HDV.worker?.terminate(); }catch(e){} HDV.worker=null; HDV.state='off'; hdvStart(false); return; }
+  const user=HDV.user;
+  HDV.state='error'; HDV.err=hdvErrText(msg); HDV.user=false;
+  try{ HDV.worker?.terminate(); }catch(e){} HDV.worker=null;
+  HDV.pend.forEach(p=>p.rej(new Error('engine stopped'))); HDV.pend.clear(); HDV.cache.clear();
+  hdvRender();
+  if(user) hdvToast('🎧 '+HDV.err, true);
+}
+function hdvRemove(){
+  try{ HDV.worker?.terminate(); }catch(e){} HDV.worker=null; hdvStop();
+  HDV.pend.forEach(p=>p.rej(new Error('removed'))); HDV.pend.clear(); HDV.cache.clear();
+  HDV.state='off'; HDV.pct=0; HDV.err='';
+  hdvSetPref('never'); try{ localStorage.removeItem(HDV_DONE_KEY); }catch(e){}
+  ['transformers-cache','kokoro-voices','atlas-voice-pack'].forEach(k=>{ try{ caches.delete(k); }catch(e){} });
+  hdvRender(); hdvToast('🎧 HD voice pack removed. ATLAS is back on your device\'s voices.');
+}
+// One line of speech → { pcm, rate }. Recent lines are kept, so repeats and prefetches cost nothing.
+function hdvKey(text, voice, speed){ return voice+'|'+(Math.round(speed*100)/100)+'|'+text; }
+// pri: 0 = needed this moment, 1 = coming up next, 2 = a guess (made only when nothing more urgent is waiting)
+function hdvSynth(text, voice, speed=1, tag='atlas', pri=1){
+  speed=Math.round(speed*100)/100;
+  const key=hdvKey(text, voice, speed), hit=HDV.cache.get(key);
+  if(hit){ HDV.cache.delete(key); HDV.cache.set(key,hit);
+    const p=HDV.pend.get(hit.id); if(p && !p.running && pri<p.pri){ p.pri=pri; p.tag=tag; HDV.worker?.postMessage({ type:'bump', id:hit.id, pri }); }
+    return hit.pr; }
+  if(!HDV.worker || HDV.state!=='ready') return Promise.reject(new Error('not ready'));
+  const id=++HDV.seq;
+  const pr=new Promise((res,rej)=>{ HDV.pend.set(id,{ res, rej, key, tag, pri }); HDV.worker.postMessage({ type:'speak', id, text, voice, speed, pri }); });
+  const ent={ pr, id }; HDV.cache.set(key,ent); pr.catch(()=>{ if(HDV.cache.get(key)===ent) HDV.cache.delete(key); });
+  while(HDV.cache.size>40) HDV.cache.delete(HDV.cache.keys().next().value);
+  return pr;
+}
+// Drop lines of one kind that are still waiting their turn (never the one being spoken), except those still wanted
+function hdvCancel(tag, keep){
+  const ids=[];
+  HDV.pend.forEach((p,id)=>{ if(p.tag!==tag || p.running || keep?.has(p.key)) return;
+    ids.push(id); HDV.pend.delete(id); if(HDV.cache.get(p.key)?.id===id) HDV.cache.delete(p.key); p.rej(new Error('cancelled')); });
+  if(ids.length && HDV.worker) HDV.worker.postMessage({ type:'cancel', ids });
+}
+function hdvWait(pr, ms){ return Promise.race([pr, new Promise((_,rej)=>setTimeout(()=>rej(new Error('slow')), ms))]); }
+function hdvCtx(){
+  try{ _chimeCtx=_chimeCtx||new (window.AudioContext||window.webkitAudioContext)(); if(_chimeCtx.state==='suspended') _chimeCtx.resume().catch(()=>{}); return _chimeCtx; }
+  catch(e){ return null; }
+}
+// Play a clip. rate nudges pitch (and pace) for emotion and age; onEnd fires once, never after hdvStop().
+function hdvPlay(a, { rate=1, vol=1, onEnd }={}){
+  const ac=hdvCtx(); if(!ac || !a?.pcm?.length){ onEnd?.(); return null; }
+  try{ if(navigator.audioSession && navigator.audioSession.type!=='playback') navigator.audioSession.type='playback'; }catch(e){}   // iPhone: play with the silent switch on, like speech does
+  hdvStop();
+  const buf=ac.createBuffer(1, a.pcm.length, a.rate);
+  if(buf.copyToChannel) buf.copyToChannel(a.pcm,0); else buf.getChannelData(0).set(a.pcm);
+  const s=ac.createBufferSource(), g=ac.createGain(); s.buffer=buf; s.playbackRate.value=rate; g.gain.value=vol;
+  s.connect(g).connect(ac.destination);
+  let done=false; const fin=()=>{ if(done || s._cut) return; done=true; if(HDV.src===s) HDV.src=null; onEnd?.(); };
+  s.onended=fin; HDV.src=s; s.start();
+  setTimeout(fin, a.pcm.length/a.rate/rate*1000 + 1500);         // in case the audio clock is held (no tap yet on iOS)
+  return s;
+}
+function hdvStop(){ const s=HDV.src; HDV.src=null; if(s){ s._cut=true; try{ s.onended=null; s.stop(); }catch(e){} } }
+// iOS/Android only let audio start after a tap: wake the audio clock on the first one
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev, ()=>{ if(HDV.worker && (!_chimeCtx || _chimeCtx.state!=='running')) hdvCtx(); }, true));
+
+// A leader's HD voice: accent from where they lead, gender from the leader, fixed for life by their name.
+function leaderHDVoice(c){
+  const L=c.leader||{}, us = ['USA','CAN','PHL','LBR','KOR','JPN','TWN','MEX','ISR'].includes(c.abbr)
+    || (['N.America','S.America','E.Asia','SE.Asia'].includes(c.region) && !COMMONWEALTH.has(c.abbr));
+  const pool=HDV_POOL[us?'us':'gb'][L.fem?'f':'m'].filter(v=>v!==hdvAtlasVoice());
+  return pool[lvHash(L.name||c.name)%pool.length];
+}
+const HDV_EMO = { calm:{ speed:1, rate:1 }, warm:{ speed:1.03, rate:1.01 }, cold:{ speed:0.96, rate:0.99 },
+  upset:{ speed:0.93, rate:1.02 }, angry:{ speed:1.1, rate:1.0 }, threat:{ speed:0.88, rate:0.97 } };
+function leaderHDProsody(c, emo){
+  const L=c.leader||{}, age=G.year-(L.born||G.year-55), h=lvHash(L.name||c.name), E=HDV_EMO[emo]||HDV_EMO.calm;
+  const speed=Math.max(0.82, Math.min(1.18, (1.02 - (age-55)*0.003) * E.speed));
+  const rate=Math.max(0.94, Math.min(1.05, E.rate + ((h>>3)%5-2)/100 + (leaderHas(c,'hawk')?-0.015:0) - Math.max(0,age-65)*0.001));
+  return { speed, rate };
+}
+// Start making a leader's line before it's needed (while their call rings)
+function hdvPrefetchLeader(c, text, emo, pri=1){ if(!hdvOn() || !ATLAS_VOICE.on || !text) return; const v=leaderHDVoice(c), sp=leaderHDProsody(c,emo).speed; hdvSplit(text).forEach((t,i)=>hdvSynth(t, v, sp, 'call', i?pri+1:pri).catch(()=>{})); }
+function hdvSplit(text){ return (String(text).replace(/\s+/g,' ').match(/[^.!?]+[.!?]*["”']?/g)||[text]).map(t=>t.trim()).filter(Boolean); }
+
+// ── UI: settings section, download pill, first-start offer ──
+function hdvToast(msg, bad){
+  const t=document.createElement('div'); t.className='hdv-toast'+(bad?' bad':''); t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.classList.add('out'), 5200); setTimeout(()=>t.remove(), 5800);
+}
+function hdvRender(){
+  // floating progress pill while downloading/loading
+  let pill=document.getElementById('hdv-pill');
+  if(HDV.state==='loading'){
+    if(!pill){ pill=document.createElement('div'); pill.id='hdv-pill'; pill.title='HD voice pack'; pill.onclick=()=>pill.classList.toggle('mini'); document.body.appendChild(pill); }
+    pill.innerHTML=`<span>🎧</span><b>Voice pack</b><i><u style="width:${HDV.pct}%"></u></i><em>${HDV.pct}%</em>`;
+  } else pill?.remove();
+  const box=document.getElementById('uip-hd'); if(!box) return;
+  const S=HDV.state, sz=`about ${HDV_MB} MB`;
+  const desc=`<div class="hdv-d">Natural human voices for ATLAS and every world leader, with emotion on calls. ${sz}, downloaded once, then works offline.</div>`;
+  if(S==='unsupported') box.innerHTML=`${desc}<div class="hdv-d warn">Not available in this browser. Use the A.T.L.A.S app or Chrome/Edge/Safari 16.4+.</div>`;
+  else if(S==='loading') box.innerHTML=`<div class="hdv-bar"><u style="width:${HDV.pct}%"></u></div><div class="hdv-d">${HDV.pct<99?`Downloading… ${HDV.pct}%${HDV.mb!=null?` · ${HDV.mb} of ~${HDV.total} MB`:''}`:'Loading the voice model…'} · ${mEsc(HDV.msg||'')}</div><div class="hdv-d">You can keep playing while it downloads.</div>`;
+  else if(S==='ready') box.innerHTML=`<div class="hdv-d ok">✓ Installed · works offline${HDV.threads>1?` · ${HDV.threads} CPU cores`:''}</div>${HDV.rtf?`<div class="hdv-d ${HDV.rtf>1.6?'warn':''}">${HDV.rtf<=1?`Speaks faster than real time on this device (${(1/HDV.rtf).toFixed(1)}×).`:`This device makes speech ${HDV.rtf.toFixed(1)}× slower than real time, so lines can start a few seconds late.`}</div>`:''}
+    <label class="uip-label" style="display:flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" ${ATLAS_VOICE.hd!==false?'checked':''} onchange="setVoicePref('hd',this.checked)"> Use HD voices</label>
+    <div class="hdv-d">ATLAS's voice</div>
+    <select id="uip-hdvoice" onchange="setVoicePref('hdVoice',this.value); testAtlasVoice()" style="width:100%;margin:2px 0 4px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;padding:3px;">${HDV_ATLAS.map(([k,n])=>`<option value="${k}" ${k===hdvAtlasVoice()?'selected':''}>${n}</option>`).join('')}</select>
+    <button class="uip-reset" onclick="if(confirmHdvRemove(this)) hdvRemove()">🗑 Remove pack (frees ${HDV_MB} MB)</button>`;
+  else box.innerHTML=`${desc}${S==='error'?`<div class="hdv-d warn">${mEsc(HDV.err)}</div>`:''}${hdvInClaude()?'<div class="hdv-d warn">May not download inside the Claude app. It works in the A.T.L.A.S app and website.</div>':''}
+    <button class="uip-reset hdv-go" onclick="hdvStart(true)">⬇ ${S==='error'?'Try again':`Download HD voices (${HDV_MB} MB)`}</button>`;
+}
+function confirmHdvRemove(b){ if(b.dataset.sure) return true; b.dataset.sure='1'; b.textContent='Tap again to remove'; setTimeout(()=>{ if(document.body.contains(b)){ delete b.dataset.sure; b.textContent=`🗑 Remove pack (frees ${HDV_MB} MB)`; } }, 3000); return false; }
+// Offered once, the first time you start a game after installing (Not now = ask again in 3 days)
+function hdvMaybeOffer(){
+  if(!hdvSupported() || hdvInClaude() || HDV.worker || document.getElementById('hdv-offer')) return;
+  const pref=hdvPref();
+  if(pref==='on' || pref==='never') return;
+  if(pref.startsWith('later:') && Date.now() < +pref.slice(6) + 3*864e5) return;
+  const cell = navigator.connection && (navigator.connection.type==='cellular' || navigator.connection.saveData);
+  const paused = !!G.player; if(paused) pauseForModal();
+  const d=document.createElement('div'); d.id='hdv-offer'; d.className='hdv-offer';
+  d.innerHTML=`<div class="hdv-card" role="dialog" aria-label="HD voice pack">
+    <div class="hdv-ico">🎧</div>
+    <div class="hdv-h">HD Voice Pack</div>
+    <div class="hdv-p">Give ATLAS and every world leader a natural, human voice, with accents and real emotion when they call you angry, worried or pleased.</div>
+    <ul class="hdv-l"><li>About <b>${HDV_MB} MB</b>, downloaded once${cell?' · <b class="warn">you seem to be on mobile data</b>':' · Wi-Fi recommended'}</li>
+      <li>Works offline afterwards. Remove it any time in Settings.</li>
+      <li>Keep playing while it downloads.</li></ul>
+    <div class="hdv-btns"><button class="hdv-b yes" onclick="hdvOfferClose('yes')">⬇ Download voices</button><button class="hdv-b" onclick="hdvOfferClose('later')">Not now</button></div>
+    <button class="hdv-never" onclick="hdvOfferClose('never')">Don't ask again (use device voices)</button>
+  </div>`;
+  d._paused=paused; document.body.appendChild(d); armPopup(d);
+}
+function hdvOfferClose(a){
+  const d=document.getElementById('hdv-offer'); if(!d) return;
+  if(d._armAt && performance.now() < d._armAt) return;
+  d.remove(); if(d._paused) resumeFromModal();
+  if(a==='yes') hdvStart(true);
+  else if(a==='never') hdvSetPref('never');
+  else hdvSetPref('later:'+Date.now());
+}
+// Later sessions: load the installed pack in the background (also resumes an unfinished download)
+function hdvAutoStart(){ if(hdvPref()==='on' && hdvSupported()) setTimeout(()=>hdvStart(false), 1200); }
 // Fit the globe between the title (and the update card) and the bottom block, and keep the side panels
 // beside it rather than over it. Recomputed on resize and whenever the title or bottom block changes size.
 function wlLayout(){
@@ -6294,7 +6612,7 @@ function leaveWelcome(action){
   document.removeEventListener('keydown', W._onKey);
   W.classList.add('leaving');
   const slot=_wlLatest?.slot;
-  setTimeout(()=>{ W.classList.remove('on','leaving'); cancelAnimationFrame(_wlRAF); clearInterval(_wlTimer); if(action==='continue' && slot) loadGame(slot); else showIntro(); }, 650);
+  setTimeout(()=>{ W.classList.remove('on','leaving'); cancelAnimationFrame(_wlRAF); clearInterval(_wlTimer); if(action==='continue' && slot) loadGame(slot); else showIntro(); setTimeout(hdvMaybeOffer, 1600); }, 650);
 }
 
 
@@ -8289,7 +8607,7 @@ function pauseForModal(){
 }
 function resumeFromModal(){
   // Only resume if no blocking modals are still open
-  const blockingModals = ['gift-terr-modal','pact-call','liberate-modal','lc-wrap','nuke-modal','diplo-req','disband-modal','imf-offer','aid-all-modal','aid-modal','proxy-modal','tips-modal','save-modal','un-lobby','peace-offer','conquest-modal','annex-mgmt-modal','deploy-modal','evov','ministry-modal','disaster-modal','health-modal','wb-loan-modal','loan-give-modal','crisis-popup','un-vote-modal','month-review'];
+  const blockingModals = ['gift-terr-modal','pact-call','liberate-modal','lc-wrap','nuke-modal','diplo-req','disband-modal','imf-offer','aid-all-modal','aid-modal','proxy-modal','tips-modal','save-modal','un-lobby','peace-offer','conquest-modal','annex-mgmt-modal','deploy-modal','evov','ministry-modal','disaster-modal','health-modal','wb-loan-modal','loan-give-modal','crisis-popup','un-vote-modal','month-review','hdv-offer'];
   const anyOpen = blockingModals.some(id=>{
     const el = document.getElementById(id);
     return el && (el.style.display !== 'none') && (el.offsetParent !== null || el.style.position === 'fixed');
@@ -11806,6 +12124,7 @@ function leaderCall(c, kind, opts={}){
   if(document.getElementById('diplo-req')) return false;
   const K=CALL_KIND[kind]; if(!K) return false;
   _call={ cid:c.id, kind, amt:opts.amt||0, phase:'ring', done:false, timers:[], t0:0, callback:!!opts.callback, outgoing:kind==='open', asked:[] };
+  try{ _call.first=callFirstLine(c, _call); hdvPrefetchLeader(c, ..._call.first); }catch(e){}   // their opening line is ready by the time you answer
   if(!opts.callback && !['protest','threat','open'].includes(kind)) noteProposal(p, c, kind);   // on record until answered, so a call that never reaches you isn't lost
   pauseForModal();
   const L=c.leader;
@@ -11867,19 +12186,19 @@ function leaderCallPickUp(){
   const feed=document.getElementById('vc-feed'); feed?.classList.remove('ringing'); feed?.classList.add('connecting');
   setTimeout(()=>feed?.classList.remove('connecting'), 650);
   if(st.kind==='protest' || st.kind==='threat'){              // they called to shout at you
-    const [line,emo]=traitLine(c, st.kind);
+    const [line,emo]=st.first||callFirstLine(c, st);
     document.getElementById('vc-under').innerHTML=`<div class="vc-sub" id="vc-sub"></div>
       ${st.kind==='protest' ? `<div class="vc-btns">
         <button class="vc-b yes" onclick="leaderCallReply('apology')"><span>🙏</span>Apologise</button>
         <button class="vc-b no" onclick="leaderCallReply('firm')"><span>✊</span>Stand firm</button></div>`
       : `<div class="vc-btns"><button class="vc-b end" onclick="leaderCallEnd()"><span>⏹</span>End call</button></div>`}`;
-    setTimeout(()=>leaderSpeak(c, callLine2(c,line), null, emo), 450);
+    setTimeout(()=>leaderSpeak(c, line, null, emo), 450);
     return;
   }
   if(st.kind==='open'){                                       // you called them: they listen to what you want
-    const rel=c.rels[p.id]??50, [g,emo]=CALL_LINES2.greet[p.wars.has(c.id)?'war':rel<35?'cold':rel>=70?'warm':'default'];
+    const [g,emo]=st.first||callFirstLine(c, st);
     showAskMenu(c, null);
-    setTimeout(()=>leaderSpeak(c, callLine2(c,g), null, emo), 450);
+    setTimeout(()=>leaderSpeak(c, g, null, emo), 450);
     return;
   }
   const K=CALL_KIND[st.kind], peace=st.kind==='peace'||st.kind==='terms';
@@ -11896,8 +12215,19 @@ function leaderCallPickUp(){
       <button class="vc-b no" onclick="leaderCallAnswer(false)"><span>✕</span>${peace?'Fight on':'Decline'}</button>
       <button class="vc-b yes" onclick="leaderCallAnswer(true)" ${short?'disabled title="Not enough in the treasury"':''}><span>✓</span>${short?`Need ${fmtShort(st.amt)}`:peace?'Accept peace':'Accept'}</button>
     </div>`;
-  const line = callLine(c,'greet') + ' ' + callLine(c,'ask',st.kind,{ amt:st.amt, variant });
+  const [line] = st.first||callFirstLine(c, st);
   setTimeout(()=>leaderSpeak(c, line), 450);
+  if(hdvOn()) setTimeout(()=>{ if(_call!==st || st.phase!=='live') return;   // both possible answers, made while you decide
+    hdvPrefetchLeader(c, callLine(c, peace?'yesPeace':'yes')+' '+callLine2(c, CALL_LINES2.more[0]), 'warm', 2);
+    hdvPrefetchLeader(c, callLine(c, peace?'noPeace':'no'), ['hawk','nationalist'].some(t=>leaderHas(c,t))?'angry':'calm', 2); }, 500);
+}
+// What a leader says first on picking up (worked out while the phone rings, so an HD voice can be made in advance)
+function callFirstLine(c, st){
+  const p=G.player;
+  if(st.kind==='protest' || st.kind==='threat'){ const [line,emo]=traitLine(c, st.kind); return [callLine2(c,line), emo]; }
+  if(st.kind==='open'){ const rel=c.rels[p.id]??50, [g,emo]=CALL_LINES2.greet[p.wars.has(c.id)?'war':rel<35?'cold':rel>=70?'warm':'default']; return [callLine2(c,g), emo]; }
+  const variant = st.kind==='peace' && !(st.amt>0) ? 'broke' : st.kind==='terms' && !(st.amt>0) ? 'white' : null;
+  return [callLine(c,'greet') + ' ' + callLine(c,'ask',st.kind,{ amt:st.amt, variant }), undefined];
 }
 function leaderCallReject(hold){
   const st=_call; if(!st || st.phase!=='ring') return;
@@ -12033,7 +12363,7 @@ function queueLeaderCall(c, kind, delay){
 function leaderCallEnd(quick){
   const st=_call; if(!st) return; _call=null;
   callRing(false); st.timers.forEach(t=>{ clearTimeout(t); clearInterval(t); });
-  try{ if(st.utter){ st.utter.onend=st.utter.onerror=null; } speechSynthesis.cancel(); }catch(e){}
+  try{ if(st.utter){ st.utter.onend=st.utter.onerror=null; } hdvStop(); hdvCancel('call'); speechSynthesis.cancel(); }catch(e){}
   const d=document.getElementById('diplo-req');
   const done=()=>{ d?.remove(); resumeFromModal(); try{ renderDiplo(); lpRender(); }catch(e){}
     const nx=(G._callQ||[]).shift(); if(nx) setTimeout(()=>{ const c2=CTRY[nx[0]]; if(c2 && !c2.annexedBy && !document.getElementById('diplo-req')) leaderCall(c2, nx[1]); }, 1500); };
@@ -12069,9 +12399,39 @@ function leaderSpeak(c, text, onDone, emo){
   feed?.classList.remove('emo-angry','emo-threat','emo-upset','emo-warm'); if(emo && emo!=='calm' && emo!=='cold') feed?.classList.add('emo-'+emo);
   sub?.classList.toggle('hot', emo==='angry'||emo==='threat');
   let finished=false; const fin=()=>{ if(finished) return; finished=true; feed?.classList.remove('talking'); onDone?.(); };
-  if(sub){ sub.textContent=''; const chars=[...text]; let i=0;
-    const step=()=>{ if(!document.body.contains(sub)) return; sub.textContent=chars.slice(0,i+=2).join(''); if(i<chars.length) st.timers.push(setTimeout(step, 26)); };
-    step(); }
+  // subtitles type out across the time the line takes to say
+  const typeSub=ms=>{ if(!sub) return; sub.textContent=''; const chars=[...text]; let i=0; const per=Math.max(14, Math.min(70, ms/Math.max(1,chars.length/2)));
+    const step=()=>{ if(!document.body.contains(sub)) return; sub.textContent=chars.slice(0,i+=2).join(''); if(i<chars.length) st.timers.push(setTimeout(step, per)); };
+    step(); };
+  if(ATLAS_VOICE.on && _wlVoice && hdvOn()){                // HD voice pack: a natural voice that carries the emotion
+    ATLAS_VOICE.gen++; ATLAS_VOICE.queue=[]; ATLAS_VOICE.speaking=false; voiceMeter(false); try{ speechSynthesis.cancel(); }catch(e){} hdvStop(); hdvCancel('atlas');
+    const P=leaderHDProsody(c, emo), hv=leaderHDVoice(c), parts=hdvSplit(text);
+    hdvCancel('call', new Set(parts.map(t=>hdvKey(t, hv, P.speed))));                 // whatever they were going to say instead is dropped
+    parts.forEach((t,j)=>hdvSynth(t, hv, P.speed, 'call', j?1:0).catch(()=>{}));   // sentence by sentence: the first one starts sooner
+    let started=false, i=0;
+    const words=()=>{ if(!started){ started=true; typeSub(text.length*13); } };
+    if(sub) sub.textContent='…';
+    st.timers.push(setTimeout(()=>{ if(!finished && _call===st) words(); }, 2500));   // a slower device: show the words now, the voice follows
+    const nextClip=()=>{
+      if(finished || _call!==st) return;
+      if(i>=parts.length){ st.timers.push(setTimeout(fin, 150)); return; }
+      const first=i===0;
+      hdvWait(hdvSynth(parts[i++], hv, P.speed, 'call', 0), 20000).then(a=>{
+        if(finished || _call!==st) return;
+        words(); feed?.classList.add('talking');
+        hdvPlay(a, { rate:P.rate, vol:E.vol, onEnd:()=>{ feed?.classList.remove('talking'); if(_call===st) st.timers.push(setTimeout(nextClip, 110)); } });
+      }).catch(e=>{ if(finished || _call!==st) return;
+        if(first && e?.message!=='slow') leaderSpeakSys(c, text, emo, st, typeSub, fin);   // engine trouble: the device voice takes over
+        else { words(); st.timers.push(setTimeout(fin, 1200)); } });
+    };
+    nextClip();
+    return;
+  }
+  leaderSpeakSys(c, text, emo, st, typeSub, fin);
+}
+function leaderSpeakSys(c, text, emo, st, typeSub, fin){
+  const feed=document.getElementById('vc-feed'), E=EMOTION[emo]||EMOTION.calm;
+  typeSub(text.length*13);
   feed?.classList.add('talking');
   const v = ATLAS_VOICE.on && _wlVoice && ('speechSynthesis' in window) ? leaderVoice(c) : null;
   const fallback=Math.min(12000, 900+text.length*55);
@@ -17722,7 +18082,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 189;
+const ATLAS_BUILD = 190;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -19415,6 +19775,8 @@ const WORLD_ATLAS_TOPO={"type":"Topology","objects":{"countries":{"type":"Geomet
   <select id="uip-voice" onchange="setVoicePref('name',this.value)" style="width:100%;margin:4px 0;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;padding:3px;"></select>
   <button class="uip-reset" onclick="testAtlasVoice()">▶ Test voice</button>
   <div style="font-size:10.5px;color:var(--text3);margin-top:4px;line-height:1.35;">Best on Edge (Natural voices) or Chrome (Google UK English Male). Voices come from your device.</div>
+  <div class="uip-title" style="margin-top:12px;">🎧 HD Voice Pack</div>
+  <div id="uip-hd"></div>
 </div>
 
 </body>
