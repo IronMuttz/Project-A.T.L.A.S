@@ -722,6 +722,25 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .hud-modal{ max-width:94vw; max-height:88vh; overflow-y:auto; padding:14px 16px; color:var(--text); font-family:'IBM Plex Sans Condensed',sans-serif; }
 .hud-modal-h{ display:flex; align-items:center; justify-content:space-between; font-size:20px; font-weight:600; color:var(--teal); margin-bottom:6px; text-shadow:var(--holo-glow); }
 .hud-x{ background:none; border:1px solid var(--border2); color:var(--teal); width:30px; height:30px; cursor:pointer; }
+/* Diplomatic proposals: the sender's emblem, name and standing */
+.dr-who{ display:flex; align-items:center; gap:12px; margin:4px 0 10px; }
+.dr-av{ flex:0 0 auto; width:58px; height:58px; border-radius:50%; display:grid; place-items:center; font-size:32px; line-height:1; overflow:hidden;
+  background:radial-gradient(circle at 35% 30%, rgba(56,225,255,.28), rgba(6,18,32,.95) 70%); border:1px solid var(--teal2);
+  box-shadow:0 0 18px rgba(56,225,255,.28), inset 0 0 12px rgba(56,225,255,.18); }
+.dr-av .fe{ font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji","Twemoji Mozilla",'IBM Plex Sans Condensed',sans-serif; font-weight:700; letter-spacing:.02em; color:var(--teal); }
+.dr-name{ font-size:var(--fs-lg); font-weight:600; color:#e8fbff; line-height:1.15; }
+.dr-sub{ font-size:var(--fs-xs); color:var(--text3); margin-top:1px; }
+.dr-rel{ display:flex; align-items:center; gap:6px; margin-top:5px; font-size:var(--fs-xs); color:var(--text3); }
+.dr-rel i{ flex:1; min-width:60px; height:5px; background:rgba(56,225,255,.12); border-radius:3px; overflow:hidden; display:block; }
+.dr-rel i b{ display:block; height:100%; border-radius:3px; }
+.dr-rel em{ font-style:normal; color:var(--text); font-weight:600; min-width:22px; text-align:right; }
+.dr-list{ display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
+.dr-item{ display:flex; align-items:center; gap:10px; width:100%; padding:6px 9px; background:rgba(56,225,255,.06); border:1px solid var(--teal2); border-radius:6px; color:var(--text); cursor:pointer; font:inherit; }
+.dr-item b{ display:block; font-size:var(--fs-sm); color:#e8fbff; }
+.dr-item small{ display:block; font-size:var(--fs-xs); color:var(--text3); }
+.dr-go{ font-size:var(--fs-xs); color:var(--teal); white-space:nowrap; }
+.ev-act{ cursor:pointer; }
+.ev-go{ color:var(--teal); white-space:nowrap; }
 .hud-note{ font-size:13px; color:var(--text2); margin-bottom:10px; }
 .hud-slot{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); }
 .hud-slot-i{ font-size:26px; width:34px; text-align:center; color:var(--text3); }
@@ -9025,11 +9044,12 @@ function endWar(a,b){
 // ═══════════════════════════════════════════════════════════════════
 //   EVENTS
 // ═══════════════════════════════════════════════════════════════════
-function addEv(type,title,text){
+function addEv(type,title,text,act){
   title=noFlags(title); text=noFlags(text);
   (G.monthLog=G.monthLog||[]).push({type,title,text}); if(G.monthLog.length>80) G.monthLog.shift();
-  const el=document.createElement('div'); el.className=`ev ${type}`;
-  el.innerHTML=`<div class="ev-t">${title}</div><div class="ev-b">${text}</div>`;
+  const el=document.createElement('div'); el.className=`ev ${type}${act?' ev-act':''}`;
+  el.innerHTML=`<div class="ev-t">${title}</div><div class="ev-b">${text}${act?' <span class="ev-go">Tap to review ›</span>':''}</div>`;
+  if(act) el.setAttribute('onclick', act);
   const log=document.getElementById('evlog');
   if(log){ log.insertBefore(el,log.firstChild); while(log.children.length>40) log.removeChild(log.lastChild); }
 }
@@ -10530,6 +10550,7 @@ function renderDiplo(){
   });
 
   document.getElementById('lp-diplo').innerHTML = `
+    ${proposalsHtml(p)}
     <div class="diplo-summary">
       <div class="diplo-stat"><div class="diplo-stat-v" style="color:var(--gold)">${embCount}</div><div class="diplo-stat-l">Embassies</div></div>
       <div class="diplo-stat"><div class="diplo-stat-v" style="color:var(--green)">${allyCount}</div><div class="diplo-stat-l">Allies</div></div>
@@ -10846,13 +10867,14 @@ function denounceCountry(id){
 
 // ═══ AI DIPLOMATIC REQUESTS — other countries approach you (about one a month) ═══
 function aiDiplomaticRequests(p){
+  tickProposals(p);
   if(G.totalDays%30!==12 || Math.random()>0.5) return;
   if(document.getElementById('diplo-req')) return;
   const D=a=>p.diplomacy?.[a]||{};
   const relTo=c=>c.rels[p.id]??50;
   const cool=p.diploReqCooldown||{};
   const cands=[];
-  const okReq=(c,kind)=>!(cool[c.abbr+':'+kind]>G.totalDays);       // declined in the last 6 months → they wait
+  const okReq=(c,kind)=>!(cool[c.abbr+':'+kind]>G.totalDays) && !(p.proposals||[]).some(o=>o.abbr===c.abbr && o.kind===kind);   // declined in the last 6 months (or still waiting for your answer) → they wait
   CLIST.forEach(c=>{
     if(c===p || c.annexedBy || c.vassalOf || c.wars.has(p.id) || p.wars.has(c.id)) return;
     const d=D(c.abbr), r=relTo(c);
@@ -10874,20 +10896,83 @@ const DIPLO_REQ_TEXT = {
   pact:   { ico:'🛡️', title:'Defensive Pact',   body:c=>`${c.name} proposes a defensive pact: each side comes to the other's aid if attacked.` },
   ally:   { ico:'🤝', title:'Alliance Offer',   body:c=>`${c.name} proposes a formal alliance. Allies pay ${Math.round(ALLY_TRADE_BONUS*100)}% more for your exports and stand together in war.` },
 };
-function showDiploRequest(c, kind){
-  atlasAlert(`Commander, ${c.name} has sent us a proposal: ${(DIPLO_REQ_TEXT[kind]?.title||'').toLowerCase()}.`);
-  const T=DIPLO_REQ_TEXT[kind]; pauseForModal();
-  const d=document.createElement('div'); d.id='diplo-req'; d.className='hud-modal-wrap';
-  d.innerHTML=`<div class="hud-modal" style="width:420px;">
+// Offers stay open for a month: if you miss the pop-up (or tap "Later"), answer from Foreign → Proposals
+const DIPLO_OFFER_DAYS = 30;
+function diploProposalValid(p, c, kind){
+  if(!p || !c || c.annexedBy || c.vassalOf || c.wars?.has(p.id) || p.wars?.has(c.id)) return false;
+  const d=p.diplomacy?.[c.abbr]||{};
+  if(kind==='embassy') return !d.embassyStatus || d.embassyStatus==='none';
+  if(d.embassyStatus!=='active') return false;
+  if(kind==='trade') return !p.trades.has(c.id);
+  if(kind==='pact')  return !d.defensivePact;
+  if(kind==='ally')  return d.relationship!=='ally' && !p.allies.has(c.id);
+  return true;
+}
+function pendingProposals(p){
+  return (p?.proposals||[]).filter(o=>G.totalDays<=o.until && diploProposalValid(p, CLIST.find(x=>x.abbr===o.abbr), o.kind));
+}
+function tickProposals(p){
+  if(!p?.proposals?.length) return;
+  p.proposals=p.proposals.filter(o=>{
+    const c=CLIST.find(x=>x.abbr===o.abbr);
+    if(!diploProposalValid(p,c,o.kind)) return false;                 // overtaken by events (war, annexation, already agreed)
+    if(G.totalDays>o.until){
+      (p.diploReqCooldown=p.diploReqCooldown||{})[o.abbr+':'+o.kind]=G.totalDays+90;
+      addEv('i','📨 Offer Lapsed',`${c.name}'s ${DIPLO_REQ_TEXT[o.kind].title.toLowerCase()} lapsed without an answer.`);
+      if(document.getElementById('diplo-req')?.dataset.key===o.abbr+':'+o.kind){ document.getElementById('diplo-req').remove(); resumeFromModal(); }
+      return false;
+    }
+    return true;
+  });
+}
+function diploEmblem(c, size){
+  return `<div class="dr-av" style="${size?`width:${size}px;height:${size}px;font-size:${Math.round(size*0.56)}px;`:''}"><span class="fe">${c.flag}</span></div>`;
+}
+function showDiploRequest(c, kind, review){
+  const p=G.player, T=DIPLO_REQ_TEXT[kind]; if(!p || !c || !T) return;
+  const key=c.abbr+':'+kind;
+  if(!review){
+    atlasAlert(`Commander, ${c.name} has sent us a proposal: ${T.title.toLowerCase()}.`);
+    p.proposals=(p.proposals||[]).filter(o=>!(o.abbr===c.abbr && o.kind===kind));
+    p.proposals.push({ abbr:c.abbr, kind, day:G.totalDays, until:G.totalDays+DIPLO_OFFER_DAYS });
+  }
+  const o=(p.proposals||[]).find(x=>x.abbr===c.abbr && x.kind===kind), left=o ? Math.max(0,o.until-G.totalDays) : DIPLO_OFFER_DAYS;
+  const rel=Math.round(c.rels[p.id]??50), law=GOVERNMENT_LAWS[c.governmentLaw]?.name;
+  document.getElementById('diplo-req')?.remove();
+  pauseForModal();
+  const d=document.createElement('div'); d.id='diplo-req'; d.className='hud-modal-wrap'; d.dataset.key=key;
+  d.innerHTML=`<div class="hud-modal" style="width:440px;">
     <div class="hud-modal-h"><span>📨 ${T.ico} ${T.title}</span></div>
-    <div style="font-size:13.5px;color:var(--text2);line-height:1.55;">${T.body(c)}<br><span style="color:var(--text3);">Their relations with you: ${Math.round(c.rels[G.player.id]??50)}</span></div>
-    <div class="hud-row" style="justify-content:flex-end;"><button class="hud-btn" onclick="answerDiploRequest(${c.id},'${kind}',false)">Decline</button>
-      <button class="hud-btn pri" onclick="answerDiploRequest(${c.id},'${kind}',true)">Accept</button></div></div>`;
+    <div class="dr-who">${diploEmblem(c)}
+      <div style="min-width:0;"><div class="dr-name">${mEsc(c.name)}</div>
+        <div class="dr-sub">${[c.region, law].filter(Boolean).join(' · ')}</div>
+        <div class="dr-rel"><span>Relations with you</span><i><b style="width:${Math.max(2,Math.min(100,rel))}%;background:${rel>=75?'var(--green)':rel>=50?'var(--teal)':rel>=30?'var(--gold)':'var(--red2)'}"></b></i><em>${rel}</em></div></div></div>
+    <div style="font-size:13.5px;color:var(--text2);line-height:1.55;">${T.body(c)}</div>
+    <div style="font-size:var(--fs-xs);color:var(--text3);margin-top:6px;">Open for ${left} more day${left===1?'':'s'}. "Later" keeps it under Foreign → Proposals.</div>
+    <div class="hud-row" style="justify-content:space-between;gap:6px;"><button class="hud-btn" onclick="proposalLater()">Later</button>
+      <span style="display:flex;gap:6px;"><button class="hud-btn" onclick="answerDiploRequest(${c.id},'${kind}',false)">Decline</button>
+      <button class="hud-btn pri" onclick="answerDiploRequest(${c.id},'${kind}',true)">Accept</button></span></div></div>`;
   document.body.appendChild(d);
-  addEv('i',`📨 ${T.title}`,`${c.name} has sent a proposal.`);
+  if(!review){ addEv('i',`📨 ${T.title}`,`${c.name} has sent a proposal. It stays open for ${DIPLO_OFFER_DAYS} days under Foreign → Proposals.`, `reviewProposal('${c.abbr}','${kind}')`); renderDiplo?.(); }
+}
+function proposalLater(){ document.getElementById('diplo-req')?.remove(); resumeFromModal(); renderDiplo(); if(typeof rpRender==='function') rpRender(); }
+function reviewProposal(abbr, kind){
+  const p=G.player, c=CLIST.find(x=>x.abbr===abbr); if(!p || !c) return;
+  if(!pendingProposals(p).some(o=>o.abbr===abbr && o.kind===kind)){ addEv('i','📨 Proposal',`${c.name}'s offer is no longer open.`); return; }
+  showDiploRequest(c, kind, true);
+}
+function proposalsHtml(p){
+  const list=pendingProposals(p); if(!list.length) return '';
+  return `<div class="sec" style="margin-top:0;">📨 Proposals (${list.length})</div>
+    <div class="dr-list">${list.map(o=>{ const c=CLIST.find(x=>x.abbr===o.abbr), T=DIPLO_REQ_TEXT[o.kind], left=o.until-G.totalDays;
+      return `<button class="dr-item" onclick="reviewProposal('${o.abbr}','${o.kind}')">${diploEmblem(c,34)}
+        <span style="flex:1;min-width:0;text-align:left;"><b>${mEsc(c.name)}</b><small>${T.ico} ${T.title} · ${left} day${left===1?'':'s'} left</small></span><span class="dr-go">Review ›</span></button>`; }).join('')}</div>`;
 }
 function answerDiploRequest(id, kind, yes){
   const p=G.player, c=CTRY[id]; document.getElementById('diplo-req')?.remove(); resumeFromModal(); if(!c) return;
+  const open=(p.proposals||[]).some(o=>o.abbr===c.abbr && o.kind===kind);
+  p.proposals=(p.proposals||[]).filter(o=>!(o.abbr===c.abbr && o.kind===kind));
+  if(open && !diploProposalValid(p,c,kind)){ addEv('i','📨 Proposal',`${c.name}'s offer is no longer open.`); renderDiplo(); return; }
   if(!yes){ relShift(c,p,-3);
     (p.diploReqCooldown=p.diploReqCooldown||{})[c.abbr+':'+kind]=G.totalDays+182;
     addEv('i','📨 Declined',`You turned down ${c.name}'s ${DIPLO_REQ_TEXT[kind].title.toLowerCase()}. They won't ask again for 6 months.`); return; }
@@ -16252,7 +16337,17 @@ function mobDialogOf(wrap){
   [...wrap.children].forEach(ch=>{ const r=ch.getBoundingClientRect(), a=r.width*r.height; if(a>bestA && r.width<innerWidth*1.01){ bestA=a; best=ch; } });
   return best;
 }
-function mobVisibleOverlays(){ return [...document.body.children].filter(el=>el.classList.contains('msheet-wrap') && !el.classList.contains('mq') && el.isConnected); }
+function mobVisibleOverlays(){ return [...document.body.children].filter(el=>el.classList.contains('msheet-wrap') && !el.classList.contains('mq') && el.isConnected && getComputedStyle(el).display!=='none'); }
+// A pop-up that appears on its own ignores taps for a moment, so a tap meant for the game underneath
+// (a tab, the map, a button) can't land on Accept / Decline by accident
+const POPUP_ARM_MS = 650;
+function armPopup(el){ if(el) el._armAt = performance.now() + POPUP_ARM_MS; }
+['pointerdown','pointerup','mousedown','mouseup','click','touchstart','touchend'].forEach(t=>document.addEventListener(t, e=>{
+  const now=performance.now();
+  for(let el=e.target; el && el!==document.body; el=el.parentElement){
+    if(el._armAt && el._armAt>now){ if(e.cancelable) e.preventDefault(); e.stopPropagation(); return; }
+  }
+}, { capture:true, passive:false }));
 function mobSheetify(wrap){
   if(wrap.classList.contains('msheet-wrap')) return;
   const dlg=mobDialogOf(wrap); if(!dlg) return;
@@ -16279,15 +16374,19 @@ function mobSwipe(dlg, wrap){
 function mobQueueNext(){
   if(mobVisibleOverlays().length) return;
   _mobQueue=_mobQueue.filter(w=>w.isConnected);
-  const next=_mobQueue.shift(); if(next){ next.classList.remove('mq'); }
+  const next=_mobQueue.shift(); if(next){ next.classList.remove('mq'); armPopup(next); }
 }
+// Safety net: a queued pop-up never waits behind nothing
+setInterval(()=>{ if(_mobQueue.length && isMob() && !mobVisibleOverlays().length) mobQueueNext(); }, 1500);
 const _mobObs=new MutationObserver(muts=>{
-  if(!isMob()) return;
+  const mob=isMob();
   let removed=false;
   muts.forEach(m=>{
     m.removedNodes.forEach(n=>{ if(n.classList?.contains('msheet-wrap')) removed=true; });
     m.addedNodes.forEach(n=>{
       if(!(n instanceof HTMLElement) || n.parentElement!==document.body) return;
+      if(performance.now()-_mobLastTouch >= 900 && mobIsOverlay(n)) armPopup(n);    // the game opened it, not the player
+      if(!mob) return;
       requestAnimationFrame(()=>{
         if(!n.isConnected || !mobIsOverlay(n)) return;
         const others=mobVisibleOverlays().filter(x=>x!==n);
@@ -16325,7 +16424,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 183;
+const ATLAS_BUILD = 184;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();

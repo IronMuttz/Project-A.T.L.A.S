@@ -1,7 +1,7 @@
 {
-  "version": 183,
+  "version": 184,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "Tax revenue now follows population: annexed lands are taxed at your rates and show in Total Tax Revenue and the National Budget (taxes, resource revenue, their public services, garrisons and debt); a growing workforce widens the income-tax base; fiscal balance and lender debt ratio measured against the whole realm"
+  "notes": "Diplomatic proposals: the sender's flag emblem, government and relations in the pop-up; offers stay open 30 days (Later button, Foreign \u2192 Proposals, tap the news entry to review); pop-ups the game opens ignore taps for a moment so a stray tap can't hit Accept/Decline; queued phone pop-ups can no longer get stuck"
 }
