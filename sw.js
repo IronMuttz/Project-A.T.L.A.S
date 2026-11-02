@@ -4,6 +4,15 @@ const CACHE = 'atlas-v1';
 const SHELL = ['./', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
+// The page is served cross-origin isolated (Chrome/Edge), which lets the HD voice pack use several CPU cores.
+// 'credentialless' keeps fonts, images and other sites loading exactly as before.
+const isolate = res => {
+  if (!res || !res.ok || res.type === 'opaque') return res;
+  const h = new Headers(res.headers);
+  h.set('Cross-Origin-Opener-Policy', 'same-origin');
+  h.set('Cross-Origin-Embedder-Policy', 'credentialless');
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+};
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -16,10 +25,10 @@ self.addEventListener('fetch', e => {
     try {
       const res = await fetch(page ? url.href : req, { cache: 'no-store', credentials: 'same-origin' });
       if (res.ok) { const c = await caches.open(CACHE); c.put(key, res.clone()); }
-      return res;
+      return page ? isolate(res) : res;
     } catch (err) {
       const hit = await caches.match(key);
-      if (hit) return hit;
+      if (hit) return page ? isolate(hit) : hit;
       throw err;
     }
   })());
