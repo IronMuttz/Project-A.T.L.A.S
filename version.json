@@ -1,7 +1,7 @@
 {
-  "version": 193,
+  "version": 194,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v193: Smoother nuclear salvos \u2014 missile trails are drawn with a fraction of the work, effects thin out when many missiles fly at once, panels refresh once after a burst instead of after every launch, one UN emergency session per salvo, and overlapping screen flashes are merged (about 36 \u2192 53 fps in testing, no more freezes). Entering the game: ATLAS no longer says good morning twice \u2014 after the start screen's greeting it brings up a secure command link (\"Secure link established. Encryption verified\u2026\") with a SECURE LINK banner."
+  "notes": "v194: Nuclear strikes hit harder \u2014 the casualty cap per ICBM is now 20 million dead after 30 days (about 14 million at once, 6 million more from fallout) for the most populous countries; smaller countries still lose 4.5% of their people at once plus fallout."
 }

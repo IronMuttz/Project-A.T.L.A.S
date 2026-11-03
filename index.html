@@ -12970,8 +12970,10 @@ const NUKE_FLIGHT_MS = 3400;     // boost → midcourse → terminal dive
 // Each missile is a MIRV ICBM: 3 warheads of a few hundred kilotons on the largest cities.
 // Blast and fire kill ~1.5% of the population per warhead (≤1.2M each); radiation and the collapse of
 // hospitals and supply add ~40% more over the following 30 days.
-const ICBM = { warheads:3, perWarheadPct:0.015, perWarheadCap:1.2, falloutShare:0.4, falloutDays:30, gdpHit:0.10, forcesHit:0.20 };
-function icbmCasualties(def){ const now=Math.min(def.pop*ICBM.perWarheadPct, ICBM.perWarheadCap)*ICBM.warheads; return { now, later:now*ICBM.falloutShare }; }
+// One ICBM (3 warheads): each kills 1.5% of the target's people, and the whole strike, fallout included, tops out at
+// 20 million dead after 30 days in the most populous countries (about 14.3M at once + 5.7M from fallout)
+const ICBM = { warheads:3, perWarheadPct:0.015, totalCap:20, falloutShare:0.4, falloutDays:30, gdpHit:0.10, forcesHit:0.20 };
+function icbmCasualties(def){ const now=Math.min(def.pop*ICBM.perWarheadPct*ICBM.warheads, ICBM.totalCap/(1+ICBM.falloutShare)); return { now, later:now*ICBM.falloutShare }; }
 // Daily fallout deaths after a strike
 function tickFallout(c){
   if(!c.fallout?.length) return;
@@ -18312,7 +18314,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 193;
+const ATLAS_BUILD = 194;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
