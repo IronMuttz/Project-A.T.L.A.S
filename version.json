@@ -1,7 +1,7 @@
 {
-  "version": 192,
+  "version": 193,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v192: Nuclear salvo \u2014 confirm your first strike, then every click (or tap) on the map fires another ICBM straight away until you press Done or Esc, or the missiles or money run out; your view stays where you're aiming. Peace talks: when a leader offers reparations or demands them, press Counter and name your price (or pick 1.5\u00d7/2\u00d7/3\u00d7); they accept, meet you partway, give a final offer, or take offence if you push too far \u2014 how far they'll go depends on how the war is going, their treasury and their temperament. Subtitles no longer flicker when a leader replies quickly."
+  "notes": "v193: Smoother nuclear salvos \u2014 missile trails are drawn with a fraction of the work, effects thin out when many missiles fly at once, panels refresh once after a burst instead of after every launch, one UN emergency session per salvo, and overlapping screen flashes are merged (about 36 \u2192 53 fps in testing, no more freezes). Entering the game: ATLAS no longer says good morning twice \u2014 after the start screen's greeting it brings up a secure command link (\"Secure link established. Encryption verified\u2026\") with a SECURE LINK banner."
 }

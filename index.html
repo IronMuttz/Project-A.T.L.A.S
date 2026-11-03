@@ -821,6 +821,14 @@ body.mob #nuke-salvo{ bottom:calc(74px + env(safe-area-inset-bottom,0px)); }
 #nuke-banner{ position:fixed; left:0; right:0; margin:0 auto; width:max-content; top:calc(74px + env(safe-area-inset-top,0px)); z-index:9960; display:flex; align-items:center; gap:12px;
   max-width:min(calc(100vw - 24px),560px); box-sizing:border-box; padding:10px 18px 10px 14px; border-radius:10px; background:rgba(40,4,8,.92); border:1px solid #ff4d5e; color:#ffe3e6;
   box-shadow:0 0 0 1px rgba(255,77,94,.25), 0 0 36px rgba(255,40,60,.45); pointer-events:none; animation:nbIn .35s ease both, nbPulse 1s ease-in-out .35s infinite; }
+#link-banner{ position:fixed; left:0; right:0; margin:0 auto; width:max-content; max-width:calc(100vw - 20px); top:calc(74px + env(safe-area-inset-top,0px)); z-index:9950; display:flex; align-items:center; gap:12px;
+  padding:10px 18px 10px 14px; border-radius:10px; background:rgba(4,22,30,.94); border:1px solid rgba(var(--acc-rgb),.65); box-shadow:0 0 22px rgba(var(--acc-rgb),.3); pointer-events:none; animation:lbIn .45s ease-out; }
+#link-banner .lb-ico{ font-size:24px; }
+#link-banner b{ display:block; font:700 15px/1.1 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.18em; color:var(--teal); }
+#link-banner small{ display:block; margin-top:3px; font:500 12.5px/1.3 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.08em; color:var(--text2); }
+#link-banner.out{ opacity:0; transform:translateY(-10px); transition:opacity .45s, transform .45s; }
+@keyframes lbIn{ from{ opacity:0; transform:translateY(-8px) scale(.98); } to{ opacity:1; transform:none; } }
+body.mob #link-banner{ top:calc(112px + env(safe-area-inset-top,0px)); }
 #nuke-banner .nb-ico{ font-size:28px; animation:nbSpin 3s linear infinite; }
 #nuke-banner b{ display:block; font:700 17px/1.1 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.16em; color:#ff6b78; }
 #nuke-banner small{ display:block; margin-top:3px; font:500 14px/1.3 'IBM Plex Sans Condensed',sans-serif; color:#ffd5da; }
@@ -6105,6 +6113,27 @@ function fillVoicePicker(){
   if(on) on.checked=ATLAS_VOICE.on; if(al) al.checked=ATLAS_VOICE.alerts;
 }
 function setVoicePref(k,v){ ATLAS_VOICE[k]=v; saveVoicePrefs(); if((k==='on'||k==='hd') && !v) hdvStop(); if(k==='on' && !v){ try{ speechSynthesis.cancel(); }catch(e){} ATLAS_VOICE.queue=[]; voiceMeter(false); } }
+// Entering the game: ATLAS brings the secure command line up (the greeting was already said on the start screen)
+const LINK_LINES = {
+  resume:[ 'Secure link established. Encryption verified. You have the command, Commander.',
+           'Connection secured. Command servers online. Resuming from {D}.',
+           'Uplink established. Identity confirmed. The {N} command channel is live.',
+           'Handshake complete. Secure server online. Treasury, defence and intelligence feeds restored.' ],
+  start:[ 'Connection established. Secure server online. Command of {N} is yours, Commander.',
+          'Uplink secured. Identity confirmed. The {N} command channel is open.',
+          'Secure line established. Every ministry is reporting in. {N} is yours to lead, Commander.' ] };
+const MONTH_FULL={ Jan:'January', Feb:'February', Mar:'March', Apr:'April', May:'May', Jun:'June', Jul:'July', Aug:'August', Sep:'September', Oct:'October', Nov:'November', Dec:'December' };
+function spokenDate(){ return `${G.day} ${MONTH_FULL[MONTHS[G.month-1]]||MONTHS[G.month-1]} ${G.year}`; }
+function atlasLinkUp(kind){
+  const p=G.player; if(!p) return;
+  const L=LINK_LINES[kind]||LINK_LINES.start, line=L[Math.floor(Math.random()*L.length)].replace(/\{N\}/g, p.name).replace(/\{D\}/g, spokenDate());
+  document.getElementById('link-banner')?.remove();
+  const b=document.createElement('div'); b.id='link-banner'; b.setAttribute('role','status');
+  b.innerHTML=`<span class="lb-ico">🔐</span><div><b>${kind==='resume'?'SECURE LINK RESTORED':'SECURE LINK ESTABLISHED'}</b><small><span class="fe">${p.flag}</span> ${mEsc(p.name.toUpperCase())} COMMAND · ENCRYPTED · ${fmtDate()}</small></div>`;
+  document.body.appendChild(b); try{ applyTwemoji(b); }catch(e){}
+  setTimeout(()=>b.classList.add('out'), 3800); setTimeout(()=>b.remove(), 4400);
+  atlasSay(line, { interrupt:false });
+}
 function testAtlasVoice(){ atlasSay(`Good ${dayPart()}, Commander. All systems are online.${G.player?' '+G.player.name+' awaits your orders.':''}`); }
 function dayPart(){ const hr=new Date().getHours(); return hr<5?'evening':hr<12?'morning':hr<17?'afternoon':'evening'; }
 // ═══ HD VOICE PACK — Kokoro-82M neural voices (open source, Apache-2.0). Downloaded once to the device (~125 MB:
@@ -6875,7 +6904,7 @@ function startGame(){
   if(btn){ btn.textContent = 'Take command'; btn.disabled=false; }
   G.player=p;
   G.playerTitle = document.getElementById('title-pick-intro')?.value || prefTitle() || 'Commander';
-  atlasSay(`Good ${dayPart()}, Commander. ${p.name} awaits your orders.`);
+  if(!G._loadingSave) setTimeout(()=>atlasLinkUp('start'), 700);   // the start screen already said good morning: now the line comes up
   document.getElementById('intro').style.display='none';
   document.getElementById('game').style.display='flex';
 
@@ -8114,7 +8143,7 @@ function animFrame(ts){
   // ── NUCLEAR STRIKES — launch plume, boost flame, smoke trail, terminal dive, flash, fireball, shockwave, mushroom cloud ──
   if(G.nukeAnims?.length){
     const tnow=performance.now(), FL=NUKE_FLIGHT_MS/1000;
-    const sz=Math.max(0.7, Math.min(2.2, Math.sqrt(k)*0.9));
+    const sz=Math.max(0.7, Math.min(2.2, Math.sqrt(k)*0.9)), busy=G.nukeAnims.length;
     G.nukeAnims=G.nukeAnims.filter(a=>{
       const e=(tnow-a.t0)/1000; if(e>FL+9) return false;
       const A0=G.proj(a.from), B0=G.proj(a.to); if(!A0||!B0) return false;
@@ -8130,14 +8159,19 @@ function animFrame(ts){
       if(e<2.2){ const pa=Math.max(0,1-e/2.2), pr=(6+e*14)*sz;
         const g=ctx.createRadialGradient(A[0],A[1],0,A[0],A[1],pr); g.addColorStop(0,`rgba(255,240,200,${0.8*pa*(e<0.3?1:0.6)})`); g.addColorStop(0.45,`rgba(200,200,200,${0.45*pa})`); g.addColorStop(1,'rgba(140,140,140,0)');
         ctx.beginPath(); ctx.arc(A[0],A[1],pr,0,Math.PI*2); ctx.fillStyle=g; ctx.fill(); }
-      // Smoke trail: thick and bright behind the missile, thinning and greying with age; lingers after impact
-      const N=60, fade = e>FL ? Math.max(0,1-(e-FL)/6) : 1;
-      for(let i=1;i<=N;i++){
-        const ti=t*i/N, tp=t*(i-1)/N; const p1=P(tp), p2=P(ti);
-        const age=(t-ti);                                   // 0 = freshest
-        const w=(1.2+ (1-age)*2.4 + age*3.5)*sz, al=Math.max(0, (0.55-age*0.45))*fade;
-        ctx.beginPath(); ctx.moveTo(p1[0]+wob(i)*age*4, p1[1]+wob(i+3)*age*4); ctx.lineTo(p2[0]+wob(i+1)*age*4, p2[1]+wob(i+4)*age*4);
-        ctx.strokeStyle=`rgba(230,232,236,${al})`; ctx.lineWidth=w; ctx.lineCap='round'; ctx.stroke();
+      // Smoke trail: thick and bright behind the missile, thinning and greying with age; lingers after impact.
+      // Drawn as a few bands of one stroke each (not a stroke per segment), with less detail when many fly at once.
+      const N=busy>4 ? 18 : busy>2 ? 28 : 44, BANDS=busy>2 ? 6 : 9, fade = e>FL ? Math.max(0,1-(e-FL)/6) : 1;
+      if(fade>0.01 && t>0){
+        const pts=[]; for(let i=0;i<=N;i++){ const ti=t*i/N, age=t-ti, q=P(ti); pts.push([q[0]+wob(i)*age*4, q[1]+wob(i+3)*age*4, age]); }
+        ctx.lineCap='round'; ctx.lineJoin='round';
+        for(let bd=0; bd<BANDS; bd++){
+          const i0=Math.floor(bd*N/BANDS), i1=Math.floor((bd+1)*N/BANDS); if(i1<=i0) continue;
+          const age=pts[(i0+i1)>>1][2], w=(1.2+(1-age)*2.4+age*3.5)*sz, al=Math.max(0,(0.55-age*0.45))*fade; if(al<0.01) continue;
+          ctx.beginPath(); ctx.moveTo(pts[i0][0],pts[i0][1]); for(let i=i0+1;i<=i1;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+          ctx.strokeStyle=`rgba(230,232,236,${al})`; ctx.lineWidth=w; ctx.stroke();
+        }
+        ctx.lineJoin='miter';
       }
       // Missile body + exhaust while in flight
       if(tf<1){
@@ -8171,7 +8205,8 @@ function animFrame(ts){
           const top=B[1]-(18+rise*38)*sz, capR=(8+rise*14)*sz;
           const sg=ctx.createLinearGradient(B[0],B[1],B[0],top); sg.addColorStop(0,`rgba(120,100,90,${al*0.5})`); sg.addColorStop(1,`rgba(200,170,150,${al*0.75})`);
           ctx.beginPath(); ctx.moveTo(B[0]-3*sz,B[1]); ctx.quadraticCurveTo(B[0]-2*sz,(B[1]+top)/2,B[0]-4*sz,top); ctx.lineTo(B[0]+4*sz,top); ctx.quadraticCurveTo(B[0]+2*sz,(B[1]+top)/2,B[0]+3*sz,B[1]); ctx.closePath(); ctx.fillStyle=sg; ctx.fill();
-          for(let i=0;i<7;i++){ const ang=i/7*Math.PI*2+me*0.3, ox=Math.cos(ang)*capR*0.6, oy=Math.sin(ang)*capR*0.25;
+          const puffs=busy>2 ? 4 : 7;
+          for(let i=0;i<puffs;i++){ const ang=i/puffs*Math.PI*2+me*0.3, ox=Math.cos(ang)*capR*0.6, oy=Math.sin(ang)*capR*0.25;
             const cg=ctx.createRadialGradient(B[0]+ox,top+oy,0,B[0]+ox,top+oy,capR*0.7);
             cg.addColorStop(0,`rgba(${me<1.5?255:220},${me<1.5?170:190},${me<1.5?110:170},${al})`); cg.addColorStop(1,'rgba(160,140,130,0)');
             ctx.beginPath(); ctx.arc(B[0]+ox,top+oy,capR*0.7,0,Math.PI*2); ctx.fillStyle=cg; ctx.fill(); }
@@ -12945,8 +12980,11 @@ function tickFallout(c){
 // After a nuclear strike, the UN takes up sanctions at once (a friendly P5 member can still veto)
 function nuclearSanctions(att){
   if(!att || att.annexedBy || totalSanctioned(att)) return;
+  if((att._nukeSancDay ?? -1e9) > G.totalDays-30) return;          // a salvo is one act: one emergency session
+  att._nukeSancDay=G.totalDays;
+  const p5=new Set(getUNCouncil().filter(m=>m.permanent).map(m=>m.c));
   const P=unMembers().filter(x=>x!==att && x!==G.player && !x.allies.has(att.id) && (x.rels[att.id]??50)<40)
-    .sort((a,b)=>(getUNCouncil().some(m=>m.permanent&&m.c===b)?1:0)-(getUNCouncil().some(m=>m.permanent&&m.c===a)?1:0) || b.gdp-a.gdp)[0];
+    .sort((a,b)=>(p5.has(b)?1:0)-(p5.has(a)?1:0) || b.gdp-a.gdp)[0];
   if(!P) return;
   G.unBlocks=(G.unBlocks||[]).filter(b=>b.target!==att.id);       // a nuclear strike overrides earlier veto cool-downs
   if(G.unLastProposal) delete G.unLastProposal[P.id];
@@ -13073,14 +13111,16 @@ function strikeArc(ctx, A, B, t, lift, col, sz, trailAl, seed){
   const dist=Math.hypot(B[0]-A[0],B[1]-A[1]);
   const C=[(A[0]+B[0])/2, Math.min(A[1],B[1]) - Math.max(14, dist*lift)];
   const P=u=>{ const v=1-u; return [v*v*A[0]+2*v*u*C[0]+u*u*B[0], v*v*A[1]+2*v*u*C[1]+u*u*B[1]]; };
-  const N=22;
-  for(let i=1;i<=N;i++){
-    const ti=t*i/N, tp=t*(i-1)/N, age=t-ti, a=P(tp), b=P(ti);
-    const al=Math.max(0,(0.5-age*0.55))*trailAl;
-    if(al<=0.01) continue;
-    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]);
-    ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${al})`; ctx.lineWidth=(0.8+(1-age)*1.2)*sz; ctx.lineCap='round'; ctx.stroke();
+  // The trail in 5 bands of one stroke each (fading toward the launch point): same look, a quarter of the strokes
+  const N=20, B5=5; if(t<=0 || trailAl<=0.01) return P;
+  const pts=[]; for(let i=0;i<=N;i++) pts.push(P(t*i/N));
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  for(let bd=0; bd<B5; bd++){
+    const i0=bd*N/B5, i1=(bd+1)*N/B5, age=t-t*((i0+i1)/2)/N, al=Math.max(0,(0.5-age*0.55))*trailAl; if(al<=0.01) continue;
+    ctx.beginPath(); ctx.moveTo(pts[i0][0],pts[i0][1]); for(let i=i0+1;i<=i1;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+    ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${al})`; ctx.lineWidth=(0.8+(1-age)*1.2)*sz; ctx.stroke();
   }
+  ctx.lineJoin='miter';
   return P;
 }
 function drawWarStrikes(ctx, toCP, k){
@@ -13210,11 +13250,17 @@ function nuclearStrike(att, def, quiet, aim){
     if(att===G.player) addEv('w','☢️ Impact',`${def.name}: ${ICBM.warheads} cities hit, about ${dead} dead; fallout may kill ${later} more over 30 days.`);
     // Second strike: a nuclear-armed victim usually answers
     if(def!==G.player && hasNukes(def) && Math.random()<0.7) setTimeout(()=>nuclearStrike(def, att), instant?0:1800);
-    if(!quiet){ colorMap(); topbarUpdate(); lpRender(); }
+    if(!quiet) nukeRefreshSoon(true);
   };
   if(instant) impact(); else setTimeout(impact, NUKE_FLIGHT_MS);
-  if(!quiet){ topbarUpdate(); lpRender(); }
+  if(!quiet) nukeRefreshSoon(false);
   return true;
+}
+// Several missiles in the air: the panels are redrawn once things settle, not after every launch and impact
+function nukeRefreshSoon(map){
+  G._nukeRefMap = G._nukeRefMap || map;
+  clearTimeout(G._nukeRefT);
+  G._nukeRefT=setTimeout(()=>{ const m=G._nukeRefMap; G._nukeRefMap=false; if(m) colorMap(); topbarUpdate(); lpRender(); }, 400);
 }
 // Every nuclear launch takes the stage: the map is brought into view, the camera frames launcher and target,
 // a launch alert names both sides, the game holds still while the missile flies, and afterwards the camera
@@ -13260,17 +13306,20 @@ function frameStrike(a, b){
   }catch(e){}
 }
 function screenFlash(){
+  if(performance.now() < (G._flashUntil||0)) return;                 // overlapping flashes add nothing but work
+  G._flashUntil=performance.now()+700;
   const f=document.createElement('div');
   f.style.cssText='position:fixed;inset:0;z-index:9990;pointer-events:none;background:radial-gradient(circle at 50% 50%, rgba(255,255,235,.85), rgba(255,200,140,.35) 45%, rgba(255,120,60,0) 75%);opacity:1;transition:opacity 1.1s ease-out;';
   document.body.appendChild(f); requestAnimationFrame(()=>{ f.style.opacity='0'; }); setTimeout(()=>f.remove(),1300);
 }
 // Synthesised audio (no files): a rising rocket roar on launch, a deep boom on impact
-let _nukeAC=null;
+let _nukeAC=null, _nukeNoise=null;
 function nukeSound(kind){
   try{
     _nukeAC=_nukeAC||new (window.AudioContext||window.webkitAudioContext)(); const ac=_nukeAC, t=ac.currentTime;
-    const len=kind==='impact'?3.5:2.2, buf=ac.createBuffer(1, ac.sampleRate*len, ac.sampleRate), d=buf.getChannelData(0);
-    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1);
+    const len=kind==='impact'?3.5:2.2; _nukeNoise=_nukeNoise||{};
+    let buf=_nukeNoise[kind];
+    if(!buf){ buf=_nukeNoise[kind]=ac.createBuffer(1, ac.sampleRate*len, ac.sampleRate); const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1); }
     const src=ac.createBufferSource(); src.buffer=buf;
     const f=ac.createBiquadFilter(); f.type='lowpass';
     const g=ac.createGain();
@@ -17916,6 +17965,7 @@ async function loadGame(slot, fromObj){
   document.getElementById('tbdate').textContent=fmtDate();
   colorMap(); rpRender(); lpRender(); topbarUpdate();
   setSpd(0); G._loadingSave = false;
+  setTimeout(()=>atlasLinkUp('resume'), 500);
   addEv('d','📂 Game Loaded',`${G.player.flag}${G.player.name} · ${fmtDate()}. Paused — press 1× to resume.`);
   setTimeout(()=>{ syncMobileTop(); mobileFocusPlayer(); },600);
 }
@@ -18262,7 +18312,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 192;
+const ATLAS_BUILD = 193;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
