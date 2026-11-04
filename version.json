@@ -1,7 +1,7 @@
 {
-  "version": 194,
+  "version": 195,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v194: Nuclear strikes hit harder \u2014 the casualty cap per ICBM is now 20 million dead after 30 days (about 14 million at once, 6 million more from fallout) for the most populous countries; smaller countries still lose 4.5% of their people at once plus fallout."
+  "notes": "v195: UN 'Authorise Military Action' now opens the target to every nation for the mandate's length \u2014 anyone (you included) can invade it with no infamy or backlash, and countries that dislike it mobilise to join. Military parts can now be exported automatically with sliders (share of each day's output, Trade tab and Defense tab), shipped and paid on delivery like goods. Military part prices cut to realistic levels (a factory's daily output now sells for about $11M, in line with tech or pharma plants)."
 }
