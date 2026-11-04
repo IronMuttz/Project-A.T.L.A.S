@@ -1,7 +1,7 @@
 {
-  "version": 195,
+  "version": 196,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v195: UN 'Authorise Military Action' now opens the target to every nation for the mandate's length \u2014 anyone (you included) can invade it with no infamy or backlash, and countries that dislike it mobilise to join. Military parts can now be exported automatically with sliders (share of each day's output, Trade tab and Defense tab), shipped and paid on delivery like goods. Military part prices cut to realistic levels (a factory's daily output now sells for about $11M, in line with tech or pharma plants)."
+  "notes": "v196: New Foreign Minister in the cabinet (State tab \u2192 Ministries). Junior/Senior/Elite ministers add trade income and stability, and the foreign service makes every country at peace with you warm slowly over time, opens embassies sooner, makes leaders weigh your trade/alliance/pact proposals more kindly, wins goodwill in UN votes on your resolutions, and softens the fallout of denouncing. Investments: Diplomatic Corps, Cultural Institutes Abroad, Trade Missions, Diplomatic Academy, UN Permanent Mission."
 }
