@@ -9778,6 +9778,9 @@ function declareWar(a,b,log,defensive,defendingId){
     const w=G.wars[G.wars.length-1]; if(w) w.mandate=mandate.id;
     addWorldEv('w','🎖️ UN-Authorised War',`${a.flag}${a.name} invades ${b.flag}${b.name} under a UN mandate (until ${fmtDateIn(mandate.until-G.totalDays)}).`,a.flag,'🎖️');
     if(a===G.player) addEv('d','🎖️ UN Mandate',`This war is UN-authorised: no infamy and no world backlash. The mandate ends ${fmtDateIn(mandate.until-G.totalDays)}.`);
+  } else if(a===G.player && (b._casusBelli||0) > G.totalDays){                   // they raided you first
+    addWorldEv('w','⚔️ Retaliation',`${a.flag}${a.name} goes to war with ${b.flag}${b.name} after repeated border raids.`,a.flag,'⚔️');
+    addEv('d','⚔️ Self-Defence',`War on ${b.name} is retaliation for its border raids: no infamy and no world backlash.`);
   } else {
   markAggression(a);
   // Aggression costs reputation; the world remembers
@@ -11677,6 +11680,30 @@ function denounceCountry(id){
   if(!c.annexedBy && (p.callsHeldUntil||0) <= G.totalDays && !(G.totalDays-(p._denounceCall[id]??-1e9) < DENOUNCE_CALL_CD)){ p._denounceCall[id]=G.totalDays; queueLeaderCall(c, 'protest', 1400); }   // their leader calls you, angry or hurt (once a month at most)
   addEv('w','📢 Denounced',`${c.name}'s relations with you fell to ${Math.round(c.rels[p.id])}. Provoked countries are likelier to declare war on you — and if they do, defending yourself costs you no infamy.`);
   renderDiplo(); if(typeof rpRender==='function') rpRender();
+}
+// Friends of a country that hates you, who dislike you too: they'd join its war
+function grudgeCamp(c, pl){
+  return CLIST.filter(o=>o!==c && o!==pl && !o.annexedBy && !o.vassalOf && !o.warPlan && o.wars.size<2 && !o.wars.has(pl.id) && !o.allies.has(pl.id) && !o.pacts?.has(pl.id)
+      && !ceasefireBetween(o,pl) && (o.rels[pl.id]??50) < 30 && (c.allies.has(o.id) || (o.rels[c.id]??50) >= 55))
+    .sort((a,b)=>(b.mil_strength||0)-(a.mil_strength||0));
+}
+// Does `c` share a land border with you or any land you hold?
+function bordersRealm(c, pl){
+  const N=RT.nbrs?.[c.id]; if(!N) return false;
+  const has=id=>N.has ? N.has(id) : N.includes?.(id);
+  return has(pl.id) || realmTerritories(pl).some(t=>has(t.id));
+}
+// A hostile neighbour's raid: troops lost on both sides, relations sink, and a year of casus belli for you
+function borderRaid(c, pl){
+  const U=pl.mil_units||{}, kill=Math.min(U.ground_troops||0, Math.max(40, Math.round((U.ground_troops||0)*0.0015*(0.6+Math.random()))));
+  if(U.ground_troops) U.ground_troops-=kill;
+  if(c.mil_units?.ground_troops) c.mil_units.ground_troops=Math.max(0, c.mil_units.ground_troops-Math.round(kill*(0.6+Math.random()*0.6)));
+  relShift(c, pl, -(4+Math.floor(Math.random()*5)));
+  c._casusBelli=G.totalDays+365;
+  (G.clashes=G.clashes||[]).push({ a:c.id, b:pl.id, day:G.totalDays, t0:performance.now(), at:borderPoint(c,pl) });
+  addWorldEv('w','⚠️ Border Raid',`${c.flag}${c.name} forces raid across the ${pl.name} border.`,c.flag,'⚠️');
+  addEv('w','⚠️ Border Raid',`${c.name} raided your border: ${fmtNum(kill)} troops lost. For a year, going to war with ${c.name} counts as self-defence: no infamy or world backlash.`);
+  try{ calcMilStrength(pl); }catch(e){}
 }
 // A war is "justified" for the player if the other side declared it
 
@@ -16519,6 +16546,25 @@ function aiConsiderWar(c){
       addWorldEv('w','⚠️ Border Incident',`Clashes on the ${c.name}–${b.name} border. Relations ${Math.round(c.rels[b.id])} (${d}).`,c.flag,'⚠️'); }
   }
   const provoked = c._provokedBy && c._provokedBy.until>G.totalDays && (c.rels[G.player?.id]??50)<20;
+  // Grudges against you: a country that loathes you doesn't wait until it can win alone. It raids your border,
+  // rallies friends who dislike you too, and goes to war as a camp (the more it hates you, the sooner)
+  const pl=G.player, relP=pl ? (c.rels[pl.id]??50) : 50;
+  if(pl && relP < 25 && !c.allies.has(pl.id) && !c.pacts?.has(pl.id) && !ceasefireBetween(c,pl) && !pl.wars.has(c.id)){
+    const fury=(provoked ? 2 : 1) * (1 + (25-relP)/25) * leaderMod(c,'war');          // ×1 at 25 … ×2 at 0, ×2 more when provoked
+    if(Math.random() < 0.006*fury && bordersRealm(c,pl)){ borderRaid(c,pl); return; }
+    if(pl.wars.size < 3 && Math.random() < 0.003*fury){                                   // no dogpiles: at most three wars on you this way
+      const camp=grudgeCamp(c,pl), campStr=(c.mil_strength||0)+camp.reduce((x,o)=>x+(o.mil_strength||0)*0.7,0);
+      const pDef=(pl.mil_strength||0)+[...(pl.allies||[])].reduce((x,id)=>x+(CTRY[id]?.mil_strength||0)*0.5,0);
+      if(campStr > pDef*(hasNukes(pl) ? 1.15 : 0.8)){                                       // a grudge gambles on less of an edge
+        if(hasNukes(pl) && Math.random() > Math.min(0.6, NUKE_DETER.go*2*(provoked?1.4:1))){
+          addWorldEv('i','🕊️ Deterred',`${c.flag}${c.name} mobilised against ${pl.flag}${pl.name} but backed down: ${pl.name} has nuclear weapons.`,c.flag,'☢️'); return; }
+        c.warPlan={ target:pl.id, day:G.totalDays + 10 + Math.floor(Math.random()*10) };
+        const join=camp.slice(0,3); join.forEach(o=>{ o.warPlan={ target:pl.id, day:c.warPlan.day + 1 + Math.floor(Math.random()*12) }; });
+        addEv('w','⚠️ Enemy Mobilising',`Intelligence: ${c.name} is mobilising against you${join.length?`, with ${join.map(o=>o.name).join(', ')}`:''}. Expect an attack within weeks.`);
+        return;
+      }
+    }
+  }
   // Bitter enemies (relations under 10) that it can reach and beat are a real casus belli
   const reach = b => true;                                           // distance is no barrier: any enemy anywhere can be attacked
   const cand = CLIST.filter(b=>b!==c && !b.annexedBy && !b.vassalOf && !c.allies.has(b.id) && !c.pacts?.has(b.id)
@@ -18421,7 +18467,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 197;
+const ATLAS_BUILD = 198;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
