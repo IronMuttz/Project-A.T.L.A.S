@@ -466,6 +466,24 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 /* MODALS */
 .ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
 .ov.open{display:flex;}
+.rep-mod{ max-width:470px; max-height:calc(100vh - 40px); overflow:auto; text-align:left; }
+.rep-sub{ font-size:13px; color:var(--text2); margin:2px 0 10px; }
+.rep-l{ display:block; font:600 12px 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); margin:10px 0 4px; }
+.rep-l span, .rep-chk span{ text-transform:none; letter-spacing:0; font-weight:400; color:var(--text3); }
+.rep-kinds{ display:flex; flex-wrap:wrap; gap:6px; }
+.rep-k{ padding:6px 11px; border-radius:14px; border:1px solid var(--border2); background:var(--bg3); color:var(--text2); font:600 13px 'IBM Plex Sans Condensed',sans-serif; cursor:pointer; }
+.rep-k.on{ border-color:var(--teal); color:var(--teal); background:rgba(var(--acc-rgb),.12); }
+.rep-mod textarea, .rep-mod input[type=email]{ width:100%; box-sizing:border-box; padding:9px 10px; border-radius:5px; border:1px solid var(--border2); background:var(--bg3); color:var(--text); font:15px/1.4 'IBM Plex Sans',sans-serif; resize:vertical; }
+.rep-chk{ display:flex; gap:8px; align-items:flex-start; margin:12px 0 4px; font-size:13px; color:var(--text); cursor:pointer; }
+.rep-chk input{ margin-top:3px; }
+.rep-prev summary{ font-size:12px; color:var(--teal); cursor:pointer; margin:2px 0 4px; }
+.rep-prev pre{ max-height:180px; overflow:auto; background:var(--bg3); border:1px solid var(--border2); border-radius:4px; padding:8px; font-size:10.5px; line-height:1.35; color:var(--text2); white-space:pre-wrap; word-break:break-word; }
+.rep-msg{ min-height:18px; font-size:13px; margin:8px 0 2px; }
+.rep-msg.ok{ color:var(--green); } .rep-msg.bad{ color:#ffb347; } .rep-msg a{ color:var(--teal); }
+.rep-btns{ display:flex; gap:8px; margin-top:6px; }
+.rep-btns .ombt{ flex:1; }
+.ombt.rep-send{ flex:1.6; background:rgba(var(--acc-rgb),.18); border:1px solid var(--teal); color:var(--teal); }
+.ombt.rep-send:disabled{ opacity:.6; cursor:wait; }
 .omod{background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:20px 24px;max-width:440px;width:92%;box-shadow:0 18px 55px rgba(0,0,0,.75);}
 .om-ico{font-size:34px;text-align:center;margin-bottom:6px;}
 .om-t{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:600;letter-spacing:.03em;font-size:15px;color:var(--gold);text-align:center;margin-bottom:5px;}
@@ -1781,6 +1799,7 @@ body.mob .rrow{ min-height:36px; }
       <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=resources]'),'resources');closeOv('menuov')">⚙️ Industry</button>
       <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=diplo]'),'diplo');closeOv('menuov')">🌐 Foreign Affairs</button>
       <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=intel]'),'intel');closeOv('menuov')">🕵️ Intelligence</button>
+      <button class="ombt cnt" onclick="closeOv('menuov');openReport()">🐞 Report an Issue</button>
       <button class="ombt cnt install-app-btn" hidden onclick="closeOv('menuov');installApp()">💻 Install as PC app</button>
       <button class="ombt rst" style="margin-top:4px;" onclick="doRestart()">↺ New Game</button>
     </div>
@@ -9852,6 +9871,7 @@ function endWar(a,b){
 // ═══════════════════════════════════════════════════════════════════
 function addEv(type,title,text,act){
   title=noFlags(title); text=noFlags(text);
+  try{ GAME_LOG.push({ d:G.player?fmtDate():'—', k:type, t:String(title).replace(/<[^>]+>/g,''), x:String(text).replace(/<[^>]+>/g,'').slice(0,300) }); if(GAME_LOG.length>200) GAME_LOG.shift(); }catch(e){}
   (G.monthLog=G.monthLog||[]).push({type,title,text}); if(G.monthLog.length>80) G.monthLog.shift();
   const el=document.createElement('div'); el.className=`ev ${type}${act?' ev-act':''}`;
   el.innerHTML=`<div class="ev-t">${title}</div><div class="ev-b">${text}${act?' <span class="ev-go">Tap to review ›</span>':''}</div>`;
@@ -18467,7 +18487,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 198;
+const ATLAS_BUILD = 199;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -19167,6 +19187,95 @@ function buildTicker(){
 
 // ── MISC ──
 function toggleMenu(){ document.getElementById('menuov').classList.toggle('open'); }
+
+// ═══ REPORT AN ISSUE ═══ players send a report straight to the developer (form-to-email relay, no email app needed),
+// with the game log, recent errors and device info attached. If that can't get through, their email app opens instead,
+// and the log can always be downloaded as a text file to attach.
+const REPORT_TO='tauqir@hkbry.com', REPORT_RELAY=`https://formsubmit.co/ajax/${REPORT_TO}`;
+const GAME_LOG=[], ERR_LOG=[];
+window.addEventListener('error', e=>{ try{ ERR_LOG.push(`${new Date().toISOString().slice(11,19)} ${e.message} @${String(e.filename||'').split('/').pop()}:${e.lineno}:${e.colno}`); if(ERR_LOG.length>25) ERR_LOG.shift(); }catch(_){} });
+window.addEventListener('unhandledrejection', e=>{ try{ ERR_LOG.push(`${new Date().toISOString().slice(11,19)} (promise) ${String(e.reason?.message||e.reason).slice(0,200)}`); if(ERR_LOG.length>25) ERR_LOG.shift(); }catch(_){} });
+function reportPlatform(){
+  const ua=navigator.userAgent, where = location.hostname==='appassets.androidplatform.net' ? 'Android app' : IS_WEBAPP ? (matchMedia('(display-mode: standalone)').matches ? 'Installed web app' : 'Website') : window.claude?.use ? 'Claude artifact' : location.protocol==='file:' ? 'Local file' : location.hostname;
+  const os = /iPhone|iPad/.test(ua) ? 'iOS '+((ua.match(/OS (\d+[_\d]*)/)||[])[1]||'').replace(/_/g,'.') : /Android/.test(ua) ? 'Android '+((ua.match(/Android ([\d.]+)/)||[])[1]||'') : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'Other';
+  const br = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : /Firefox\//.test(ua) ? 'Firefox' : 'Browser';
+  return `${where} · ${os} · ${br} · ${innerWidth}×${innerHeight} @${(devicePixelRatio||1).toFixed(1)}x`;
+}
+function reportInfo(){
+  const p=G.player, L=[];
+  L.push(`A.T.L.A.S v${ATLAS_BUILD} · ${reportPlatform()}`);
+  if(p) L.push(`Playing ${p.name} · ${fmtDate()} · speed ${G.speed??'?'} · treasury ${fmtBil(p.treasury)} · at war with ${[...p.wars].map(id=>CTRY[id]?.name).filter(Boolean).join(', ')||'nobody'} · ${realmTerritories(p).length} annexed`);
+  else L.push('Not in a game yet');
+  L.push(`HD voices: ${HDV.state}${HDV.rtf?` (${HDV.rtf.toFixed(1)}× real time)`:''} · theme ${THEME.key} · voice ${ATLAS_VOICE.on?'on':'off'}`);
+  return L.join('\n');
+}
+function reportLog(){
+  const ev=GAME_LOG.slice(-80).map(e=>`[${e.d}] ${e.t}: ${e.x}`).join('\n');
+  const world=WORLD_EVENTS_LOG.slice(0,30).map(e=>`• ${noFlags(e.title||'')}: ${noFlags(String(e.body||'')).replace(/<[^>]+>/g,'').slice(0,160)}`).join('\n');
+  return `── DEVICE & GAME ──\n${reportInfo()}\n\n── ERRORS (${ERR_LOG.length}) ──\n${ERR_LOG.join('\n')||'none'}\n\n── YOUR EVENTS (latest last) ──\n${ev||'none'}\n\n── WORLD NEWS (latest first) ──\n${world||'none'}`;
+}
+function openReport(){
+  document.getElementById('report-ov')?.remove();
+  let mail=''; try{ mail=localStorage.getItem('atlas_report_email')||''; }catch(e){}
+  const d=document.createElement('div'); d.id='report-ov'; d.className='ov open';
+  d.onclick=e=>{ if(e.target===d) d.remove(); };
+  d.innerHTML=`<div class="omod rep-mod" onclick="event.stopPropagation()">
+    <div class="om-t" style="text-align:left;font-size:var(--fs-lg);">🐞 REPORT AN ISSUE</div>
+    <div class="rep-sub">Goes straight to the developer. Bugs, crashes, balance, ideas: all welcome.</div>
+    <label class="rep-l">What kind?</label>
+    <div class="rep-kinds">${[['bug','🐞 Bug'],['crash','💥 Crash / freeze'],['balance','⚖️ Balance'],['idea','💡 Idea'],['other','💬 Other']].map(([k,n],i)=>`<button class="rep-k${i?'':' on'}" data-k="${k}" onclick="this.parentNode.querySelectorAll('.rep-k').forEach(b=>b.classList.toggle('on',b===this))">${n}</button>`).join('')}</div>
+    <label class="rep-l" for="rep-msg">What happened?</label>
+    <textarea id="rep-msg" rows="5" maxlength="4000" placeholder="What you did, what you expected, and what happened instead."></textarea>
+    <label class="rep-l" for="rep-mail">Your email <span>(optional, for a reply)</span></label>
+    <input id="rep-mail" type="email" autocomplete="email" placeholder="you@example.com" value="${mEsc(mail)}">
+    <label class="rep-chk"><input type="checkbox" id="rep-log" checked><div>Attach the game log <span>(your recent events, world news, errors and device info: no personal data)</span></div></label>
+    <details class="rep-prev"><summary>See what's attached</summary><pre>${mEsc(reportLog())}</pre></details>
+    <div class="rep-msg" id="rep-status"></div>
+    <div class="rep-btns">
+      <button class="ombt cnt" onclick="document.getElementById('report-ov').remove()">Cancel</button>
+      <button class="ombt cnt" onclick="downloadReportLog()" title="Save the log as a text file">⬇ Log</button>
+      <button class="ombt rep-send" id="rep-send" onclick="sendReport()">Send report</button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+  setTimeout(()=>document.getElementById('rep-msg')?.focus({ preventScroll:true }), 80);
+}
+function downloadReportLog(){
+  const blob=new Blob([reportLog()], { type:'text/plain' }), a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=`atlas-log-v${ATLAS_BUILD}-${new Date().toISOString().slice(0,10)}.txt`;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+async function sendReport(){
+  const msg=(document.getElementById('rep-msg')?.value||'').trim(), mail=(document.getElementById('rep-mail')?.value||'').trim();
+  const kind=document.querySelector('#report-ov .rep-k.on')?.dataset.k||'other', withLog=document.getElementById('rep-log')?.checked;
+  const st=document.getElementById('rep-status'), btn=document.getElementById('rep-send');
+  if(msg.length<5){ st.className='rep-msg bad'; st.textContent='Tell us a little about what happened first.'; return; }
+  if(mail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)){ st.className='rep-msg bad'; st.textContent='That email doesn\'t look right (or leave it empty).'; return; }
+  const last=+(localStorage.getItem('atlas_report_at')||0); if(Date.now()-last < 45000){ st.className='rep-msg bad'; st.textContent='Report sent a moment ago. Give it a minute before the next one.'; return; }
+  try{ localStorage.setItem('atlas_report_email', mail); }catch(e){}
+  const subject=`A.T.L.A.S v${ATLAS_BUILD} · ${kind} · ${G.player?.name||'menu'}`;
+  btn.disabled=true; btn.textContent='Sending…'; st.className='rep-msg'; st.textContent='';
+  const body={ _subject:subject, _template:'box', _captcha:'false', kind, message:msg, email:mail||undefined, version:'v'+ATLAS_BUILD, device:reportPlatform(), game:reportInfo(), log: withLog ? reportLog().slice(0,60000) : '(not attached)' };
+  try{
+    const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(), 15000);
+    const r=await fetch(REPORT_RELAY, { method:'POST', headers:{ 'Content-Type':'application/json', 'Accept':'application/json' }, body:JSON.stringify(body), signal:ctl.signal });
+    clearTimeout(to);
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok || String(j.success)!=='true') throw new Error(j.message||('HTTP '+r.status));
+    try{ localStorage.setItem('atlas_report_at', String(Date.now())); }catch(e){}
+    st.className='rep-msg ok'; st.textContent='✓ Report sent. Thank you!'; btn.textContent='Sent';
+    addEv('d','🐞 Report Sent','Thanks: your report went to the developer.');
+    setTimeout(()=>document.getElementById('report-ov')?.remove(), 1800);
+  }catch(err){
+    // No relay (offline, or a blocked network): hand it to the player's email app, log saved to attach
+    btn.disabled=false; btn.textContent='Send report';
+    const head=`${msg}\n\n── ${reportInfo()}\n── errors: ${ERR_LOG.slice(-5).join(' | ')||'none'}`;
+    const mt=`mailto:${REPORT_TO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent((head+(withLog?'\n\n(Game log saved as a file: please attach it.)':'')).slice(0,1800))}`;
+    if(withLog) downloadReportLog();
+    st.className='rep-msg bad'; st.innerHTML=`Couldn't send directly${navigator.onLine===false?' (you\'re offline)':''}. Opening your email app instead${withLog?'; the game log was saved as a file to attach':''}. <a href="${mt}" target="_blank" rel="noopener">Open email</a>`;
+    try{ if(location.hostname==='appassets.androidplatform.net') location.href=mt; else if(!window.open(mt, '_blank')) location.href=mt; }catch(e){}
+  }
+}
 
 function toggleUIPanel(){
   document.getElementById('ui-panel').classList.toggle('open'); fillVoicePicker();
@@ -20149,6 +20258,7 @@ const WORLD_ATLAS_TOPO={"type":"Topology","objects":{"countries":{"type":"Geomet
       oninput="applyUIScale()" style="--fill:100%">
   </div>
   <button class="uip-reset" onclick="resetUIScale()">↺ Reset Defaults</button>
+  <button class="uip-reset" style="margin-top:6px;border-color:#ffb347;color:#ffb347;" onclick="openReport()">🐞 Report an Issue</button>
   <div class="uip-title" style="margin-top:12px;">🎨 Interface Colour</div>
   <div class="theme-row" id="uip-themes"></div>
   <div class="uip-title" style="margin-top:12px;">🎖️ Your Title</div>

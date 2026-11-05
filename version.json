@@ -1,7 +1,7 @@
 {
-  "version": 198,
+  "version": 199,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v198: Countries that hate you now act on it. Hostile neighbours (relations under 25) raid your border \u2014 troops lost, relations sink, and for a year a war on them counts as self-defence (no infamy). Countries that loathe you no longer need to beat you alone: they rally friends who also dislike you and attack as a camp, gambling on a smaller edge (nuclear powers still deter most of them). Denouncing them makes all of this more likely. At most three such wars at a time, and you get an intelligence warning when one is mobilising."
+  "notes": "v199: Report an Issue \u2014 in the Menu and in Settings. Pick a kind (bug, crash, balance, idea), describe it, optionally leave an email for a reply, and send. The game log (recent events, world news, errors and device info, no personal data) is attached; you can preview it or save it as a text file. Reports go straight to the developer; if that can't get through (offline), your email app opens with the report and the log is saved to attach."
 }
