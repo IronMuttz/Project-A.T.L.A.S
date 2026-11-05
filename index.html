@@ -11665,16 +11665,16 @@ function sendAidAll(){
 }
 
 // ── Denounce: sour relations on purpose (provoke them into attacking you) ──
-const DENOUNCE_CD = 30;
+const DENOUNCE_CALL_CD = 30;   // no cooldown on denouncing itself (v197); their leader only rings to protest once a month
 function denounceCountry(id){
   const p=G.player, c=CTRY[id]; if(!p||!c) return;
-  p._denounced=p._denounced||{};
-  if(p._denounced[id] && G.totalDays-p._denounced[id]<DENOUNCE_CD){ addEv('w','📢 Denounce',`You denounced ${c.name} recently. Wait ${DENOUNCE_CD-(G.totalDays-p._denounced[id])} days.`); return; }
+  p._denounced=p._denounced||{}; p._denounceCall=p._denounceCall||{};
+  const again = p._denounced[id]!=null && G.totalDays-p._denounced[id] < DENOUNCE_CALL_CD;   // denounce as often as you like
   p._denounced[id]=G.totalDays; markAggression(p);
-  relShift(c,p,-15*(1-foreignStats(p).soften)); if(c.relBase) c.relBase[p.id]=Math.max(0,(c.relBase[p.id]??50)-6);
+  relShift(c,p,-15*(1-foreignStats(p).soften)); c.relBase=c.relBase||{}; c.relBase[p.id]=Math.max(0,(c.relBase[p.id]??50)-6);   // keeps sinking each time: it stays bad
   c._provokedBy={ id:p.id, until:G.totalDays+180 };
-  addWorldEv('w','📢 Denounce',`${p.name} publicly denounces ${c.name}.`,'📢','');
-  if(!c.annexedBy && (p.callsHeldUntil||0) <= G.totalDays) queueLeaderCall(c, 'protest', 1400);   // their leader calls you, angry or hurt
+  addWorldEv('w','📢 Denounce',`${p.name} ${again?'again ':''}publicly denounces ${c.name}.`,'📢','');
+  if(!c.annexedBy && (p.callsHeldUntil||0) <= G.totalDays && !(G.totalDays-(p._denounceCall[id]??-1e9) < DENOUNCE_CALL_CD)){ p._denounceCall[id]=G.totalDays; queueLeaderCall(c, 'protest', 1400); }   // their leader calls you, angry or hurt (once a month at most)
   addEv('w','📢 Denounced',`${c.name}'s relations with you fell to ${Math.round(c.rels[p.id])}. Provoked countries are likelier to declare war on you — and if they do, defending yourself costs you no infamy.`);
   renderDiplo(); if(typeof rpRender==='function') rpRender();
 }
@@ -18421,7 +18421,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 196;
+const ATLAS_BUILD = 197;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();

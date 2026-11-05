@@ -1,7 +1,7 @@
 {
-  "version": 196,
+  "version": 197,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v196: New Foreign Minister in the cabinet (State tab \u2192 Ministries). Junior/Senior/Elite ministers add trade income and stability, and the foreign service makes every country at peace with you warm slowly over time, opens embassies sooner, makes leaders weigh your trade/alliance/pact proposals more kindly, wins goodwill in UN votes on your resolutions, and softens the fallout of denouncing. Investments: Diplomatic Corps, Cultural Institutes Abroad, Trade Missions, Diplomatic Academy, UN Permanent Mission."
+  "notes": "v197: Denounce has no cooldown \u2014 denounce a country as often as you like to drive relations down (each one also lowers how they'll feel about you long-term). Their leader still only calls to protest once a month."
 }
