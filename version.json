@@ -1,7 +1,7 @@
 {
-  "version": 201,
+  "version": 202,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v201: Smooth in a world at war. Each game day now runs in small slices between frames, so the map and buttons stay smooth even with every country fighting and missiles in the air. Next Month no longer freezes the screen (it shows a progress bar). War routes, front lines and country names are drawn once and reused instead of every frame, and world news is batched. Freeze fixes: the phone only rings while the call is on screen (never in the background or after you close the app), and a pop-up the game is waiting on that you can't see is brought forward automatically. If the game ever stops responding, the next launch offers to send a report with what was happening at the time."
+  "notes": "v202: Country names stay glued to the map while you drag or pinch on a phone (no more wobble), and they're drawn at your screen's full sharpness. Everything on the map also runs at full frame rate while you move it."
 }

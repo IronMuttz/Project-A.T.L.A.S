@@ -7177,7 +7177,7 @@ function initMap(){
   }
 
   G.zoomer=d3.zoom().scaleExtent([1,14]).translateExtent(mapWorldBounds())
-    .on('zoom',e=>{ g.attr('transform',e.transform); isleZoom(e.transform.k); });
+    .on('zoom',e=>{ g.attr('transform',e.transform); isleZoom(e.transform.k); ovlFollow(e.transform); G._viewMovedAt=performance.now(); });
   svg.call(G.zoomer);
   mapHome(false);
 
@@ -7984,7 +7984,7 @@ function rtSegPath(sg){
     if(prev==null || Math.abs(lon-prev)>180) P.moveTo(r[0],r[1]); else P.lineTo(r[0],r[1]); prev=lon; });
   sg._vpath=P; sg._vpathV=G._projV; return P;
 }
-function vxf(ctx){ const s=G.animS||1, k=G._vk||1; ctx.setTransform(s*k,0,0,s*k,s*(G._vtx||0),s*(G._vty||0)); }   // draw in map units
+function vxf(ctx){ const sx=G._dsx||G.animS||1, sy=G._dsy||G.animS||1, k=G._vk||1; ctx.setTransform(sx*k,0,0,sy*k,sx*(G._vtx||0),sy*(G._vty||0)); }   // draw in map units
 function outlineText(ctx, txt, x, y, w){ ctx.lineWidth=w||3; ctx.lineJoin='round'; ctx.strokeStyle='rgba(0,0,0,.82)'; ctx.strokeText(txt,x,y); ctx.fillText(txt,x,y); }
 function drawRoutePath(ctx, route, toCP, color, dash){
   const k=G._vk||1; ctx.save(); vxf(ctx);
@@ -8168,24 +8168,37 @@ function ovlSig(p){ let h=0; for(const w of G.wars) h=(h*31+w.a*1009+w.b)|0;
 // Phones: the layer is its own canvas under the map animation, moved by the compositor (no copy per frame).
 // Computers: it's copied onto the map each frame, which is cheapest when the browser draws without a GPU.
 function ovlUseDom(){ return !!(_animMob && _animMob.v); }
+// Phones: place the name layer for a map view (map units → CSS pixels of the map box, exactly)
+function ovlFollow(t){
+  if(!OVL.dom || !OVL.built || !OVL.war?.isConnected) return;
+  const W=G.W||1, H=G.H||1, rx=(OVL.cw||W)/W, ry=(OVL.ch||H)/H, q=t.k/OVL.k;
+  const css = (t.k===OVL.k && t.x===OVL.tx && t.y===OVL.ty) ? '' : `matrix(${q},0,0,${q},${((t.x-q*OVL.tx)*rx).toFixed(2)},${((t.y-q*OVL.ty)*ry).toFixed(2)})`;
+  if(css!==OVL.css){ OVL.css=css; OVL.war.style.transform=css; }
+}
 function ovlBuild(cv, toCP, k, tx, ty, W, H, p, ts){
   const dom=ovlUseDom();
   if(dom && !(OVL.war && OVL.war.isConnected)){ const d=document.createElement('canvas'); d.id='ovl-cv'; d.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;transform-origin:0 0;'; cv.parentNode.insertBefore(d, cv); OVL.war=d; }
   if(!dom && OVL.war && OVL.war.isConnected){ OVL.war.remove(); OVL.war=null; }
-  const c=OVL.war=OVL.war||document.createElement('canvas'); OVL.dom=dom; c.style.transform='';
-  const s=G.animS||1;
-  if(c.width!==cv.width) c.width=cv.width; if(c.height!==cv.height) c.height=cv.height;
+  const c=OVL.war=OVL.war||document.createElement('canvas'); OVL.dom=dom; c.style.transform=''; OVL.css='';
+  let bw=cv.width, bh=cv.height;
+  if(dom){ const cw=cv.clientWidth||W, ch=cv.clientHeight||H, dpr=Math.min(3, window.devicePixelRatio||1), cap=Math.min(1, Math.sqrt(3.2e6/(cw*ch*dpr*dpr)));
+    bw=Math.round(cw*dpr*cap); bh=Math.round(ch*dpr*cap); }
+  if(c.width!==bw) c.width=bw; if(c.height!==bh) c.height=bh;
+  const sx=bw/W, sy=bh/H;
   const x=c.getContext('2d'); x.setTransform(1,0,0,1,0,0); x.clearRect(0,0,c.width,c.height);
-  [drawWarWeb, drawMapLabels].forEach(fn=>{ x.setTransform(s,0,0,s,0,0); x.globalAlpha=1; try{ fn(x, toCP, k, W, H, p, ts); }catch(e){} });
-  OVL.k=k; OVL.tx=tx; OVL.ty=ty; OVL.sig=ovlSig(p); OVL.built=true; OVL.css='';
+  G._dsx=sx; G._dsy=sy;
+  try{ [drawWarWeb, drawMapLabels].forEach(fn=>{ x.setTransform(sx,0,0,sy,0,0); x.globalAlpha=1; try{ fn(x, toCP, k, W, H, p, ts); }catch(e){} }); }
+  finally{ G._dsx=G._dsy=null; }
+  OVL.bw=bw; OVL.bh=bh;
+  OVL.k=k; OVL.tx=tx; OVL.ty=ty; OVL.sig=ovlSig(p); OVL.built=true; OVL.cw=cv.clientWidth; OVL.ch=cv.clientHeight;
 }
 function ovlBlit(ctx, cv, toCP, k, tx, ty, W, H, p, ts){
   if(k!==OVL.pk || tx!==OVL.ptx || ty!==OVL.pty){ OVL.moveT=ts; OVL.pk=k; OVL.ptx=tx; OVL.pty=ty; }
   const at = OVL.built && OVL.k===k && OVL.tx===tx && OVL.ty===ty, r=k/(OVL.k||1);
-  const fresh = OVL.built && OVL.dom===ovlUseDom() && (!OVL.dom || OVL.war.isConnected) && OVL.war.width===cv.width && OVL.war.height===cv.height && OVL.sig===ovlSig(p);
+  const fresh = OVL.built && OVL.dom===ovlUseDom() && (OVL.dom ? OVL.war.isConnected && OVL.cw===cv.clientWidth && OVL.ch===cv.clientHeight : OVL.war.width===cv.width && OVL.war.height===cv.height) && OVL.sig===ovlSig(p);
   if(!fresh || (!at && (ts-OVL.moveT>110 || r>1.4 || r<0.72))) ovlBuild(cv, toCP, k, tx, ty, W, H, p, ts);
   const s=G.animS||1, still = OVL.k===k && OVL.tx===tx && OVL.ty===ty;
-  if(OVL.dom){ const q=k/OVL.k, css = still ? '' : `matrix(${q},0,0,${q},${tx-q*OVL.tx},${ty-q*OVL.ty})`; if(css!==OVL.css){ OVL.css=css; OVL.war.style.transform=css; } return; }
+  if(OVL.dom){ ovlFollow({ k, x:tx, y:ty }); return; }
   // One copy per frame; between redraws it is moved and scaled with the map
   ctx.save(); ctx.setTransform(1,0,0,1,0,0);
   if(!still){ const q=k/OVL.k; ctx.setTransform(q,0,0,q, s*(tx-q*OVL.tx), s*(ty-q*OVL.ty)); }
@@ -8305,7 +8318,8 @@ function animFrame(ts){
   if(!G.canvasCtx||!G.player) return;
   if(_animMob===null || ts-(_animMob.t||0)>2000) _animMob={ v:isMobile(), t:ts };
   if(ts-(_animMob.ct||0)>400){ _animMob.ct=ts; _animMob.cov=!!document.querySelector('.hud-modal-wrap, #crisis-popup, #month-review'); }
-  if(!(G.nukeAnims||[]).length && ((_animMob.v && ts-_animLast<30) || (_animMob.cov && ts-_animLast<110))) return;
+  const moving = performance.now()-(G._viewMovedAt||0) < 350;
+  if(!(G.nukeAnims||[]).length && ((_animMob.v && !moving && ts-_animLast<30) || (_animMob.cov && ts-_animLast<110))) return;
   _animLast=ts;
   const cv=document.getElementById('animcvs');
   const ctx=G.canvasCtx;
@@ -18711,7 +18725,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 201;
+const ATLAS_BUILD = 202;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
