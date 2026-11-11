@@ -1,7 +1,7 @@
 {
-  "version": 207,
+  "version": 208,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v207: Better on iPad. Pinching the panels no longer zooms the whole page, tapping a money box no longer zooms in and gets stuck, and long-pressing the map or a button no longer brings up the text magnifier. Sound (phone rings, ATLAS and leader voices) now starts from your first tap and comes back after the iPad sleeps or takes a call. iPads are recognised as iPads in reports (Safari calls them a Mac)."
+  "notes": "v208: Nukes look nothing like ordinary missiles now. A big ICBM with a red nose cone, a yellow-and-black hazard band and a \u2622 emblem, glowing radioactive yellow, with a long blue-white flame and a '\u2622 ICBM' tag. Its whole path to the target is marked in yellow, and a spinning radiation marker on the target counts down to impact. The blast is about twice as big, with a taller mushroom cloud and scorched ground that glows for a while."
 }

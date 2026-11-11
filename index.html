@@ -8252,6 +8252,31 @@ function ovlBlit(ctx, cv, toCP, k, tx, ty, W, H, p, ts){
 }
 // One sprite for the glow + crossed swords, stamped at every front line (instead of drawing each from scratch)
 let _swordSpr=null;
+// ICBM drawn once (pointing right, 1 unit = SPR px), then stamped rotated each frame
+let _icbmSpr=null, _trefSpr=null;
+function icbmSprite(){
+  if(_icbmSpr) return _icbmSpr; const U=4, L=24, R=2.7, c=document.createElement('canvas'); c.width=(L+4)*U; c.height=(R*2+7)*U;
+  const x=c.getContext('2d'); x.scale(U,U); x.translate(2, R+3.5);                       // origin: tail centre; nose at +L
+  x.fillStyle='#3a434b'; [-1,1].forEach(s=>{ x.beginPath(); x.moveTo(0.5,s*R); x.lineTo(-1.6,s*(R+3)); x.lineTo(4.6,s*(R+0.2)); x.lineTo(4.6,s*R); x.closePath(); x.fill(); });   // fins
+  const g=x.createLinearGradient(0,-R,0,R); g.addColorStop(0,'#ffffff'); g.addColorStop(0.55,'#d9e0e6'); g.addColorStop(1,'#8d98a2');
+  x.fillStyle=g; x.beginPath(); x.moveTo(0,-R); x.lineTo(L-6,-R); x.lineTo(L-6,R); x.lineTo(0,R); x.closePath(); x.fill();               // body
+  for(let i=0;i<5;i++){ x.fillStyle=i%2?'#111':'#ffd400'; x.beginPath(); x.moveTo(L-10+i*0.9,-R); x.lineTo(L-9.1+i*0.9,-R); x.lineTo(L-9.1+i*0.9,R); x.lineTo(L-10+i*0.9,R); x.closePath(); x.fill(); }   // hazard band
+  x.fillStyle='#1c1f23'; x.fillRect(3.2,-R,1.1,R*2);                                                                                      // stage ring
+  const ng=x.createLinearGradient(0,-R,0,R); ng.addColorStop(0,'#ff5a4f'); ng.addColorStop(1,'#8f0f16');
+  x.fillStyle=ng; x.beginPath(); x.moveTo(L-6,-R); x.quadraticCurveTo(L-1.2,-R*0.9,L,0); x.quadraticCurveTo(L-1.2,R*0.9,L-6,R); x.closePath(); x.fill();   // nose cone
+  x.save(); x.translate(8.6,0); x.fillStyle='#ffd400'; x.beginPath(); x.arc(0,0,R*0.82,0,Math.PI*2); x.fill(); x.fillStyle='#111';      // ☢ emblem
+  for(let k=0;k<3;k++){ const a=-Math.PI/2+k*Math.PI*2/3; x.beginPath(); x.moveTo(0,0); x.arc(0,0,R*0.72,a-0.5,a+0.5); x.closePath(); x.fill(); }
+  x.beginPath(); x.arc(0,0,R*0.16,0,Math.PI*2); x.fill(); x.restore();
+  return (_icbmSpr={ c, U, L, R, ox:2, oy:R+3.5 });
+}
+function trefoilSprite(){
+  if(_trefSpr) return _trefSpr; const S=64, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d'), m=S/2;
+  x.fillStyle='rgba(255,212,0,.95)'; x.beginPath(); x.arc(m,m,m-2,0,Math.PI*2); x.fill();
+  x.lineWidth=3; x.strokeStyle='#111'; x.stroke(); x.fillStyle='#111';
+  for(let k=0;k<3;k++){ const a=-Math.PI/2+k*Math.PI*2/3; x.beginPath(); x.moveTo(m,m); x.arc(m,m,m*0.78,a-0.52,a+0.52); x.closePath(); x.fill(); }
+  x.fillStyle='rgba(255,212,0,1)'; x.beginPath(); x.arc(m,m,m*0.26,0,Math.PI*2); x.fill(); x.fillStyle='#111'; x.beginPath(); x.arc(m,m,m*0.16,0,Math.PI*2); x.fill();
+  return (_trefSpr={ c, S });
+}
 function swordSprite(){
   if(_swordSpr) return _swordSpr; const c=document.createElement('canvas'), R=16, sc=2; c.width=c.height=R*2*sc; const x=c.getContext('2d'); x.scale(sc,sc);
   const g=x.createRadialGradient(R,R,0,R,R,14); g.addColorStop(0,'rgba(255,77,94,.49)'); g.addColorStop(1,'rgba(255,77,94,0)');
@@ -8467,9 +8492,11 @@ function animFrame(ts){
     ctx.beginPath(); ctx.arc(q[0],q[1],pr*2.2,0,Math.PI*2); ctx.setLineDash([3,4]); ctx.stroke(); ctx.setLineDash([]);
     [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{ ctx.beginPath(); ctx.moveTo(q[0]+dx*pr*1.3,q[1]+dy*pr*1.3); ctx.lineTo(q[0]+dx*pr*3,q[1]+dy*pr*3); ctx.stroke(); }); } }
   // ── NUCLEAR STRIKES — launch plume, boost flame, smoke trail, terminal dive, flash, fireball, shockwave, mushroom cloud ──
+  // Nukes look nothing like ordinary missiles: a big ICBM with a red nose and hazard band, a radioactive glow,
+  // its whole path to the target marked in yellow, and a radiation marker with a countdown on the target.
   if(G.nukeAnims?.length){
     const tnow=performance.now(), FL=NUKE_FLIGHT_MS/1000;
-    const sz=Math.max(0.7, Math.min(2.2, Math.sqrt(k)*0.9)), busy=G.nukeAnims.length;
+    const sz=Math.max(1.2, Math.min(3.6, Math.sqrt(k)*1.55)), busy=G.nukeAnims.length;      // nukes are drawn well above ordinary missile size
     G.nukeAnims=G.nukeAnims.filter(a=>{
       const e=(tnow-a.t0)/1000; if(e>FL+9) return false;
       const A0=G.proj(a.from), B0=G.proj(a.to); if(!A0||!B0) return false;
@@ -8481,6 +8508,17 @@ function animFrame(ts){
       const P=t=>{ const u=1-t; return [u*u*A[0]+2*u*t*C[0]+t*t*B[0], u*u*A[1]+2*u*t*C[1]+t*t*B[1]]; };
       const tf=Math.min(1, e/FL), t=prog(tf);
       const wob=n=>Math.sin(e*9+n+a.seed)*0.6;                                   // slight turbulence in the smoke
+      if(tf<1){
+        // the rest of its path, marked in yellow
+        ctx.beginPath(); for(let i=0;i<=16;i++){ const q=P(t+(1-t)*i/16); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); }
+        ctx.setLineDash([6,7]); ctx.lineDashOffset=-e*30; ctx.strokeStyle='rgba(255,214,0,.5)'; ctx.lineWidth=1.3; ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset=0;
+        // radiation marker on the target, slowly turning, with time to impact
+        const T=trefoilSprite(), tr=(7+Math.sin(e*6)*0.8)*sz, rot=e*0.6;
+        ctx.beginPath(); ctx.arc(B[0],B[1],tr*2.1+Math.sin(e*6)*2,0,Math.PI*2); ctx.strokeStyle=`rgba(255,212,0,${0.45+0.3*Math.sin(e*6)})`; ctx.lineWidth=1.6; ctx.stroke();
+        ctx.save(); ctx.translate(B[0],B[1]); ctx.rotate(rot); ctx.globalAlpha=0.92; ctx.drawImage(T.c,-tr,-tr,tr*2,tr*2); ctx.restore(); ctx.globalAlpha=1;
+        if(busy<=8){ ctx.font=`700 ${Math.round(Math.min(14,9+sz*1.5))}px "IBM Plex Sans Condensed", sans-serif`; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle='#ffd400';
+          outlineText(ctx, `☢ IMPACT ${Math.max(0,FL-e).toFixed(1)}s`, B[0], B[1]+tr*2.3+3); }
+      }
       // Launch: pad flash + billowing ground plume
       if(e<2.2){ const pa=Math.max(0,1-e/2.2), pr=(6+e*14)*sz;
         const g=ctx.createRadialGradient(A[0],A[1],0,A[0],A[1],pr); g.addColorStop(0,`rgba(255,240,200,${0.8*pa*(e<0.3?1:0.6)})`); g.addColorStop(0.45,`rgba(200,200,200,${0.45*pa})`); g.addColorStop(1,'rgba(140,140,140,0)');
@@ -8493,7 +8531,7 @@ function animFrame(ts){
         ctx.lineCap='round'; ctx.lineJoin='round';
         for(let bd=0; bd<BANDS; bd++){
           const i0=Math.floor(bd*N/BANDS), i1=Math.floor((bd+1)*N/BANDS); if(i1<=i0) continue;
-          const age=pts[(i0+i1)>>1][2], w=(1.2+(1-age)*2.4+age*3.5)*sz, al=Math.max(0,(0.55-age*0.45))*fade; if(al<0.01) continue;
+          const age=pts[(i0+i1)>>1][2], w=(1.4+(1-age)*2.8+age*4)*sz, al=Math.max(0,(0.6-age*0.45))*fade; if(al<0.01) continue;
           ctx.beginPath(); ctx.moveTo(pts[i0][0],pts[i0][1]); for(let i=i0+1;i<=i1;i++) ctx.lineTo(pts[i][0],pts[i][1]);
           ctx.strokeStyle=`rgba(230,232,236,${al})`; ctx.lineWidth=w; ctx.stroke();
         }
@@ -8504,33 +8542,42 @@ function animFrame(ts){
         const H=P(t), H2=P(Math.min(1,t+0.01)), ang=Math.atan2(H2[1]-H[1],H2[0]-H[0]);
         const boost=tf<0.35, flick=0.7+Math.random()*0.6;
         ctx.save(); ctx.translate(H[0],H[1]); ctx.rotate(ang);
-        const fl=(boost?16:9)*sz*flick;                       // exhaust flame (bigger in boost phase)
-        const fg=ctx.createLinearGradient(0,0,-fl,0); fg.addColorStop(0,'rgba(255,255,230,.95)'); fg.addColorStop(0.35,'rgba(255,170,60,.85)'); fg.addColorStop(1,'rgba(255,80,20,0)');
-        ctx.beginPath(); ctx.moveTo(-2*sz,-1.8*sz); ctx.lineTo(-fl,0); ctx.lineTo(-2*sz,1.8*sz); ctx.closePath(); ctx.fillStyle=fg; ctx.fill();
-        ctx.beginPath(); ctx.moveTo(5*sz,0); ctx.lineTo(-2.5*sz,-1.6*sz); ctx.lineTo(-2.5*sz,1.6*sz); ctx.closePath(); ctx.fillStyle='#e9eef2'; ctx.fill();
-        const gl=ctx.createRadialGradient(0,0,0,0,0,10*sz); gl.addColorStop(0,'rgba(255,220,150,.55)'); gl.addColorStop(1,'rgba(255,160,60,0)');
-        ctx.beginPath(); ctx.arc(-3*sz,0,10*sz,0,Math.PI*2); ctx.fillStyle=gl; ctx.fill();
+        const S=icbmSprite(), sc=sz*0.62, len=S.L*sc;           // the missile, about 15 px long at world view
+        // radioactive glow around it, pulsing
+        const pul=0.75+0.25*Math.sin(e*9), gl=ctx.createRadialGradient(len*0.45,0,0,len*0.45,0,len*1.05);
+        gl.addColorStop(0,`rgba(255,230,70,${0.42*pul})`); gl.addColorStop(0.5,`rgba(170,255,90,${0.16*pul})`); gl.addColorStop(1,'rgba(150,255,90,0)');
+        ctx.beginPath(); ctx.arc(len*0.45,0,len*1.05,0,Math.PI*2); ctx.fillStyle=gl; ctx.fill();
+        const fl=(boost?2.1:1.2)*len*flick;                      // exhaust flame (much longer in the boost phase)
+        const fg=ctx.createLinearGradient(0,0,-fl,0); fg.addColorStop(0,'rgba(220,240,255,.98)'); fg.addColorStop(0.18,'rgba(255,250,200,.95)'); fg.addColorStop(0.45,'rgba(255,170,50,.85)'); fg.addColorStop(1,'rgba(255,70,20,0)');
+        ctx.beginPath(); ctx.moveTo(0,-S.R*sc*0.9); ctx.quadraticCurveTo(-fl*0.35,-S.R*sc*1.5,-fl,0); ctx.quadraticCurveTo(-fl*0.35,S.R*sc*1.5,0,S.R*sc*0.9); ctx.closePath(); ctx.fillStyle=fg; ctx.fill();
+        ctx.drawImage(S.c, -S.ox*sc, -S.oy*sc, S.c.width/S.U*sc, S.c.height/S.U*sc);
         ctx.restore();
+        if(busy<=6){ ctx.font=`700 ${Math.round(Math.min(13,8.5+sz*1.3))}px "IBM Plex Sans Condensed", sans-serif`; ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.fillStyle='#ffd400';
+          outlineText(ctx, '☢ ICBM', H[0]+len*0.35, H[1]-len*0.45); }
         if(tf>0.82){ // terminal phase: target reticle tightening
-          const rr=(30-(tf-0.82)/0.18*20)*sz; ctx.beginPath(); ctx.arc(B[0],B[1],rr,0,Math.PI*2); ctx.strokeStyle='rgba(255,77,94,.8)'; ctx.lineWidth=1; ctx.setLineDash([3,4]); ctx.stroke(); ctx.setLineDash([]); }
+          const rr=(34-(tf-0.82)/0.18*22)*sz; ctx.beginPath(); ctx.arc(B[0],B[1],rr,0,Math.PI*2); ctx.strokeStyle='rgba(255,77,94,.9)'; ctx.lineWidth=1.6; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]); }
       } else {
         const ie=e-FL;
         // 1) white flash
-        if(ie<0.7){ const r=(10+ie*120)*sz, al=1-ie/0.7; const g=ctx.createRadialGradient(B[0],B[1],0,B[0],B[1],r);
+        if(ie<0.8){ const r=(14+ie*190)*sz, al=1-ie/0.8; const g=ctx.createRadialGradient(B[0],B[1],0,B[0],B[1],r);
           g.addColorStop(0,`rgba(255,255,255,${al})`); g.addColorStop(0.5,`rgba(255,250,220,${al*0.6})`); g.addColorStop(1,'rgba(255,240,200,0)');
           ctx.beginPath(); ctx.arc(B[0],B[1],r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill(); }
         // 2) shockwave rings
-        [0,0.35].forEach(d=>{ const se=ie-d; if(se<0||se>2.4) return; const r=(8+se*70)*sz, al=Math.max(0,0.7*(1-se/2.4));
+        // scorched ground: a red-orange glow that stays a while
+        if(ie<8){ const al=Math.max(0,0.55*(1-ie/8)), r=26*sz; const g=ctx.createRadialGradient(B[0],B[1],0,B[0],B[1],r);
+          g.addColorStop(0,`rgba(255,120,40,${al})`); g.addColorStop(0.6,`rgba(160,40,20,${al*0.6})`); g.addColorStop(1,'rgba(60,10,5,0)');
+          ctx.beginPath(); ctx.arc(B[0],B[1],r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill(); }
+        [0,0.3,0.7].forEach(d=>{ const se=ie-d; if(se<0||se>2.8) return; const r=(10+se*110)*sz, al=Math.max(0,0.75*(1-se/2.8));
           ctx.beginPath(); ctx.arc(B[0],B[1],r,0,Math.PI*2); ctx.strokeStyle=`rgba(255,235,210,${al})`; ctx.lineWidth=2*sz*(1-se/2.4)+0.5; ctx.stroke(); });
         // 3) fireball, cooling from white-yellow to dull red
-        if(ie<6){ const r=Math.min(22,6+ie*14)*sz, al=Math.max(0,1-ie/6); const g=ctx.createRadialGradient(B[0],B[1]-ie*2*sz,0,B[0],B[1]-ie*2*sz,r);
+        if(ie<6){ const r=Math.min(36,9+ie*22)*sz, al=Math.max(0,1-ie/6); const g=ctx.createRadialGradient(B[0],B[1]-ie*2*sz,0,B[0],B[1]-ie*2*sz,r);
           g.addColorStop(0,`rgba(255,${Math.max(120,250-ie*40)},${Math.max(40,200-ie*60)},${al})`); g.addColorStop(0.6,`rgba(230,${Math.max(40,120-ie*20)},30,${al*0.8})`); g.addColorStop(1,'rgba(120,30,10,0)');
           ctx.beginPath(); ctx.arc(B[0],B[1]-ie*2*sz,r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill(); }
         // 4) mushroom cloud: stem rising, cap billowing, then drifting away
         if(ie>0.4 && ie<9){ const me=ie-0.4, rise=Math.min(1,me/3), al=Math.max(0, me<6?0.85:0.85*(1-(me-6)/2.6));
-          const top=B[1]-(18+rise*38)*sz, capR=(8+rise*14)*sz;
+          const top=B[1]-(24+rise*52)*sz, capR=(11+rise*20)*sz;
           const sg=ctx.createLinearGradient(B[0],B[1],B[0],top); sg.addColorStop(0,`rgba(120,100,90,${al*0.5})`); sg.addColorStop(1,`rgba(200,170,150,${al*0.75})`);
-          ctx.beginPath(); ctx.moveTo(B[0]-3*sz,B[1]); ctx.quadraticCurveTo(B[0]-2*sz,(B[1]+top)/2,B[0]-4*sz,top); ctx.lineTo(B[0]+4*sz,top); ctx.quadraticCurveTo(B[0]+2*sz,(B[1]+top)/2,B[0]+3*sz,B[1]); ctx.closePath(); ctx.fillStyle=sg; ctx.fill();
+          ctx.beginPath(); ctx.moveTo(B[0]-5.5*sz,B[1]); ctx.quadraticCurveTo(B[0]-3.5*sz,(B[1]+top)/2,B[0]-7*sz,top); ctx.lineTo(B[0]+7*sz,top); ctx.quadraticCurveTo(B[0]+3.5*sz,(B[1]+top)/2,B[0]+5.5*sz,B[1]); ctx.closePath(); ctx.fillStyle=sg; ctx.fill();
           const puffs=busy>2 ? 4 : 7;
           for(let i=0;i<puffs;i++){ const ang=i/puffs*Math.PI*2+me*0.3, ox=Math.cos(ang)*capR*0.6, oy=Math.sin(ang)*capR*0.25;
             const cg=ctx.createRadialGradient(B[0]+ox,top+oy,0,B[0]+ox,top+oy,capR*0.7);
@@ -18945,7 +18992,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 207;
+const ATLAS_BUILD = 208;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
