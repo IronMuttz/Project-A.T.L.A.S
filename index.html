@@ -1429,6 +1429,9 @@ body.mob .rrow{ min-height:36px; }
 .talking .lv .lv-talk{ opacity:1; animation:lvTalk .46s infinite; }
 @keyframes lvBlink{ 0%,94%,100%{ transform:scaleY(0); } 96.5%{ transform:scaleY(1); } }
 @keyframes lvTalk{ 0%{ transform:scaleY(.25); } 30%{ transform:scaleY(1); } 55%{ transform:scaleY(.45); } 80%{ transform:scaleY(.9); } 100%{ transform:scaleY(.25); } }
+/* lip-sync: while the voice drives the mouth, the looping animation steps aside */
+.lipsync .lv .lv-talk{ animation:none !important; }
+.vc-person svg{ transform-origin:50% 90%; }
 
 .ldr-card{ display:flex; gap:11px; align-items:flex-start; background:linear-gradient(180deg,rgba(var(--acc-rgb),.07),rgba(var(--acc-rgb),.02)); border:1px solid var(--border2); border-radius:4px; padding:9px 10px; margin-bottom:9px; }
 .ldr-av{ flex:0 0 80px; width:80px; height:80px; border-radius:50%; overflow:hidden; border:1px solid var(--border2); background:radial-gradient(circle at 50% 35%, #1b3a55, #071321 72%); box-shadow:0 0 16px rgba(var(--acc-rgb),.16); }
@@ -6365,8 +6368,8 @@ function hdvSynth(text, voice, speed=1, tag='atlas', pri=1){
     hdvClipGet(key).then(hit=>{ const p=HDV.pend.get(id); if(!p) return;                // dropped while we looked
       if(hit){ HDV.pend.delete(id); res(hit); }
       else HDV.worker?.postMessage({ type:'speak', id, text, voice, speed, pri:p.pri }); }); });
-  const ent={ pr, id }; HDV.cache.set(key,ent); pr.catch(()=>{ if(HDV.cache.get(key)===ent) HDV.cache.delete(key); });
-  while(HDV.cache.size>40) HDV.cache.delete(HDV.cache.keys().next().value);
+  const ent={ pr, id }; HDV.cache.set(key,ent); pr.then(v=>{ ent.val=v; }, ()=>{ if(HDV.cache.get(key)===ent) HDV.cache.delete(key); });
+  while(HDV.cache.size>90) HDV.cache.delete(HDV.cache.keys().next().value);
   return pr;
 }
 // Drop lines of one kind that are still waiting their turn (never the one being spoken), except those still wanted
@@ -6390,6 +6393,15 @@ function hdvCancel(tag, keep){
   HDV.pend.forEach((p,id)=>{ if(p.tag!==tag || p.running || keep?.has(p.key)) return;
     ids.push(id); HDV.pend.delete(id); if(HDV.cache.get(p.key)?.id===id) HDV.cache.delete(p.key); p.rej(new Error('cancelled')); });
   if(ids.length && HDV.worker) HDV.worker.postMessage({ type:'cancel', ids });
+}
+// A line already made (in memory): its audio, or null
+function hdvReady(text, voice, speed){ const e=HDV.cache.get(hdvKey(text, voice, Math.round(speed*100)/100)); return e && e.val || null; }
+// Several clips joined into one, with a short natural pause between them (no gap waiting for the next clip)
+function hdvJoin(clips, gapsMs){
+  const rate=clips[0].rate, offs=[], lens=clips.map(a=>a.pcm.length); let n=0;
+  clips.forEach((a,i)=>{ offs.push(n); n+=a.pcm.length + (i<clips.length-1 ? Math.round(rate*(gapsMs[i]||0)/1000) : 0); });
+  const pcm=new Float32Array(n); clips.forEach((a,i)=>pcm.set(a.pcm, offs[i]));
+  return { pcm, rate, offs, lens };
 }
 function hdvWait(pr, ms){ return Promise.race([pr, new Promise((_,rej)=>setTimeout(()=>rej(new Error('slow')), ms))]); }
 function hdvCtx(){
@@ -6428,6 +6440,17 @@ function leaderHDProsody(c, emo){
   const speed=Math.max(0.82, Math.min(1.18, (1.02 - (age-55)*0.003) * E.speed));
   const rate=Math.max(0.94, Math.min(1.05, E.rate + ((h>>3)%5-2)/100 + (leaderHas(c,'hawk')?-0.015:0) - Math.max(0,age-65)*0.001));
   return { speed, rate };
+}
+// Make every piece of a leader's line now and resolve when all are ready (never rejects)
+function leaderPrepare(c, text, emo, pri=0){
+  if(!hdvOn() || !ATLAS_VOICE.on || !text) return Promise.resolve();
+  const v=leaderHDVoice(c), sp=leaderHDProsody(c,emo).speed;
+  return Promise.all(hdvChunks(text).map(t=>hdvSynth(t, v, sp, 'callpre', pri).catch(()=>null))).then(()=>{}, ()=>{});
+}
+function atlasPrefetch(line){
+  if(!hdvOn() || !ATLAS_VOICE.on || !line) return;
+  line=titled(line).replace(/\bMr\.\s/g,'Mister ').replace(/\bMrs\.\s/g,'Missus ');
+  hdvSplit(line).forEach(t0=>hdvChunks(t0).forEach(t=>hdvSynth(t, hdvAtlasVoice(), 1, 'callpre', 1).catch(()=>{})));
 }
 // Start making a leader's line before it's needed (while their call rings)
 function hdvPrefetchLeader(c, text, emo, pri=1){ if(!hdvOn() || !ATLAS_VOICE.on || !text) return; const v=leaderHDVoice(c), sp=leaderHDProsody(c,emo).speed; hdvChunks(text).forEach((t,i)=>hdvSynth(t, v, sp, 'call', i?pri+1:pri).catch(()=>{})); }
@@ -8777,7 +8800,7 @@ function dayFinished(){
 }
 // A day still in progress is finished on the spot (before saving, loading or fast-forwarding)
 function finishDayNow(){ let n=0; while(G._dayGen && n++<100000) dayStep(); }
-function dayReset(){ G._dayGen=null; G._daysDue=0; G._ffRun=null; G._inDay=false; G._cmDirty=false; document.getElementById('ff-chip')?.remove(); }
+function dayReset(){ G._callStaging=null; G._dayGen=null; G._daysDue=0; G._ffRun=null; G._inDay=false; G._cmDirty=false; document.getElementById('ff-chip')?.remove(); }
 // Map recolouring asked for in the middle of a day happens once, when the day is done
 function dayFlushMap(){ if(G._inDay) return; if(G._cmDirty){ G._cmDirty=false; if(!G._ff) colorMap(); } if(G._lblDirty && G._labelFeats) setTimeout(()=>{ if(G._lblDirty && !G._inDay) computeLabelCentroids(); }, 0); }
 function monthSnapshot(p){
@@ -10884,6 +10907,13 @@ function renderNation(){
         <span style="color:var(--text2);font-variant-numeric:tabular-nums;">${fmtPeopleM(t.pop)}</span>
         <span style="color:${(t.happiness||50)<30?'var(--red2)':(t.happiness||50)<55?'var(--gold)':'var(--green)'};font-variant-numeric:tabular-nums;" title="Happiness">😊 ${Math.round(t.happiness||50)}%</span>
       </div>`).join('')}
+      ${isP?`<div style="border-top:1px solid var(--border);padding-top:7px;margin-top:2px;">
+        <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:5px;">🏥 <b style="color:var(--text);">Aid to all annexed lands</b> · shared so every land feels it equally (bigger economies get more) · treasury ${fmtShort(c.treasury)}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;">
+          ${[1,5,20].map(a=>`<button class="eab ${a===1?'primary':''}" onclick="aidAllTerritories(${a})">${fmtShort(a)} <span style="font-size:var(--fs-xs);opacity:.8;">+${aidAllTerrGain(c,a)} 😊 each</span></button>`).join('')}
+          ${moneyInput('taid-all','',{ flex:true, ph:'Any amount, e.g. 2.5B', onenter:'aidAllTerritories()' })}
+          <button class="eab gold" onclick="aidAllTerritories()">Send</button>
+        </div></div>`:''}
     </div>`:''}
     ${!isP ? renderFiscalStrip(c) : ''}
     ${!isP && ((c.aidFund||0)>0.01 || c.aidSpentLog) ? `<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:6px 10px;margin-bottom:8px;font-size:12.5px;color:var(--text2);">
@@ -12221,7 +12251,7 @@ function leaderAvatarSVG(c, variant, cls){
   // 12. mouth: closed lips, plus an open mouth that animates while the leader is talking
   const sm=k.smile*2.6, lf=k.lip;
   P.push(`<path d="M${n(100-MW)} ${n(my-sm)} C${n(100-MW*.5)} ${n(my-3)} 97 ${n(my-4.6)} 100 ${n(my-3)} C103 ${n(my-4.6)} ${n(100+MW*.5)} ${n(my-3)} ${n(100+MW)} ${n(my-sm)} C${n(100+MW*.5)} ${n(my+.6)} ${n(100-MW*.5)} ${n(my+.6)} ${n(100-MW)} ${n(my-sm)}Z" fill="${lipD}"/>`,
-    `<path d="M${n(100-MW+1)} ${n(my+.4-sm*.6)} C${n(100-MW*.5)} ${n(my+1)} ${n(100+MW*.5)} ${n(my+1)} ${n(100+MW-1)} ${n(my+.4-sm*.6)} C${n(100+MW*.55)} ${n(my+5.6*lf)} ${n(100-MW*.55)} ${n(my+5.6*lf)} ${n(100-MW+1)} ${n(my+.4-sm*.6)}Z" fill="${lip}"/>`,
+    `<path class="lv-ll" d="M${n(100-MW+1)} ${n(my+.4-sm*.6)} C${n(100-MW*.5)} ${n(my+1)} ${n(100+MW*.5)} ${n(my+1)} ${n(100+MW-1)} ${n(my+.4-sm*.6)} C${n(100+MW*.55)} ${n(my+5.6*lf)} ${n(100-MW*.55)} ${n(my+5.6*lf)} ${n(100-MW+1)} ${n(my+.4-sm*.6)}Z" fill="${lip}"/>`,
     `<path d="M${n(100-MW)} ${n(my-sm)} C${n(100-MW*.5)} ${n(my+.8)} ${n(100+MW*.5)} ${n(my+.8)} ${n(100+MW)} ${n(my-sm)}" stroke="${lvMix(lipD,'#000000',.35)}" stroke-width="1" fill="none"/>`,
     `<ellipse cx="100" cy="${n(my+2.4*lf)}" rx="3.5" ry="1" fill="#ffffff" opacity=".12"/>`,
     `<g class="lv-talk"><ellipse cx="100" cy="${n(my+1.6)}" rx="${n(MW*.62)}" ry="3.4" fill="#3a1212"/><path d="M${n(100-MW*.48)} ${n(my-.6)} L${n(100+MW*.48)} ${n(my-.6)} L${n(100+MW*.42)} ${n(my+.9)} L${n(100-MW*.42)} ${n(my+.9)}Z" fill="#efe9df" opacity=".9"/></g>`);
@@ -12557,9 +12587,22 @@ function leaderCall(c, kind, opts={}){
   if(!c.leader?.look) makeLeader(c,'start');
   if(document.getElementById('diplo-req')) return false;
   const K=CALL_KIND[kind]; if(!K) return false;
+  if(!opts._staged && !opts.callback && kind!=='open' && hdvOn() && ATLAS_VOICE.on && _wlVoice){
+    if(G._callStaging){ (G._callQ=G._callQ||[]).push([c.id,kind]); return true; }
+    const first=callFirstLine(c, { kind, amt:opts.amt||0 }), P0=p;
+    G._callStaging={ cid:c.id, kind };
+    atlasPrefetch(`Commander, incoming call from ${leaderFull(c)} of ${c.name}.`);
+    const ring=()=>{ if(G._callStaging?.cid!==c.id) return; G._callStaging=null;
+      if(G.player!==P0 || c.annexedBy) return;
+      if(document.getElementById('diplo-req')){ (G._callQ=G._callQ||[]).push([c.id,kind]); return; }
+      leaderCall(c, kind, { ...opts, _staged:true, _first:first }); };
+    leaderPrepare(c, first[0], first[1], 0).then(ring);
+    setTimeout(ring, 15000);                                   // a very slow device: ring anyway, the voice follows
+    return true;
+  }
   _call={ cid:c.id, kind, amt:opts.amt||0, phase:'ring', done:false, timers:[], t0:0, callback:!!opts.callback, outgoing:kind==='open', asked:[] };
   bbAct(`call from ${c.name}`, true);
-  try{ _call.first=callFirstLine(c, _call); hdvPrefetchLeader(c, ..._call.first); }catch(e){}   // their opening line is ready by the time you answer
+  try{ _call.first=opts._first||callFirstLine(c, _call); hdvPrefetchLeader(c, ..._call.first); }catch(e){}   // their opening line is ready by the time you answer
   if(!opts.callback && !['protest','threat','open'].includes(kind)) noteProposal(p, c, kind);   // on record until answered, so a call that never reaches you isn't lost
   pauseForModal();
   const L=c.leader;
@@ -12602,7 +12645,8 @@ function leaderCall(c, kind, opts={}){
         if(u) u.innerHTML=`<div class="vc-result bad">📵 ${busy?`${mEsc(leaderFull(c))} is not taking calls from you this month`:`${mEsc(leaderFull(c))} refused to take your call`}</div><div class="vc-btns"><button class="vc-b end" onclick="leaderCallEnd()"><span>⏹</span>OK</button></div>`;
         return; }
       (p._callCD=p._callCD||{})[c.abbr]=G.totalDays+30;
-      leaderCallPickUp();
+      const st0=_call, go=()=>{ if(_call===st0 && st0.phase==='ring') leaderCallPickUp(); };
+      leaderPrepare(c, ...(st0.first||[])).then(go); st0.timers.push(setTimeout(go, 9000));
     }, 1600+Math.random()*1400));
     return true;
   }
@@ -12627,19 +12671,19 @@ function leaderCallPickUp(){
         <button class="vc-b yes" onclick="leaderCallReply('apology')"><span>🙏</span>Apologise</button>
         <button class="vc-b no" onclick="leaderCallReply('firm')"><span>✊</span>Stand firm</button></div>`
       : `<div class="vc-btns"><button class="vc-b end" onclick="leaderCallEnd()"><span>⏹</span>End call</button></div>`}`;
-    setTimeout(()=>leaderSpeak(c, line, null, emo), 450);
+    setTimeout(()=>leaderSpeak(c, line, null, emo), 300);
     return;
   }
   if(st.kind==='open'){                                       // you called them: they listen to what you want
     const [g,emo]=st.first||callFirstLine(c, st);
     showAskMenu(c, null);
-    setTimeout(()=>leaderSpeak(c, g, null, emo), 450);
+    setTimeout(()=>leaderSpeak(c, g, null, emo), 300);
     return;
   }
   const peace=st.kind==='peace'||st.kind==='terms';
   document.getElementById('vc-under').innerHTML=`<div class="vc-sub" id="vc-sub"></div><div id="vc-dealbox">${callDealHTML(c, st)}</div>`;
   const [line] = st.first||callFirstLine(c, st);
-  setTimeout(()=>leaderSpeak(c, line), 450);
+  setTimeout(()=>leaderSpeak(c, line), 300);
   if(hdvOn()) setTimeout(()=>{ if(_call!==st || st.phase!=='live') return;   // both possible answers, made while you decide
     hdvPrefetchLeader(c, callLine(c, peace?'yesPeace':'yes')+' '+callLine2(c, CALL_LINES2.more[0]), 'warm', 2);
     hdvPrefetchLeader(c, callLine(c, peace?'noPeace':'no'), ['hawk','nationalist'].some(t=>leaderHas(c,t))?'angry':'calm', 2); }, 500);
@@ -12869,13 +12913,13 @@ function callLeader(id){
 // Calls you didn't ask for queue up and ring once the line is free
 function queueLeaderCall(c, kind, delay){
   setTimeout(()=>{ if(!G.player || !c || c.annexedBy) return;
-    if(document.getElementById('diplo-req') || cinematicActive?.()){ (G._callQ=G._callQ||[]).push([c.id,kind]); return; }
+    if(document.getElementById('diplo-req') || G._callStaging || cinematicActive?.()){ (G._callQ=G._callQ||[]).push([c.id,kind]); return; }
     leaderCall(c, kind); }, delay||1200);
 }
 function leaderCallEnd(quick){
   const st=_call; if(!st) return; _call=null;
   callRing(false); st.timers.forEach(t=>{ clearTimeout(t); clearInterval(t); });
-  try{ if(st.utter){ st.utter.onend=st.utter.onerror=null; } hdvStop(); hdvCancel('call'); speechSynthesis.cancel(); }catch(e){}
+  try{ if(st.utter){ st.utter.onend=st.utter.onerror=st.utter.onboundary=null; } hdvStop(); hdvCancel('call'); hdvCancel('callpre'); speechSynthesis.cancel(); lipStop(); }catch(e){}
   const d=document.getElementById('diplo-req');
   const done=()=>{ d?.remove(); resumeFromModal(); try{ renderDiplo(); lpRender(); }catch(e){}
     const nx=(G._callQ||[]).shift(); if(nx) setTimeout(()=>{ const c2=CTRY[nx[0]]; if(c2 && !c2.annexedBy && !document.getElementById('diplo-req')) leaderCall(c2, nx[1]); }, 1500); };
@@ -12904,13 +12948,72 @@ function leaderVoice(c){
 // Leader talks: typed subtitles plus speech (if voice is on), mouth moving while they talk
 const EMOTION = { calm:{ rate:1, pitch:0, vol:1 }, warm:{ rate:1.02, pitch:0.05, vol:1 }, cold:{ rate:0.95, pitch:-0.05, vol:0.95 },
   upset:{ rate:0.9, pitch:0.06, vol:0.9 }, angry:{ rate:1.1, pitch:-0.04, vol:1 }, threat:{ rate:0.84, pitch:-0.14, vol:1 } };
+// ═══ LIP-SYNC ═══ the mouth follows the voice itself: how loud each 16 ms of the line is opens the lips and drops the
+// jaw; hissing sounds (s, sh, f) barely part them; the head nods a touch on the stressed syllables.
+function lipEnvelope(pcm, rate){
+  const hop=Math.max(1,Math.round(rate*0.016)), n=Math.ceil(pcm.length/hop), env=new Float32Array(n), zc=new Float32Array(n);
+  for(let f=0;f<n;f++){ let e=0,z=0; const a=f*hop, b=Math.min(pcm.length,a+hop);
+    for(let i=a;i<b;i++){ const v=pcm[i]; e+=v*v; if(i>a && ((v>=0)!==(pcm[i-1]>=0))) z++; }
+    env[f]=Math.sqrt(e/Math.max(1,b-a)); zc[f]=z/Math.max(1,b-a); }
+  const srt=Array.from(env).sort((x,y)=>x-y), ref=Math.max(1e-4, srt[Math.floor(srt.length*0.93)]||0), floor=ref*0.14;
+  const out=new Float32Array(n); let o=0;
+  for(let f=0;f<n;f++){
+    let t=Math.min(1, Math.max(0,(env[f]-floor)/Math.max(1e-5,ref-floor)));
+    if(zc[f]>0.22) t*=0.5;                                       // hiss: lips nearly closed, teeth showing
+    o = t>o ? o+(t-o)*0.75 : o+(t-o)*0.38;                       // opens fast, closes a little slower
+    out[f]=o; }
+  return { v:out, hop:hop/rate };
+}
+const LIP={ raf:0, E:null, ac:null, start:0, rate:1, still:false };
+try{ LIP.still=matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+function lipClock(){ return LIP.ac ? LIP.ac.currentTime : performance.now()/1000; }
+// env: lipEnvelope(); ac: the AudioContext playing it (or null: performance clock); start: when the sound reaches the ear
+function lipStart(E, ac, start, rate){
+  LIP.E=E; LIP.ac=ac; LIP.start=start; LIP.rate=rate||1;
+  document.getElementById('vc-feed')?.classList.add('lipsync');
+  if(!LIP.raf) LIP.raf=requestAnimationFrame(lipTick);
+}
+function lipStop(){
+  LIP.E=null; if(LIP.raf){ cancelAnimationFrame(LIP.raf); LIP.raf=0; }
+  lipApply(0, 0); document.getElementById('vc-feed')?.classList.remove('lipsync');
+}
+function lipTick(){
+  LIP.raf=0; const E=LIP.E; if(!E){ lipApply(0,0); return; }
+  const t=(lipClock()-LIP.start)*LIP.rate, i=Math.floor(t/E.hop);
+  const o = i>=0 && i<E.v.length ? E.v[i] + ((E.v[i+1]??E.v[i])-E.v[i])*((t/E.hop)-i) : 0;
+  lipApply(o, t);
+  if(t < E.v.length*E.hop + 0.25) LIP.raf=requestAnimationFrame(lipTick); else { LIP.E=null; lipApply(0,0); }
+}
+function lipApply(o, t){
+  const sv=document.querySelector('#vc-feed .vc-person svg'); if(!sv) return;
+  const m=sv.querySelector('.lv-talk'), ll=sv.querySelector('.lv-ll');
+  if(m){ m.style.opacity = o>0.04 ? '1' : '0'; m.style.transform = `scaleY(${(0.15+1.0*o).toFixed(3)})`; }
+  if(ll) ll.style.transform = `translateY(${(o*2.3).toFixed(2)}px)`;
+  sv.style.transform = (LIP.still || o<=0.01) ? '' : `rotate(${(Math.sin(t*1.9)*0.7*Math.min(1,o*1.4)).toFixed(2)}deg) translateY(${(-o*0.9).toFixed(2)}px)`;
+}
+// Device voices give no audio to read: each spoken word opens and closes the mouth once per syllable
+function lipWord(word){
+  const syl=Math.max(1, Math.min(5, (String(word).toLowerCase().match(/[aeiouy]+/g)||[]).length)), v=[];
+  for(let k=0;k<syl;k++) v.push(0.35,0.85,1,0.75,0.4,0.18);
+  lipStart({ v:Float32Array.from(v), hop:0.032 }, null, performance.now()/1000, 1);
+}
+function subSync(st, subGen, sub, text, parts){
+  const lens=parts.map(t=>[...t].length), total=lens.reduce((a,b)=>a+b,0)||1, chars=[...text], segs=[]; let pend=false, over=false;
+  const draw=()=>{ if(over || st.subGen!==subGen || !sub || !document.body.contains(sub)) return;
+    const now=performance.now(); let r=0, more=false;
+    for(let i=0;i<parts.length;i++){ const g=segs[i]; if(!g){ more=true; break; }
+      const f=Math.max(0, Math.min(1, (now-g.t0)/Math.max(60, g.ms*0.92))); r+=lens[i]*f; if(f<1){ more=true; break; } }
+    const n=Math.round(r/total*chars.length); sub.textContent = n>0 ? chars.slice(0,n).join('') : '…';
+    if(more && !pend){ pend=true; st.timers.push(setTimeout(()=>{ pend=false; draw(); }, 40)); } };
+  return { at(i, t0, ms){ segs[i]={ t0, ms }; draw(); }, all(){ over=true; if(st.subGen===subGen && sub && document.body.contains(sub)) sub.textContent=text; } };
+}
 function leaderSpeak(c, text, onDone, emo){
   const st=_call; if(!st) return;
   const sub=document.getElementById('vc-sub'), feed=document.getElementById('vc-feed');
   const E=EMOTION[emo]||EMOTION.calm;
   feed?.classList.remove('emo-angry','emo-threat','emo-upset','emo-warm'); if(emo && emo!=='calm' && emo!=='cold') feed?.classList.add('emo-'+emo);
   sub?.classList.toggle('hot', emo==='angry'||emo==='threat');
-  let finished=false; const fin=()=>{ if(finished) return; finished=true; feed?.classList.remove('talking'); onDone?.(); };
+  let finished=false; const fin=()=>{ if(finished) return; finished=true; feed?.classList.remove('talking'); lipStop(); onDone?.(); };
   // subtitles type out across the time the line takes to say
   const subGen=st.subGen=(st.subGen||0)+1;                    // a newer line takes over the subtitles
   const typeSub=ms=>{ if(!sub || st.subGen!==subGen) return; sub.textContent=''; const chars=[...text]; let i=0; const per=Math.max(14, Math.min(70, ms/Math.max(1,chars.length/2)));
@@ -12920,31 +13023,48 @@ function leaderSpeak(c, text, onDone, emo){
     ATLAS_VOICE.gen++; ATLAS_VOICE.queue=[]; ATLAS_VOICE.speaking=false; voiceMeter(false); try{ speechSynthesis.cancel(); }catch(e){} hdvStop(); hdvCancel('atlas');
     const P=leaderHDProsody(c, emo), hv=leaderHDVoice(c), parts=hdvChunks(text);
     hdvCancel('call', new Set(parts.map(t=>hdvKey(t, hv, P.speed))));                 // whatever they were going to say instead is dropped
-    parts.forEach((t,j)=>hdvSynth(t, hv, P.speed, 'call', j?1:0).catch(()=>{}));   // sentence by sentence: the first one starts sooner
-    let started=false, i=0;
-    const words=()=>{ if(!started){ started=true; typeSub(text.length*13); } };
+    const prs=parts.map((t,j)=>hdvSynth(t, hv, P.speed, 'call', j?1:0)); prs.forEach(pr=>pr.catch(()=>{}));
+    const live=()=>!finished && _call===st && st.subGen===subGen;
+    const subs=subSync(st, subGen, sub, text, parts);
     if(sub) sub.textContent='…';
-    st.timers.push(setTimeout(()=>{ if(!finished && _call===st && st.subGen===subGen) words(); }, 2500));   // a slower device: show the words now, the voice follows
-    const nextClip=()=>{
-      if(finished || _call!==st || st.subGen!==subGen) return;               // a newer line has taken over
-      if(i>=parts.length){ st.timers.push(setTimeout(fin, 150)); return; }
-      const first=i===0;
-      hdvWait(hdvSynth(parts[i++], hv, P.speed, 'call', 0), 20000).then(a=>{
-        if(finished || _call!==st || st.subGen!==subGen) return;
-        words(); feed?.classList.add('talking');
-        hdvPlay(a, { rate:P.rate, vol:E.vol, onEnd:()=>{ feed?.classList.remove('talking'); if(_call===st) st.timers.push(setTimeout(nextClip, 110)); } });
-      }).catch(e=>{ if(finished || _call!==st || st.subGen!==subGen) return;
-        if(first && e?.message!=='slow') leaderSpeakSys(c, text, emo, st, typeSub, fin);   // engine trouble: the device voice takes over
-        else { words(); st.timers.push(setTimeout(fin, 1200)); } });
+    const gaps=parts.map(t=>/[.!?…]["”’')]*$/.test(t) ? 170 : 45);           // a breath between sentences, barely one inside a sentence
+    const done=()=>{ feed?.classList.remove('talking'); lipStop(); subs.all(); if(_call===st) st.timers.push(setTimeout(fin, 150)); };
+    const lipFollow=(a, r)=>{ try{ const ac=hdvCtx(); lipStart(a._env||(a._env=lipEnvelope(a.pcm, a.rate)), ac, ac.currentTime+(ac.outputLatency||0)+(ac.baseLatency||0), r); }catch(e){} };
+    // The whole line in one go: words and voice together from the first syllable
+    const playAll=clips=>{
+      if(!live()) return;
+      const J=hdvJoin(clips, gaps), r=P.rate, t0=performance.now()+30;
+      feed?.classList.add('talking');
+      J.offs.forEach((o,k)=>subs.at(k, t0+o/J.rate/r*1000, J.lens[k]/J.rate/r*1000));
+      hdvPlay(J, { rate:r, vol:E.vol, onEnd:done }); lipFollow(J, r);
     };
-    nextClip();
+    const ready=parts.map(t=>hdvReady(t, hv, P.speed));
+    if(ready.every(Boolean) && ready.every(a=>a.rate===ready[0].rate)){ playAll(ready); return; }
+    // Not all made yet: a short wait for the whole line; past that, start with the first piece and follow on
+    let i=0, streaming=false;
+    const nextClip=()=>{
+      if(!live()) return;
+      if(i>=parts.length){ done(); return; }
+      const k=i++;
+      hdvWait(prs[k], 20000).then(a=>{
+        if(!live()) return;
+        feed?.classList.add('talking'); const ms=a.pcm.length/a.rate/P.rate*1000;
+        subs.at(k, performance.now()+30, ms);
+        hdvPlay(a, { rate:P.rate, vol:E.vol, onEnd:()=>{ if(_call===st) st.timers.push(setTimeout(nextClip, gaps[k]>100?110:20)); } }); lipFollow(a, P.rate);
+      }).catch(e=>{ if(!live()) return;
+        if(k===0 && e?.message!=='slow') leaderSpeakSys(c, text, emo, st, typeSub, fin);   // engine trouble: the device voice takes over
+        else { subs.all(); st.timers.push(setTimeout(fin, 1200)); } });
+    };
+    Promise.race([Promise.all(prs), new Promise((_,rej)=>setTimeout(()=>rej(new Error('wait')), 1800))])
+      .then(clips=>{ if(!streaming) playAll(clips); })
+      .catch(()=>{ if(!live() || streaming) return; streaming=true; nextClip(); });
     return;
   }
   leaderSpeakSys(c, text, emo, st, typeSub, fin);
 }
 function leaderSpeakSys(c, text, emo, st, typeSub, fin){
   const feed=document.getElementById('vc-feed'), E=EMOTION[emo]||EMOTION.calm;
-  typeSub(text.length*13);
+  let typed=false; const typeNow=()=>{ if(typed) return; typed=true; typeSub(text.length*64/(E.rate||1)); };
   feed?.classList.add('talking');
   const v = ATLAS_VOICE.on && _wlVoice && ('speechSynthesis' in window) ? leaderVoice(c) : null;
   const fallback=Math.min(12000, 900+text.length*55);
@@ -12954,10 +13074,13 @@ function leaderSpeakSys(c, text, emo, st, typeSub, fin){
       const u=new SpeechSynthesisUtterance(text), L=c.leader, age=G.year-L.born, h=lvHash(L.name);
       u.voice=v; u.lang=v.lang; u.rate=(0.97+(h%7)/100)*E.rate; u.volume=E.vol;
       u.pitch=Math.max(0.6, Math.min(1.3, (L.fem?1.06:0.94) - (age-55)*0.004 + ((h>>3)%9-4)/100 + (leaderHas(c,'hawk')?-0.04:0) + E.pitch));
-      u.onend=u.onerror=fin; st.utter=u; speechSynthesis.speak(u);
+      u.onstart=typeNow; u.onend=u.onerror=()=>{ typeNow(); fin(); };
+      u.onboundary=e=>{ if(e.name && e.name!=='word') return; const w=(text.slice(e.charIndex||0).match(/^\S+/)||[''])[0]; if(w) lipWord(w); };
+      st.utter=u; speechSynthesis.speak(u);
+      st.timers.push(setTimeout(typeNow, 2500));                // a voice that never reports starting
       st.timers.push(setTimeout(fin, fallback+4000));
-    }catch(e){ st.timers.push(setTimeout(fin, fallback)); }
-  } else st.timers.push(setTimeout(fin, fallback));
+    }catch(e){ typeNow(); st.timers.push(setTimeout(fin, fallback)); }
+  } else { typeNow(); st.timers.push(setTimeout(fin, fallback)); }
 }
 
 // ── effects of the answers ──
@@ -15995,6 +16118,24 @@ function toggleTaxExempt(targetId){
 
 // Aid to an annexed territory, scaled to its economy: Afghanistan $1B ≈ +26, $5B ≈ +40 (cap); Iran $5B ≈ +21
 function territoryAidGain(c, amt){ const ref=0.5 + c.gdp*0.01; return Math.min(40, 20*Math.log2(1+amt/ref)); }
+// Aid to every annexed land at once: the sum is split by each land's size (the same "felt" amount everywhere), so one
+// payment lifts them all by the same happiness and stability; a coordinated programme goes 50% further than separate gifts
+const TERR_AID_ALL_BONUS = 1.5;
+function annexedLandsOf(p){ return CLIST.filter(t=>t.annexedBy===p?.abbr); }
+function aidAllTerrGain(p, amt){ const L=annexedLandsOf(p); if(!L.length) return 0; const R=L.reduce((s,t)=>s+0.5+t.gdp*0.01,0); return Math.round(Math.min(40, 20*Math.log2(1+amt/R)*TERR_AID_ALL_BONUS)); }
+function aidAllTerritories(amount){
+  const p=G.player; if(!p) return;
+  if(amount==null) amount=readMoney('taid-all');
+  const L=annexedLandsOf(p); if(!L.length){ addEv('w','🏥 Aid','You have no annexed lands.'); return; }
+  if(!(amount>0)){ addEv('w','⚠️ Aid','Enter an amount, e.g. 1B or 2.5B.'); return; }
+  if(p.treasury < amount){ addEv('w','⚠️ Aid',`You have ${fmtShort(p.treasury)} in the treasury.`); return; }
+  p.treasury -= amount;
+  const R=L.reduce((s,t)=>s+0.5+t.gdp*0.01,0), h=aidAllTerrGain(p, amount), sg=Math.round(h*0.6);
+  L.forEach(t=>{ const share=amount*(0.5+t.gdp*0.01)/R; t.treasury+=share*0.7;
+    t.happiness=Math.min(100,(t.happiness||50)+h); t.stability=Math.min(100,(t.stability||50)+sg); });
+  addEv('d','🏥 Aid to All Annexed Lands',`${fmtShort(amount)} shared across ${L.length} land${L.length>1?'s':''}: 😊 happiness +${h} and stability +${sg} in each.`);
+  lpRender(); topbarUpdate();
+}
 function giveAid(targetId, amount){
   const p=G.player, c=CTRY[targetId]; if(!p||!c) return;
   if(amount==null) amount=readMoney('taid-amt');
@@ -18756,7 +18897,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 203;
+const ATLAS_BUILD = 204;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();

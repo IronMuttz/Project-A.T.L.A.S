@@ -1,7 +1,7 @@
 {
-  "version": 203,
+  "version": 204,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v203: Two new events to host, every year (Economy tab \u2192 Sporting Events & Summits). The Champions League Final, for European (UEFA) countries: ticket and broadcast earnings, tourism and a lift in national mood. The G20 Leaders' Summit, for the world's 20 largest economies (annexed land counts): every G20 member's relations with you rise, approval goes up. Bid a year ahead; hosts rotate, so a recent host rarely wins again straight away."
+  "notes": "v204: Leaders speak with no delay. With the HD voice pack, a leader's opening words are made before the phone even rings, so when you answer the voice starts straight away, as one smooth line, and the subtitles appear word by word as they're said. Their likely replies are prepared while you decide. Leaders' lips now move with their actual words: the mouth opens on each syllable, the jaw drops on vowels, lips stay nearly closed on 's' sounds, and the head moves slightly as they talk. New: Aid to all annexed lands (State tab): $1B, $5B, $20B or any amount, shared so every land gets the same lift in happiness and stability."
 }
