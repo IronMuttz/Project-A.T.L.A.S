@@ -1,7 +1,7 @@
 {
-  "version": 200,
+  "version": 201,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v200: Smoother play and fewer freezes. The map's effects layer is capped on very wide or high-resolution screens, autosaves wait for an idle moment instead of pausing the game, AI budgets are worked out once per day, panels that aren't visible no longer refresh every tick, and phones draw effects at 30 fps outside nuclear strikes. Removed the Economy, Industry, Foreign Affairs and Intelligence shortcuts from the Menu (they're still in the side panel)."
+  "notes": "v201: Smooth in a world at war. Each game day now runs in small slices between frames, so the map and buttons stay smooth even with every country fighting and missiles in the air. Next Month no longer freezes the screen (it shows a progress bar). War routes, front lines and country names are drawn once and reused instead of every frame, and world news is batched. Freeze fixes: the phone only rings while the call is on screen (never in the background or after you close the app), and a pop-up the game is waiting on that you can't see is brought forward automatically. If the game ever stops responding, the next launch offers to send a report with what was happening at the time."
 }

@@ -464,7 +464,7 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .rrow-v{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:var(--fs-md);color:var(--gold);}
 
 /* MODALS */
-.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;align-items:center;justify-content:center;}
 .ov.open{display:flex;}
 .rep-mod{ max-width:470px; max-height:calc(100vh - 40px); overflow:auto; text-align:left; }
 .rep-sub{ font-size:13px; color:var(--text2); margin:2px 0 10px; }
@@ -1270,7 +1270,7 @@ body.mob .tbs-v .tbs-num{ min-width:0 !important; }
 body.mob #mnav{ display:flex; position:fixed; left:0; right:0; bottom:0; z-index:450; gap:4px;
   height:calc(var(--m-nav) + env(safe-area-inset-bottom,0px));
   padding:6px calc(6px + env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) calc(6px + env(safe-area-inset-left,0px));
-  background:rgba(5,12,20,.97); border-top:1px solid var(--border2); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+  background:rgba(5,12,20,.98); border-top:1px solid var(--border2); }
 body.mob #mnav button{ flex:1; border-radius:16px; background:none; border:none; color:var(--text3); display:flex; flex-direction:column; align-items:center;
   justify-content:center; gap:3px; font-family:'IBM Plex Sans Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:.06em; }
 body.mob #mnav button span{ font-size:21px; line-height:1; }
@@ -1447,7 +1447,16 @@ body.mob .rrow{ min-height:36px; }
 .cs-ldr-av{ flex:0 0 40px; width:40px; height:40px; border-radius:50%; overflow:hidden; border:1px solid var(--border2); background:radial-gradient(circle at 50% 35%, #1b3a55, #071321 72%); }
 .cs-ldr-av svg{ width:100%; height:100%; display:block; }
 
-.vc-wrap{ background:rgba(1,5,10,.86); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+.vc-wrap{ background:rgba(1,5,10,.88); }
+.bb-offer{ position:fixed; left:50%; transform:translateX(-50%); bottom:calc(64px + env(safe-area-inset-bottom,0px)); z-index:9800; width:min(460px,92vw); display:flex; flex-direction:column; gap:6px;
+  padding:12px 14px; border-radius:8px; background:rgba(14,10,6,.97); border:1px solid rgba(255,170,80,.6); color:var(--text); font-size:13px; box-shadow:0 8px 30px rgba(0,0,0,.6); }
+.bb-offer b{ color:#ffb35a; } .bb-offer span{ color:var(--text2); } .bb-offer div{ display:flex; gap:8px; justify-content:flex-end; }
+#ff-chip{ position:fixed; inset:0; z-index:9650; display:flex; align-items:flex-start; justify-content:center; padding-top:calc(70px + env(safe-area-inset-top,0px)); background:rgba(0,0,0,.12); cursor:progress; }
+#ff-chip .ffc{ display:flex; align-items:center; gap:10px; padding:8px 14px; border-radius:16px; background:rgba(4,16,26,.94); border:1px solid rgba(var(--acc-rgb),.45);
+  color:var(--text); font:600 13px 'IBM Plex Sans Condensed',sans-serif; letter-spacing:.03em; box-shadow:0 6px 24px rgba(0,0,0,.5); }
+#ff-chip .ffc b{ color:var(--gold); font-size:15px; }
+#ff-chip .ffc i{ display:block; width:90px; height:4px; border-radius:2px; background:rgba(255,255,255,.1); overflow:hidden; }
+#ff-chip .ffc u{ display:block; height:100%; width:0; background:rgb(var(--acc-rgb)); transition:width .2s linear; }
 .vc{ width:min(640px,94vw); max-height:94vh; display:flex; flex-direction:column; background:linear-gradient(180deg, rgba(var(--s2-rgb),.97), rgba(4,12,22,.99));
   border:1px solid var(--border2); border-radius:6px; overflow:hidden; font-family:'IBM Plex Sans Condensed',sans-serif; color:var(--text);
   box-shadow:0 0 0 1px rgba(var(--acc-rgb),.06), 0 0 50px rgba(var(--acc-rgb),.16), 0 24px 70px rgba(0,0,0,.8); animation:vcIn .35s ease-out; }
@@ -1858,7 +1867,7 @@ body.mob .rrow{ min-height:36px; }
   });
   function setInner(v){
       const typed = this.querySelectorAll ? this.querySelectorAll('[data-typed]') : [];
-      const fit=()=>{ if(typeof fitStatValues==='function' && this.querySelector && this.querySelector('.sg .sg-v')) fitStatValues(this); };
+      const fit=()=>{ if(typeof fitStatValues==='function' && this.querySelector && this.querySelector('.sg .sg-v')) fitStatSoon(this); };
       if(!typed.length){ desc.set.call(this,v); flushPending(this); fit(); return; }
       const keep={}; let focusKey=null, s0=null, s1=null;
       typed.forEach(el=>{ const k=keyOf(el,this); keep[k]=el.value;
@@ -6940,6 +6949,7 @@ function iReset(){ if(introZoomer) d3.select('#intro-mapsvg').transition().durat
 // ═══════════════════════════════════════════════════════════════════
 function startGame(){
   const p=CTRY[G.selCidIntro]; if(!p) return;
+  dayReset();
   if(!WB_READY){
     G._wbWait=(G._wbWait||0)+1;
     if(G._wbWait > 20){ WB2010 = WB2010 || { countries:{}, gdp:{}, pop:{}, troops:{} }; WB_READY = true; }   // ~8 s: go with the built-in 2010 data
@@ -7083,6 +7093,11 @@ function markSelected(id){
   G.mapG.append('path').attr('id','sel-border').attr('d',G.path(m)).attr('fill','none').attr('stroke','#f0c860')
     .attr('stroke-width','2px').attr('vector-effect','non-scaling-stroke').attr('stroke-linejoin','round').attr('pointer-events','none');
 }
+// Panels fit their figures once, just before the next frame is drawn (a panel re-rendered in several steps is laid out once, not once per step)
+let _fitRoots=new Set(), _fitRaf=0;
+function fitStatSoon(root){ _fitRoots.add(root); if(!_fitRaf) _fitRaf=requestAnimationFrame(()=>{ _fitRaf=0; const rs=[..._fitRoots]; _fitRoots.clear();
+  const top=rs.filter(r=>r.isConnected && !rs.some(o=>o!==r && o.isConnected && o.contains(r))); top.forEach(r=>{ try{ fitStatValues(r); }catch(e){} }); });
+  if(document.hidden){ cancelAnimationFrame(_fitRaf); _fitRaf=0; _fitRoots.clear(); fitStatValues(root); } }
 // Shrink stat figures that don't fit their box (long GDP / treasury numbers) so the grid never spills
 function fitStatValues(root){
   // All writes, then all reads, then all writes: the page is laid out once per round, not once per value
@@ -7116,7 +7131,7 @@ function initMap(){
   const g=svg.append('g');
   G.mapG=g; G.W=W; G.H=H;
 
-  G.proj=d3.geoNaturalEarth1().scale(W/6.3).translate([W/2,H/2]);
+  G.proj=d3.geoNaturalEarth1().scale(W/6.3).translate([W/2,H/2]); G._projV=(G._projV||0)+1;
   G.path=d3.geoPath().projection(G.proj);
 
   g.append('rect').attr('width',W).attr('height',H).attr('fill','transparent')
@@ -7183,7 +7198,7 @@ function initMap(){
       d3.select('#mapsvg').attr('viewBox',`0 0 ${nw} ${nh}`);
       // Rescale projection to new container
       G.W=nw; G.H=nh;
-      G.proj=d3.geoNaturalEarth1().scale(nw/6.3).translate([nw/2,nh/2]);
+      G.proj=d3.geoNaturalEarth1().scale(nw/6.3).translate([nw/2,nh/2]); G._projV=(G._projV||0)+1;
       G.path=d3.geoPath().projection(G.proj);
       // Redraw all SVG paths
       d3.selectAll('.cp').attr('d',G.path);
@@ -7374,7 +7389,9 @@ function openMobile(which, keepTab){
 window.addEventListener('resize', ()=>{ applyFoldMode(); syncMobileTop(); if(!isMobile()) document.body.classList.remove('m-lp','m-rp'); });
 
 function colorMap(){
+  if(G._inDay){ G._cmDirty=true; return; }
   if(!G.mapG) return;
+  G._cmV=(G._cmV||0)+1;
   const p=G.player; if(!p) return;
 
   // Collect all controlled territory IDs for merged border
@@ -7547,7 +7564,7 @@ function drawRadarSweep(ctx, cx, cy, W, H, ts, toCP){
   // blips
   CLIST.forEach(c=>{
     if(c.annexedBy || c===p) return;
-    const r=G.proj([c.lon,c.lat]); if(!r) return; const [x,y]=toCP(r[0],r[1]);
+    const r=cpv(c); if(!r) return; const [x,y]=toCP(r[0],r[1]);
     if(x<-10||y<-10||x>W+10||y>H+10) return;
     let d=ang-Math.atan2(y-cy,x-cx); d=((d%(Math.PI*2))+Math.PI*2)%(Math.PI*2);   // how long ago the beam passed (radians)
     const glow=Math.max(0, 1-d/(Math.PI*1.6));
@@ -7815,9 +7832,23 @@ function rtLandPts(path, start, end){
 }
 const RT_DAY_KM = { land:250, sea:550 };
 function rtDays(segs){ return segs.reduce((t,sg)=>{ let km=0; for(let i=1;i<sg.pts.length;i++) km+=rtKm(sg.pts[i-1],sg.pts[i]); return t+km/RT_DAY_KM[sg.mode]; },0); }
+// Routes wanted only for drawing: one that isn't worked out yet is queued for a quiet moment (a few at a time)
+// instead of holding up a frame; the map shows a straight line until it's ready
+const _rtQ=new Map(); let _rtQT=0, _rtQBump=0;
+function rtPeek(a,b){
+  if(!a||!b) return null; const key=a.id<b.id?a.id+'-'+b.id:b.id+'-'+a.id;
+  if(RT.cache[key]) return getTradeRoute(a,b);
+  if(!_rtQ.has(key)) _rtQ.set(key,[a,b]); if(!_rtQT) _rtQT=setTimeout(rtQRun, 40); return null;
+}
+function rtQRun(){
+  _rtQT=0; const t0=performance.now();
+  for(const [key,[a,b]] of _rtQ){ _rtQ.delete(key); try{ getTradeRoute(a,b); }catch(e){} if(performance.now()-t0>7) break; }
+  if(!_rtQ.size || performance.now()-_rtQBump>600){ _rtQBump=performance.now(); G._rtV=(G._rtV||0)+1; }
+  if(_rtQ.size) _rtQT=setTimeout(rtQRun, 40);
+}
 function getTradeRoute(a,b){
   const key=a.id<b.id?a.id+'-'+b.id:b.id+'-'+a.id;
-  if(RT.cache[key]) return RT.cache[key].a===a.id ? RT.cache[key] : rtReverse(RT.cache[key]);
+  if(RT.cache[key]){ const r=RT.cache[key]; return r.a===a.id ? r : (r._rev || (r._rev=rtReverse(r))); }
   rtInit(); if(!RT.water) return null;
   const anyLandlocked = rtPort(a)==null || rtPort(b)==null;
   // 1. Overland (only sensible distances; for coastal pairs a long road loses to the sea)
@@ -7894,34 +7925,30 @@ function rtDensify(pts){
 }
 function drawTradeRoute(ctx, route, ts, toCP){
   // Route lines (split where the path wraps across the map edge)
+  const vk=G._vk||1;
   route.segs.forEach(s=>{
-    const st=RT_STYLE[s.mode]; s.draw = s.draw || rtDensify(s.pts);
+    const st=RT_STYLE[s.mode], P=rtSegPath(s);
     [[st.glow,4],[st.line,1.2]].forEach(([col,w],pass)=>{
-      ctx.beginPath(); let prev=null;
-      s.draw.forEach(ll=>{ const q=rtProjectLL(ll,toCP); if(!q) return;
-        const lon=rtNormLon(ll[0]);
-        if(prev==null || Math.abs(lon-prev)>180) ctx.moveTo(q[0],q[1]); else ctx.lineTo(q[0],q[1]);
-        prev=lon; });
-      ctx.setLineDash(pass?st.dash:[]); if(pass && s.mode==='land') ctx.lineDashOffset=-(ts/140)%11;
-      ctx.strokeStyle=col; ctx.lineWidth=w; ctx.stroke();
+      ctx.save(); vxf(ctx);
+      ctx.setLineDash(pass?st.dash.map(v=>v/vk):[]); if(pass && s.mode==='land') ctx.lineDashOffset=(-(ts/140)%11)/vk;
+      ctx.strokeStyle=col; ctx.lineWidth=w/vk; ctx.stroke(P); ctx.restore();
     });
   });
-  ctx.setLineDash([]); ctx.lineDashOffset=0;
 
   // Real shipments on this route: each blip is a convoy at its true position in the voyage
   const p=G.player, list=route._ships||[];
   const now=smoothNow();
   list.forEach(s=>{
     const t=Math.max(0,Math.min(1,(now-s.depart)/Math.max(0.01,s.arrive-s.depart)));
-    const here=rtPointAt(route,t), q=rtProjectLL(here.ll,toCP); if(!q) return;
+    const here=rtPointAt(route,t), v0=rtVAt(route,t); if(!v0) return; const q=toCP(v0[0],v0[1]);
     const st=RT_STYLE[here.mode];
     for(let w=1;w<=6;w++){                       // wake / radar trail behind it
       const tw=t-w*0.004; if(tw<0) break;
-      const pw=rtProjectLL(rtPointAt(route,tw).ll,toCP); if(!pw || Math.hypot(pw[0]-q[0],pw[1]-q[1])>80) break;
+      const vw=rtVAt(route,tw), pw=vw?toCP(vw[0],vw[1]):null; if(!pw || Math.hypot(pw[0]-q[0],pw[1]-q[1])>80) break;
       ctx.beginPath(); ctx.arc(pw[0],pw[1],1.8-w*0.2,0,Math.PI*2);
       ctx.fillStyle=`rgba(${st.wake},${0.5-w*0.07})`; ctx.fill();
     }
-    const ahead=rtProjectLL(rtPointAt(route,Math.min(1,t+0.002)).ll,toCP)||q;
+    const va=rtVAt(route,Math.min(1,t+0.002)), ahead=va?toCP(va[0],va[1]):q;
     let ang=Math.atan2(ahead[1]-q[1],ahead[0]-q[0]); if(Math.hypot(ahead[0]-q[0],ahead[1]-q[1])>80) ang=0;
     ctx.save(); ctx.translate(q[0],q[1]); ctx.rotate(ang);
     if(here.mode==='sea'){ ctx.beginPath(); ctx.moveTo(7,0); ctx.lineTo(-5,3.6); ctx.lineTo(-3,0); ctx.lineTo(-5,-3.6); ctx.closePath(); }
@@ -7933,7 +7960,38 @@ function drawTradeRoute(ctx, route, ts, toCP){
   });
 }
 
+// Map-space geometry, projected once (not every frame) and drawn through the zoom transform
+function cpv(c){ if(c._pvV!==G._projV || !c._pv){ c._pv=G.proj([c.lon,c.lat]); c._pvV=G._projV; } return c._pv; }
+function rtVPts(route){                                   // 121 points along the route, in map units
+  if(route._vp && route._vpV===G._projV) return route._vp;
+  const pts=[]; for(let i=0;i<=120;i++){ const ll=rtPointAt(route,i/120).ll, r=G.proj([rtNormLon(ll[0]),ll[1]]); pts.push(r?[r[0],r[1]]:null); }
+  route._vp=pts; route._vpV=G._projV; return pts;
+}
+function rtVAt(route,t){                                  // a point at fraction t of the route, in map units
+  const pts=rtVPts(route), f=Math.max(0,Math.min(1,t))*120, i=Math.min(119,Math.floor(f)), a=pts[i], b=pts[i+1];
+  if(!a||!b) return a||b; const u=f-i; return [a[0]+(b[0]-a[0])*u, a[1]+(b[1]-a[1])*u];
+}
+function rtVPath(route){                                  // the whole route as one path (split where it wraps round the map)
+  if(route._vpath && route._vpathV===G._projV) return route._vpath;
+  const pts=rtVPts(route), P=new Path2D(), jump=(G.W||1000)*0.3; let prev=null;
+  pts.forEach(q=>{ if(!q){ prev=null; return; } if(prev && Math.abs(q[0]-prev[0])<jump && Math.abs(q[1]-prev[1])<jump) P.lineTo(q[0],q[1]); else P.moveTo(q[0],q[1]); prev=q; });
+  route._vpath=P; route._vpathV=G._projV; return P;
+}
+function rtSegPath(sg){
+  if(sg._vpath && sg._vpathV===G._projV) return sg._vpath;
+  sg.draw=sg.draw||rtDensify(sg.pts); const P=new Path2D(); let prev=null;
+  sg.draw.forEach(ll=>{ const lon=rtNormLon(ll[0]), r=G.proj([lon,ll[1]]); if(!r) return;
+    if(prev==null || Math.abs(lon-prev)>180) P.moveTo(r[0],r[1]); else P.lineTo(r[0],r[1]); prev=lon; });
+  sg._vpath=P; sg._vpathV=G._projV; return P;
+}
+function vxf(ctx){ const s=G.animS||1, k=G._vk||1; ctx.setTransform(s*k,0,0,s*k,s*(G._vtx||0),s*(G._vty||0)); }   // draw in map units
+function outlineText(ctx, txt, x, y, w){ ctx.lineWidth=w||3; ctx.lineJoin='round'; ctx.strokeStyle='rgba(0,0,0,.82)'; ctx.strokeText(txt,x,y); ctx.fillText(txt,x,y); }
 function drawRoutePath(ctx, route, toCP, color, dash){
+  const k=G._vk||1; ctx.save(); vxf(ctx);
+  ctx.setLineDash((dash||[]).map(v=>v/k)); ctx.strokeStyle=color; ctx.lineWidth=1.2/k; ctx.stroke(rtVPath(route));
+  ctx.restore();
+}
+function drawRoutePathOld(ctx, route, toCP, color, dash){
   ctx.beginPath(); ctx.setLineDash(dash||[]); let prev=null;
   for(let i=0;i<=120;i++){
     const q=rtProjectLL(rtPointAt(route,i/120).ll,toCP); if(!q){ prev=null; continue; }
@@ -7987,8 +8045,10 @@ function lblPole(rings, precision){
 function lblRay(x,y,dx,dy,rings,step){   // distance from (x,y) to the border along (dx,dy)
   let t=0; while(t<4000 && lblPointIn(x+dx*(t+step),y+dy*(t+step),rings)) t+=step; return t;
 }
-function computeLabelCentroids(){
+function computeLabelCentroids(){ if(G._inDay){ G._lblDirty=true; return; } G._lblDirty=false; computeLabelCentroidsNow(); G._lblV=(G._lblV||0)+1; }
+function computeLabelCentroidsNow(){
   if(!G._labelFeats || !G.path || !G.proj) return;
+  const oldL=G._labels||{}, oldC=G._pathCentroids||{}, oldA=G._labelArea||{}, sigs=G._lblSig=G._lblSig||{};
   G._labels={}; G._pathCentroids={}; G._labelArea={};
   // One label per REALM: a country's own shapes, its 2010 territories, and any land it has annexed,
   // merged into one landmass so the owner's name spans everything it holds (AI and player alike)
@@ -7996,9 +8056,17 @@ function computeLabelCentroids(){
   const ownerOf=g=>{ const c=CTRY[parseInt(g.id)]; if(!c) return null; return c.annexedBy ? (CLIST.find(x=>x.abbr===c.annexedBy)||c) : c; };
   const realms={};
   geoms.forEach(g=>{ const o=ownerOf(g); if(o && !o.annexedBy) (realms[o.id]=realms[o.id]||[]).push(g); });
-  const realmFeats=Object.entries(realms).map(([id,gs])=>({ id, geometry: gs.length>1 ? topojson.merge(topo,gs) : topojson.feature(topo,gs[0]).geometry }));
-  realmFeats.forEach(f=>{
+  // Only realms whose land changed are laid out again; the rest keep their names exactly where they were
+  Object.entries(realms).forEach(([rid,gs])=>{
     try{
+      const sig=(G._projV||0)+'|'+gs.map(g=>g.id).join(',');
+      if(sigs[rid]===sig && oldL[rid]){
+        Object.keys(oldL).forEach(k=>{ if(k===rid || k.startsWith(rid+':')){ G._labels[k]=oldL[k]; if(oldA[k]!=null) G._labelArea[k]=oldA[k]; } });
+        if(oldC[+rid]) G._pathCentroids[+rid]=oldC[+rid];
+        return;
+      }
+      sigs[rid]=sig;
+      const f={ id:rid, geometry: gs.length>1 ? topojson.merge(topo,gs) : topojson.feature(topo,gs[0]).geometry };
       const id=parseInt(f.id), geom=f.geometry;
       if(!geom || !CTRY[id]) return;
       const polys = geom.type==='MultiPolygon' ? geom.coordinates : [geom.coordinates];
@@ -8089,13 +8157,155 @@ const LABEL_FADE_START = 1.5, LABEL_FADE_END = 2.1;   // map zoom where country 
 const LABEL_SHORT = { GBR:'Britain', USA:'USA', ARE:'UAE', CAF:'C.A.R.', COD:'DR Congo', DOM:'Dom. Rep.', BIH:'Bosnia', MKD:'N. Macedonia',
   PNG:'P.N.G.', TTO:'Trinidad', GNQ:'Eq. Guinea', SLB:'Solomon Is.', CZE:'Czechia', PRK:'N. Korea', KOR:'S. Korea', SAU:'Saudi', ZAF:'S. Africa',
   NZL:'N. Zealand', KGZ:'Kyrgyz', TKM:'Turkmen.', AFG:'Afghan.', MRT:'Maurit.', BFA:'B. Faso', CIV:'Ivory C.', GNB:'G.-Bissau', SSD:'S. Sudan' };
+
+// ── Cached map layer: the web of wars between other countries and the country names. They only change when wars,
+// relations or the view change, so they're drawn once into their own canvas and copied onto the map each frame
+// (the war web pulses by fading the copy). While you pan or zoom the copy is moved and scaled with the map and
+// redrawn sharp as soon as the view settles.
+const OVL={ war:null, k:1, tx:0, ty:0, sig:'', built:false, pk:0, ptx:0, pty:0, moveT:0 };
+function ovlSig(p){ let h=0; for(const w of G.wars) h=(h*31+w.a*1009+w.b)|0;
+  return `${G._rtV||0}|${G._lblV||0}|${G.wars.length}|${h}|${p.wars.size}|${p.allies.size}|${G.selectedCid}|${G.mapStyle}|${G.terrain?1:0}|${G._labelOrder?.length||0}|${THEME.acc}|${G._projV||0}`; }
+// Phones: the layer is its own canvas under the map animation, moved by the compositor (no copy per frame).
+// Computers: it's copied onto the map each frame, which is cheapest when the browser draws without a GPU.
+function ovlUseDom(){ return !!(_animMob && _animMob.v); }
+function ovlBuild(cv, toCP, k, tx, ty, W, H, p, ts){
+  const dom=ovlUseDom();
+  if(dom && !(OVL.war && OVL.war.isConnected)){ const d=document.createElement('canvas'); d.id='ovl-cv'; d.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;transform-origin:0 0;'; cv.parentNode.insertBefore(d, cv); OVL.war=d; }
+  if(!dom && OVL.war && OVL.war.isConnected){ OVL.war.remove(); OVL.war=null; }
+  const c=OVL.war=OVL.war||document.createElement('canvas'); OVL.dom=dom; c.style.transform='';
+  const s=G.animS||1;
+  if(c.width!==cv.width) c.width=cv.width; if(c.height!==cv.height) c.height=cv.height;
+  const x=c.getContext('2d'); x.setTransform(1,0,0,1,0,0); x.clearRect(0,0,c.width,c.height);
+  [drawWarWeb, drawMapLabels].forEach(fn=>{ x.setTransform(s,0,0,s,0,0); x.globalAlpha=1; try{ fn(x, toCP, k, W, H, p, ts); }catch(e){} });
+  OVL.k=k; OVL.tx=tx; OVL.ty=ty; OVL.sig=ovlSig(p); OVL.built=true; OVL.css='';
+}
+function ovlBlit(ctx, cv, toCP, k, tx, ty, W, H, p, ts){
+  if(k!==OVL.pk || tx!==OVL.ptx || ty!==OVL.pty){ OVL.moveT=ts; OVL.pk=k; OVL.ptx=tx; OVL.pty=ty; }
+  const at = OVL.built && OVL.k===k && OVL.tx===tx && OVL.ty===ty, r=k/(OVL.k||1);
+  const fresh = OVL.built && OVL.dom===ovlUseDom() && (!OVL.dom || OVL.war.isConnected) && OVL.war.width===cv.width && OVL.war.height===cv.height && OVL.sig===ovlSig(p);
+  if(!fresh || (!at && (ts-OVL.moveT>110 || r>1.4 || r<0.72))) ovlBuild(cv, toCP, k, tx, ty, W, H, p, ts);
+  const s=G.animS||1, still = OVL.k===k && OVL.tx===tx && OVL.ty===ty;
+  if(OVL.dom){ const q=k/OVL.k, css = still ? '' : `matrix(${q},0,0,${q},${tx-q*OVL.tx},${ty-q*OVL.ty})`; if(css!==OVL.css){ OVL.css=css; OVL.war.style.transform=css; } return; }
+  // One copy per frame; between redraws it is moved and scaled with the map
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+  if(!still){ const q=k/OVL.k; ctx.setTransform(q,0,0,q, s*(tx-q*OVL.tx), s*(ty-q*OVL.ty)); }
+  ctx.drawImage(OVL.war,0,0); ctx.restore();
+}
+// One sprite for the glow + crossed swords, stamped at every front line (instead of drawing each from scratch)
+let _swordSpr=null;
+function swordSprite(){
+  if(_swordSpr) return _swordSpr; const c=document.createElement('canvas'), R=16, sc=2; c.width=c.height=R*2*sc; const x=c.getContext('2d'); x.scale(sc,sc);
+  const g=x.createRadialGradient(R,R,0,R,R,14); g.addColorStop(0,'rgba(255,77,94,.49)'); g.addColorStop(1,'rgba(255,77,94,0)');
+  x.beginPath(); x.arc(R,R,14,0,Math.PI*2); x.fillStyle=g; x.fill();
+  x.translate(R,R); x.strokeStyle='rgba(255,120,130,.95)'; x.lineWidth=1.6; x.lineCap='round';
+  [-1,1].forEach(s=>{ x.save(); x.rotate(s*Math.PI/4);
+    x.beginPath(); x.moveTo(0,-7); x.lineTo(0,5); x.stroke(); x.beginPath(); x.moveTo(-2.6,3.5); x.lineTo(2.6,3.5); x.stroke(); x.beginPath(); x.moveTo(0,5); x.lineTo(0,7.5); x.stroke();
+    x.restore(); });
+  return (_swordSpr={ c, R });
+}
+function drawWarWeb(ctx, toCP, k, W, H, p, ts){
+  // ── WARS BETWEEN OTHER COUNTRIES — red route + crossed swords at the front line ── (all routes in one stroke)
+  const col='rgba(255,77,94,.43)', routes=new Path2D(), lines=[], mids=[];
+  G.wars.forEach(w=>{
+    if(w.a===p.id || w.b===p.id) return;
+    const A=CTRY[w.a], B=CTRY[w.b]; if(!A||!B||!A.wars?.has(B.id)) return;
+    let r=null; try{ r=rtPeek(A,B); }catch(e){}
+    let mid;
+    if(r){ routes.addPath(rtVPath(r)); const mv=rtVAt(r,0.5); mid=mv?toCP(mv[0],mv[1]):null; }
+    else { const a=cpv(A), b=cpv(B); if(!a||!b) return; const P=toCP(a[0],a[1]), Q=toCP(b[0],b[1]); lines.push([P,Q]); mid=[(P[0]+Q[0])/2,(P[1]+Q[1])/2]; }
+    if(!mid || mid[0]<-20 || mid[0]>W+20 || mid[1]<-20 || mid[1]>H+20) return;
+    mids.push([mid, A, B]);
+  });
+  ctx.save(); vxf(ctx); ctx.setLineDash([4/k,6/k]); ctx.strokeStyle=col; ctx.lineWidth=1.2/k; ctx.stroke(routes); ctx.restore();
+  if(lines.length){ ctx.beginPath(); lines.forEach(([P,Q])=>{ ctx.moveTo(P[0],P[1]); ctx.lineTo(Q[0],Q[1]); }); ctx.setLineDash([4,6]); ctx.strokeStyle=col; ctx.lineWidth=1.2; ctx.stroke(); ctx.setLineDash([]); }
+  const S=swordSprite();
+  mids.forEach(([m])=>ctx.drawImage(S.c, m[0]-S.R, m[1]-S.R, S.R*2, S.R*2));
+  if(k>=2.2){
+    ctx.font='600 10px "IBM Plex Sans Condensed", sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle='rgba(255,170,170,.9)';
+    mids.forEach(([m,A,B])=>outlineText(ctx, `${A.name} vs ${B.name}`, m[0], m[1]+10));
+  }
+}
+function drawMapLabels(ctx, toCP, k, W, H, p, ts){
+  // ── COUNTRY NAME LABELS — HOI4-style: letters spread along each landmass's curved spine ──
+  // Hidden fully zoomed out; fade in between LABEL_FADE_START and LABEL_FADE_END
+  const labelAlpha = Math.max(0, Math.min(1, (k - LABEL_FADE_START) / (LABEL_FADE_END - LABEL_FADE_START)));
+  if(labelAlpha > 0 && G._labels && G._labelOrder){
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.globalAlpha = labelAlpha;
+    const placed=[];
+    for(const id of G._labelOrder){
+      const cc=CTRY[parseInt(id)], Lb=G._labels[id];
+      if(!cc || !Lb || !Lb.spine || cc.annexedBy) continue;
+      const forced = !String(id).includes(':') && (cc.id===p.id || cc.id===G.selectedCid);
+      const lenPx=Lb.len*k;
+      if(!G._labelW[cc.id]){
+        ctx.font='600 10px "IBM Plex Sans Condensed", sans-serif';
+        const mk=nm=>({ nm, w:ctx.measureText(nm).width/10, ch:[...nm].map(ch=>ctx.measureText(ch).width/10) });
+        const full=cc.name.toUpperCase(), short=(LABEL_SHORT[cc.abbr]||'').toUpperCase();
+        G._labelW[cc.id]={ full:mk(full), short: short?mk(short):null };
+      }
+      // Use the full name when it fits; otherwise a common short form (e.g. United Kingdom → Britain)
+      let W1=G._labelW[cc.id].full;
+      const fit=w=>Math.min(24, Lb.Tfit*k*0.48, (lenPx*0.8)/w);   // slightly smaller than the land allows
+      if(fit(W1.w)<7 && G._labelW[cc.id].short) W1=G._labelW[cc.id].short;
+      const name=W1.nm, n=name.length;
+      let fs=fit(W1.w);
+      const exclave=String(id).includes(':');
+      if(fs<7){ if(!forced && !exclave) continue; fs=exclave?7.5:8; }
+      // spine in canvas pixels
+      const pts=Lb.spine.map(q=>toCP(q[0],q[1]));
+      let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; pts.forEach(([x,y])=>{x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);});
+      if(x1+fs<0||x0-fs>W||y1+fs<0||y0-fs>H) continue;
+      // letter spacing fills ~85% of the spine (capped so short names don't scatter)
+      const natural=W1.w*fs;
+      const spacing = n>1 ? Math.max(0, Math.min(fs*1.8, (lenPx*0.85-natural)/(n-1))) : 0;
+      const total=natural+spacing*(n-1);
+      const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+      const at=s=>{ s=Math.max(0,Math.min(cum[cum.length-1],s)); let i=1; while(i<cum.length-1 && cum[i]<s) i++;
+        const seg=(cum[i]-cum[i-1])||1, f=(s-cum[i-1])/seg, a=pts[i-1], b=pts[i];
+        return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, Math.atan2(b[1]-a[1], b[0]-a[0])]; };
+      let col=G.terrain?'rgba(255,255,255,0.86)':G.mapStyle==='radar'?'rgba(120,255,160,0.78)':'rgba(191,243,255,0.70)';
+      if(cc.id===p.id || cc.annexedBy===p.abbr) col='rgba(240,200,96,0.97)';
+      else if(p.wars.has(cc.id)) col='rgba(255,77,94,0.95)';
+      else if((p.diplomacy[cc.abbr]||{}).relationship==='ally' || p.allies.has(cc.id)) col=`rgba(${THEME.acc},0.97)`;
+      else if(cc.id===G.selectedCid) col='rgba(255,255,255,1)';
+      // Lay out letters first, then check each letter's box against names already drawn
+      const glyphs=[]; let s=(cum[cum.length-1]-total)/2;
+      for(let i=0;i<n;i++){ const cw=W1.ch[i]*fs, [x,y,a]=at(s+cw/2); glyphs.push([x,y,a]); s+=cw+spacing; }
+      const r=fs*0.42, boxes=glyphs.filter((g,i)=>name[i]!==' ').map(([x,y])=>[x-r,y-r,x+r,y+r]);
+      if(!forced && boxes.some(bx=>placed.some(b=>!(bx[2]<b[0]||bx[0]>b[2]||bx[3]<b[1]||bx[1]>b[3])))) continue;
+      placed.push(...boxes);
+      ctx.font=`600 ${fs.toFixed(1)}px 'IBM Plex Sans Condensed', sans-serif`;
+      ctx.fillStyle=col; ctx.strokeStyle='rgba(0,0,0,0.78)'; ctx.lineWidth=Math.max(2,fs*0.24); ctx.lineJoin='round';
+      glyphs.forEach(([x,y,a],i)=>{ ctx.save(); ctx.translate(x,y); ctx.rotate(a); ctx.strokeText(name[i],0,0); ctx.fillText(name[i],0,0); ctx.restore(); });
+    }
+    // Named overseas territories (drawn small, under their own name)
+    TERRITORY_LABELS.forEach(t=>{
+      const own=CLIST.find(x=>x.abbr===t.of); if(!own) return;
+      const raw=t._pvV===G._projV&&t._pv ? t._pv : (t._pvV=G._projV, t._pv=G.proj([t.lon,t.lat])); if(!raw) return; const [x,y]=toCP(raw[0],raw[1]);
+      const fs=Math.min(13, k*t.size); if(fs<7 || x<-60||x>W+60||y<-20||y>H+20) return;
+      ctx.font=`600 ${fs.toFixed(1)}px 'IBM Plex Sans Condensed', sans-serif`;
+      const lines=t.name.toUpperCase().split(' '), lh=fs*1.05;          // stacked words fit the narrow territory
+      const w=Math.max(...lines.map(s=>ctx.measureText(s).width)), hh=lh*lines.length;
+      const box=[x-w/2,y-hh/2,x+w/2,y+hh/2];
+      if(placed.some(b=>!(box[2]<b[0]||box[0]>b[2]||box[3]<b[1]||box[1]>b[3]))) return;
+      placed.push(box);
+      ctx.fillStyle = own.id===p.id ? 'rgba(240,200,96,0.97)' : p.wars.has(own.id) ? 'rgba(255,77,94,0.95)' : 'rgba(191,243,255,0.70)';
+      ctx.strokeStyle='rgba(0,0,0,0.78)'; ctx.lineWidth=Math.max(2,fs*0.24); ctx.lineJoin='round';
+      lines.forEach((s,i)=>{ ctx.strokeText(s, x, y-hh/2+lh*(i+0.5)); ctx.fillText(s, x, y-hh/2+lh*(i+0.5)); });
+    });
+    ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.globalAlpha=1;
+  }
+
+}
 let animTs=0;
 let _animLast=0, _animMob=null;
 function animFrame(ts){
   requestAnimationFrame(animFrame);
   if(!G.canvasCtx||!G.player) return;
   if(_animMob===null || ts-(_animMob.t||0)>2000) _animMob={ v:isMobile(), t:ts };
-  if(_animMob.v && !(G.nukeAnims||[]).length && ts-_animLast<30) return;
+  if(ts-(_animMob.ct||0)>400){ _animMob.ct=ts; _animMob.cov=!!document.querySelector('.hud-modal-wrap, #crisis-popup, #month-review'); }
+  if(!(G.nukeAnims||[]).length && ((_animMob.v && ts-_animLast<30) || (_animMob.cov && ts-_animLast<110))) return;
   _animLast=ts;
   const cv=document.getElementById('animcvs');
   const ctx=G.canvasCtx;
@@ -8105,6 +8315,7 @@ function animFrame(ts){
   const svgEl=document.getElementById('mapsvg');
   const zt=svgEl?d3.zoomTransform(svgEl):d3.zoomIdentity;
   const k=zt.k, tx=zt.x, ty=zt.y;
+  G._vk=k; G._vtx=tx; G._vty=ty;
 
   // Canvas pixel buffer = G.W × G.H (viewBox size)
   // Canvas CSS display = container size (100%×100%)
@@ -8134,6 +8345,7 @@ function animFrame(ts){
   const [ppx, ppy] = toCP(raw[0], raw[1]);
 
   if(G.mapStyle==='radar') drawRadarSweep(ctx, ppx, ppy, W, H, ts, toCP);
+  ovlBlit(ctx, cv, toCP, k, tx, ty, W, H, p, ts);
 
   // ── Player capital — fixed green dot ──
   ctx.beginPath(); ctx.arc(ppx,ppy,DOT,0,Math.PI*2);
@@ -8154,7 +8366,7 @@ function animFrame(ts){
     const a=CTRY[partnerId]; if(!a) return;
     const rawA=G.proj([a.lon,a.lat]); if(!rawA) return;
     const [pax,pay]=toCP(rawA[0],rawA[1]);
-    const route=getTradeRoute(p,a);
+    const route=rtPeek(p,a);
     if(route){ route._ships=shipmentsTo(p,a.id); drawTradeRoute(ctx, route, ts, toCP); }
     // Partner blip
     const pulse=(Math.sin(ts*0.002))*0.5+0.5;
@@ -8173,7 +8385,7 @@ function animFrame(ts){
     const [pax,pay]=toCP(rawA[0],rawA[1]);
     const pulse=(Math.sin(ts*0.005)+1)*0.5;
     // Route to the enemy (same corridors and shipping lanes as trade), drawn faint red
-    let wr=null; try{ wr=getTradeRoute(p,a); }catch(e){}
+    let wr=null; try{ wr=rtPeek(p,a); }catch(e){}
     if(wr) drawRoutePath(ctx, wr, toCP, `rgba(255,77,94,${0.22+pulse*0.1})`, [3,7]);
     // Pulsing reticle on enemy
     ctx.save(); ctx.translate(pax,pay); ctx.rotate(Math.PI/4);
@@ -8293,47 +8505,9 @@ function animFrame(ts){
       ctx.beginPath(); ctx.arc(x,y,4.5,0,Math.PI*2); ctx.fillStyle=it.building?'rgba(240,200,96,.95)':`rgba(${THEME.acc},.95)`; ctx.fill();
       ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=0.8; ctx.stroke();
       ctx.font='600 10px "IBM Plex Sans Condensed", sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
-      ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=3; ctx.fillStyle='rgba(191,243,255,.95)'; ctx.fillText(it.tag, x+8, y-8); ctx.shadowBlur=0;
+      ctx.fillStyle='rgba(191,243,255,.95)'; outlineText(ctx, it.tag, x+8, y-8);
     });
   }
-
-  // ── WARS BETWEEN OTHER COUNTRIES — red route + crossed swords at the front line ──
-  G.wars.forEach(w=>{
-    if(w.a===p.id || w.b===p.id) return;
-    const A=CTRY[w.a], B=CTRY[w.b]; if(!A||!B||!A.wars?.has(B.id)) return;
-    let r=null; try{ r=getTradeRoute(A,B); }catch(e){}
-    const pulse=(Math.sin(ts*0.004+w.a)+1)*0.5;
-    let mid;
-    if(r){
-      drawRoutePath(ctx, r, toCP, `rgba(255,77,94,${0.35+pulse*0.15})`, [4,6]);
-      mid=rtProjectLL(rtPointAt(r,0.5).ll,toCP);
-    } else {
-      const a=G.proj([A.lon,A.lat]), b=G.proj([B.lon,B.lat]); if(!a||!b) return;
-      const P=toCP(a[0],a[1]), Q=toCP(b[0],b[1]);
-      ctx.beginPath(); ctx.setLineDash([4,6]); ctx.moveTo(P[0],P[1]); ctx.lineTo(Q[0],Q[1]);
-      ctx.strokeStyle=`rgba(255,77,94,${0.35+pulse*0.15})`; ctx.lineWidth=1.2; ctx.stroke(); ctx.setLineDash([]);
-      mid=[(P[0]+Q[0])/2,(P[1]+Q[1])/2];
-    }
-    if(!mid || mid[0]<-20 || mid[0]>W+20 || mid[1]<-20 || mid[1]>H+20) return;
-    // glow + crossed swords
-    const g=ctx.createRadialGradient(mid[0],mid[1],0,mid[0],mid[1],14);
-    g.addColorStop(0,`rgba(255,77,94,${0.35+pulse*0.25})`); g.addColorStop(1,'rgba(255,77,94,0)');
-    ctx.beginPath(); ctx.arc(mid[0],mid[1],14,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
-    ctx.save(); ctx.translate(mid[0],mid[1]); ctx.strokeStyle='rgba(255,120,130,.95)'; ctx.lineWidth=1.6; ctx.lineCap='round';
-    [[-1],[1]].forEach(([s])=>{
-      ctx.save(); ctx.rotate(s*Math.PI/4);
-      ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(0,5); ctx.stroke();            // blade
-      ctx.beginPath(); ctx.moveTo(-2.6,3.5); ctx.lineTo(2.6,3.5); ctx.stroke();      // guard
-      ctx.beginPath(); ctx.moveTo(0,5); ctx.lineTo(0,7.5); ctx.stroke();             // grip
-      ctx.restore();
-    });
-    ctx.restore();
-    if(k>=2.2){
-      ctx.font='600 10px "IBM Plex Sans Condensed", sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
-      ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=3; ctx.fillStyle='rgba(255,170,170,.9)';
-      ctx.fillText(`${A.name} vs ${B.name}`, mid[0], mid[1]+10); ctx.shadowBlur=0;
-    }
-  });
 
   // ── DEPLOYED FORCES — move along the route at their true position, like trade convoys ──
   const movers=[...(p.deployedTroops||[]).map(dt=>({dt,from:p,to:CTRY[dt.targetId],friendly:false}))];
@@ -8343,8 +8517,9 @@ function animFrame(ts){
   // AI armies on the move toward their next offensive
   (G.aiMoves||[]).forEach(m=>{ const A=CTRY[m.from], B=CTRY[m.to]; if(!A||!B) return;
     if(A.annexedBy || B.annexedBy || !A.wars?.has(B.id)) return;      // war over or a side annexed: the army is gone
-    if(m.sea==null){ let r=null; try{ r=getTradeRoute(A,B); }catch(e){} m.sea = !!r; }
+    if(m.sea==null){ let r=null; try{ r=rtPeek(A,B); }catch(e){} if(!r) return; m.sea = !!r; }
     movers.push({ dt:{ units:{ground_troops:m.n}, depart:m.depart, totalDays:m.days, air:!m.sea }, from:A, to:B, ai:true }); });
+  let aiShown=0;
   movers.forEach(({dt,from,to,friendly,ai})=>{
     const target=to; if(!target||!from) return;
     const now=smoothNow();
@@ -8354,20 +8529,21 @@ function animFrame(ts){
     const tag= ai ? `⚔ ${from.name} · ${fmtNum(total)} · ${Math.max(0,Math.ceil(dt.totalDays-(now-depart)))}d` : `${dt.air?'✈':'🪖'} ${fmtNum(total)} · ${Math.max(0,Math.ceil(dt.totalDays-(now-depart)))}d`;
     let q, ang=0, mode='land';
     if(dt.air){
-      const a=G.proj([from.lon,from.lat]), b=G.proj([target.lon,target.lat]); if(!a||!b) return;
+      const a=cpv(from), b=cpv(target); if(!a||!b) return;
       const A=toCP(a[0],a[1]), B=toCP(b[0],b[1]);
       ctx.beginPath(); ctx.setLineDash([2,6]); ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); ctx.strokeStyle=ai?'rgba(255,160,60,.35)':'rgba(255,77,94,.35)'; ctx.lineWidth=1; ctx.stroke(); ctx.setLineDash([]);
       q=[A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t]; ang=Math.atan2(B[1]-A[1],B[0]-A[0]); mode='air';
     } else {
-      let route=null; try{ route=getTradeRoute(from,target); }catch(e){}
+      let route=null; try{ route=ai ? rtPeek(from,target) : getTradeRoute(from,target); }catch(e){}
       if(!route) return;
-      const here=rtPointAt(route,t); q=rtProjectLL(here.ll,toCP); if(!q) return; mode=here.mode;
+      const here=rtPointAt(route,t), v0=rtVAt(route,t); if(!v0) return; q=toCP(v0[0],v0[1]); mode=here.mode;
+      if(q[0]<-60||q[1]<-60||q[0]>W+60||q[1]>H+60) return;
       for(let w=1;w<=6;w++){                                   // wake / dust trail
         const tw=t-w*0.004; if(tw<0) break;
-        const pw=rtProjectLL(rtPointAt(route,tw).ll,toCP); if(!pw || Math.hypot(pw[0]-q[0],pw[1]-q[1])>80) break;
+        const vw=rtVAt(route,tw), pw=vw?toCP(vw[0],vw[1]):null; if(!pw || Math.hypot(pw[0]-q[0],pw[1]-q[1])>80) break;
         ctx.beginPath(); ctx.arc(pw[0],pw[1],1.9-w*0.2,0,Math.PI*2); ctx.fillStyle=ai?`rgba(255,160,60,${0.5-w*0.07})`:`rgba(255,90,90,${0.5-w*0.07})`; ctx.fill();
       }
-      const ahead=rtProjectLL(rtPointAt(route,Math.min(1,t+0.002)).ll,toCP)||q;
+      const va=rtVAt(route,Math.min(1,t+0.002)), ahead=va?toCP(va[0],va[1]):q;
       ang=Math.atan2(ahead[1]-q[1],ahead[0]-q[0]); if(Math.hypot(ahead[0]-q[0],ahead[1]-q[1])>80) ang=0;
     }
     ctx.save(); ctx.translate(q[0],q[1]); ctx.rotate(ang);
@@ -8377,9 +8553,10 @@ function animFrame(ts){
     else { ctx.moveTo(6,0); ctx.lineTo(0,5); ctx.lineTo(-6,5); ctx.lineTo(0,0); ctx.lineTo(-6,-5); ctx.lineTo(0,-5); ctx.closePath(); } // column chevron
     ctx.fillStyle=friendly?`rgba(${THEME.acc},.95)`:ai?'rgba(255,160,60,.95)':'rgba(255,77,94,.95)'; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=0.7; ctx.stroke();
     ctx.restore();
+    if(ai && aiShown++>=24 && k<1.6) return;              // a world at war: only the first couple of dozen armies are named until you zoom in
     ctx.font='600 10px "IBM Plex Sans Condensed", sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
-    ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=3; ctx.fillStyle=friendly?'rgba(170,240,255,.95)':ai?'rgba(255,205,150,.95)':'rgba(255,170,170,.95)';
-    ctx.fillText(tag, q[0]+9, q[1]-9); ctx.shadowBlur=0;
+    ctx.fillStyle=friendly?'rgba(170,240,255,.95)':ai?'rgba(255,205,150,.95)':'rgba(255,170,170,.95)';
+    outlineText(ctx, tag, q[0]+9, q[1]-9);
   });
 
   // ── BORDER CLASHES — pulsing red bursts on the shared border, visible for 3 days ──
@@ -8397,79 +8574,8 @@ function animFrame(ts){
       for(let sp=0;sp<6;sp++){ const a=sp/6*Math.PI*2+tnow/700, rr=(6+((tnow/90+sp*13)%10))*s;
         ctx.beginPath(); ctx.arc(x+Math.cos(a)*rr,y+Math.sin(a)*rr,1.2,0,Math.PI*2); ctx.fillStyle='rgba(255,170,90,.8)'; ctx.fill(); }
       if(k>=1.6){ const A=CTRY[cl.a], B=CTRY[cl.b]; ctx.font='600 10px "IBM Plex Sans Condensed", sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
-        ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=3; ctx.fillStyle='rgba(255,150,150,.95)'; ctx.fillText(`⚠ ${A?.name||''} – ${B?.name||''} clash`, x, y+12*s); ctx.shadowBlur=0; }
+        ctx.fillStyle='rgba(255,150,150,.95)'; outlineText(ctx, `⚠ ${A?.name||''} – ${B?.name||''} clash`, x, y+12*s); }
     });
-  }
-
-  // ── COUNTRY NAME LABELS — HOI4-style: letters spread along each landmass's curved spine ──
-  // Hidden fully zoomed out; fade in between LABEL_FADE_START and LABEL_FADE_END
-  const labelAlpha = Math.max(0, Math.min(1, (k - LABEL_FADE_START) / (LABEL_FADE_END - LABEL_FADE_START)));
-  if(labelAlpha > 0 && G._labels && G._labelOrder){
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.globalAlpha = labelAlpha;
-    const placed=[];
-    for(const id of G._labelOrder){
-      const cc=CTRY[parseInt(id)], Lb=G._labels[id];
-      if(!cc || !Lb || !Lb.spine || cc.annexedBy) continue;
-      const forced = !String(id).includes(':') && (cc.id===p.id || cc.id===G.selectedCid);
-      const lenPx=Lb.len*k;
-      if(!G._labelW[cc.id]){
-        ctx.font='600 10px "IBM Plex Sans Condensed", sans-serif';
-        const mk=nm=>({ nm, w:ctx.measureText(nm).width/10, ch:[...nm].map(ch=>ctx.measureText(ch).width/10) });
-        const full=cc.name.toUpperCase(), short=(LABEL_SHORT[cc.abbr]||'').toUpperCase();
-        G._labelW[cc.id]={ full:mk(full), short: short?mk(short):null };
-      }
-      // Use the full name when it fits; otherwise a common short form (e.g. United Kingdom → Britain)
-      let W1=G._labelW[cc.id].full;
-      const fit=w=>Math.min(24, Lb.Tfit*k*0.48, (lenPx*0.8)/w);   // slightly smaller than the land allows
-      if(fit(W1.w)<7 && G._labelW[cc.id].short) W1=G._labelW[cc.id].short;
-      const name=W1.nm, n=name.length;
-      let fs=fit(W1.w);
-      const exclave=String(id).includes(':');
-      if(fs<7){ if(!forced && !exclave) continue; fs=exclave?7.5:8; }
-      // spine in canvas pixels
-      const pts=Lb.spine.map(q=>toCP(q[0],q[1]));
-      let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; pts.forEach(([x,y])=>{x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);});
-      if(x1+fs<0||x0-fs>W||y1+fs<0||y0-fs>H) continue;
-      // letter spacing fills ~85% of the spine (capped so short names don't scatter)
-      const natural=W1.w*fs;
-      const spacing = n>1 ? Math.max(0, Math.min(fs*1.8, (lenPx*0.85-natural)/(n-1))) : 0;
-      const total=natural+spacing*(n-1);
-      const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
-      const at=s=>{ s=Math.max(0,Math.min(cum[cum.length-1],s)); let i=1; while(i<cum.length-1 && cum[i]<s) i++;
-        const seg=(cum[i]-cum[i-1])||1, f=(s-cum[i-1])/seg, a=pts[i-1], b=pts[i];
-        return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, Math.atan2(b[1]-a[1], b[0]-a[0])]; };
-      let col=G.terrain?'rgba(255,255,255,0.86)':G.mapStyle==='radar'?'rgba(120,255,160,0.78)':'rgba(191,243,255,0.70)';
-      if(cc.id===p.id || cc.annexedBy===p.abbr) col='rgba(240,200,96,0.97)';
-      else if(p.wars.has(cc.id)) col='rgba(255,77,94,0.95)';
-      else if((p.diplomacy[cc.abbr]||{}).relationship==='ally' || p.allies.has(cc.id)) col=`rgba(${THEME.acc},0.97)`;
-      else if(cc.id===G.selectedCid) col='rgba(255,255,255,1)';
-      // Lay out letters first, then check each letter's box against names already drawn
-      const glyphs=[]; let s=(cum[cum.length-1]-total)/2;
-      for(let i=0;i<n;i++){ const cw=W1.ch[i]*fs, [x,y,a]=at(s+cw/2); glyphs.push([x,y,a]); s+=cw+spacing; }
-      const r=fs*0.42, boxes=glyphs.filter((g,i)=>name[i]!==' ').map(([x,y])=>[x-r,y-r,x+r,y+r]);
-      if(!forced && boxes.some(bx=>placed.some(b=>!(bx[2]<b[0]||bx[0]>b[2]||bx[3]<b[1]||bx[1]>b[3])))) continue;
-      placed.push(...boxes);
-      ctx.font=`600 ${fs.toFixed(1)}px 'IBM Plex Sans Condensed', sans-serif`;
-      ctx.fillStyle=col; ctx.shadowColor='rgba(0,0,0,0.85)'; ctx.shadowBlur=3;
-      glyphs.forEach(([x,y,a],i)=>{ ctx.save(); ctx.translate(x,y); ctx.rotate(a); ctx.fillText(name[i],0,0); ctx.restore(); });
-    }
-    // Named overseas territories (drawn small, under their own name)
-    TERRITORY_LABELS.forEach(t=>{
-      const own=CLIST.find(x=>x.abbr===t.of); if(!own) return;
-      const raw=G.proj([t.lon,t.lat]); if(!raw) return; const [x,y]=toCP(raw[0],raw[1]);
-      const fs=Math.min(13, k*t.size); if(fs<7 || x<-60||x>W+60||y<-20||y>H+20) return;
-      ctx.font=`600 ${fs.toFixed(1)}px 'IBM Plex Sans Condensed', sans-serif`;
-      const lines=t.name.toUpperCase().split(' '), lh=fs*1.05;          // stacked words fit the narrow territory
-      const w=Math.max(...lines.map(s=>ctx.measureText(s).width)), hh=lh*lines.length;
-      const box=[x-w/2,y-hh/2,x+w/2,y+hh/2];
-      if(placed.some(b=>!(box[2]<b[0]||box[0]>b[2]||box[3]<b[1]||box[1]>b[3]))) return;
-      placed.push(box);
-      ctx.fillStyle = own.id===p.id ? 'rgba(240,200,96,0.97)' : p.wars.has(own.id) ? 'rgba(255,77,94,0.95)' : 'rgba(191,243,255,0.70)';
-      ctx.shadowColor='rgba(0,0,0,0.85)'; ctx.shadowBlur=3;
-      lines.forEach((s,i)=>ctx.fillText(s, x, y-hh/2+lh*(i+0.5)));
-    });
-    ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.globalAlpha=1;
   }
 
   // ── PARTICLES (already in canvas pixel space) ──
@@ -8517,9 +8623,9 @@ function startLoop(){
     G.dayAccum += frac;
     while(G.dayAccum >= 1){
       G.dayAccum -= 1;
-      processDayTick();
+      queueDay(1);
     }
-    G._lastTickT = performance.now();
+    if(!G._dayGen) G._lastTickT = performance.now();
 
     // UI refresh every tick
     topbarUpdate();
@@ -8609,9 +8715,57 @@ function processTickProduction(p, daysOverride){
 //   TIME CONTROL — Next Month (turn mode) · monthly auto-pause · review
 // ═══════════════════════════════════════════════════════════════════
 function processDayTick(){
+  finishDayNow();
   processDayTickCore();
   if(G._monthRolled){ G._monthRolled=false; onMonthEnd(); maybeAutosave(); }
 }
+// ── Days in slices ── a day's work runs a few milliseconds at a time between frames, so the map keeps moving and
+// buttons answer straight away however much is going on (every country at war, missiles in the air).
+const DAY_SLICE_MS = 6, FF_SLICE_MS = 40;
+let _dayPumpOn=false, _daySlowStep=null;
+const _dayMC = typeof MessageChannel!=='undefined' ? new MessageChannel() : null;
+if(_dayMC) _dayMC.port1.onmessage=()=>dayPump();
+function dayPumpKick(){ if(_dayPumpOn) return; _dayPumpOn=true; if(_dayMC) _dayMC.port2.postMessage(0); else setTimeout(dayPump,0); }
+function queueDay(n){ G._daysDue=(G._daysDue||0)+(n||1); dayPumpKick(); }
+function dayStep(){                                   // one step of the day in progress; true when the day is done
+  let r; G._inDay=true;
+  try{ r=G._dayGen.next(); }
+  catch(e){ r={ done:true }; try{ ERR_LOG.push(`${new Date().toISOString().slice(11,19)} day tick: ${e&&e.message||e}`); if(ERR_LOG.length>25) ERR_LOG.shift(); console.error(e); }catch(_){} }
+  finally{ G._inDay=false; }
+  if(r.done){ G._dayGen=null; dayFinished(); return true; }
+  return false;
+}
+function dayPump(){
+  _dayPumpOn=false; G._act='game day';
+  const t0=performance.now(), budget=G._ffRun ? FF_SLICE_MS : DAY_SLICE_MS;
+  try{
+    while(performance.now()-t0 < budget){
+      if(!G._dayGen){
+        if(!G.player) { G._daysDue=0; return; }
+        if(G._ffRun){ if(!ffNextDay()) return; }
+        else if(G._daysDue>0) G._daysDue--;
+        else return;
+        G._dayGen=processDayTickGen();
+      }
+      const s0=performance.now(); dayStep(); const d=performance.now()-s0;
+      if(d>120) _daySlowStep={ ms:Math.round(d), at:fmtDate() };
+    }
+  } finally {
+    if(G._dayGen || G._daysDue>0 || (G._ffRun && !G._ffRun.done)) dayPumpKick();
+  }
+}
+function dayFinished(){
+  dayFlushMap();
+  if(G._ffRun) return;                                // fast-forward: the month's end is handled once, at the end
+  if(G._monthRolled){ G._monthRolled=false; onMonthEnd(); maybeAutosave(); }
+  G._lastTickT=performance.now();
+  topbarUpdate(); const el=document.getElementById('tbdate'); if(el) el.textContent=fmtDate();
+}
+// A day still in progress is finished on the spot (before saving, loading or fast-forwarding)
+function finishDayNow(){ let n=0; while(G._dayGen && n++<100000) dayStep(); }
+function dayReset(){ G._dayGen=null; G._daysDue=0; G._ffRun=null; G._inDay=false; G._cmDirty=false; document.getElementById('ff-chip')?.remove(); }
+// Map recolouring asked for in the middle of a day happens once, when the day is done
+function dayFlushMap(){ if(G._inDay) return; if(G._cmDirty){ G._cmDirty=false; if(!G._ff) colorMap(); } if(G._lblDirty && G._labelFeats) setTimeout(()=>{ if(G._lblDirty && !G._inDay) computeLabelCentroids(); }, 0); }
 function monthSnapshot(p){
   const b=computeBudget(p);
   return { treasury:p.treasury, gdp:p.gdp, debt:debtRatio(p), appr:p.appr, happiness:p.happiness, pop:realmPop(p),
@@ -8649,11 +8803,32 @@ function nextMonth(daysArg){
   // day by day exactly as if the time had passed. A Month in Review that falls inside is shown at the end, not halfway.
   G._ffMonth=true; G._stopFF=false; G._ff=true; G._ffHold=true; if(!R) G._pendingReview=null;
   const target=G.totalDays+days;
-  while(G.totalDays<target){
-    processTickProduction(p,1);
-    processDayTick();
-    if(G._stopFF) break;
-  }
+  finishDayNow(); G._daysDue=0;
+  G._ffRun={ target, days, keepSpeed, done:false };
+  ffChip();
+  dayPumpKick();
+}
+// The next day of a fast-forward, or false when it's over (reached the target, or a decision came up)
+function ffNextDay(){
+  const F=G._ffRun, p=G.player; if(!F || F.done) return false;
+  if(G._monthRolled){ G._monthRolled=false; onMonthEnd(); maybeAutosave(); }
+  if(G.totalDays>=F.target || G._stopFF || !p){ F.done=true; setTimeout(nextMonthDone,0); return false; }
+  processTickProduction(p,1); ffChip();
+  return true;
+}
+function ffChip(){
+  const F=G._ffRun; let el=document.getElementById('ff-chip');
+  if(!F || F.done){ el?.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='ff-chip'; el.innerHTML='<div class="ffc"><b>⏭</b><span></span><i><u></u></i></div>'; document.body.appendChild(el); }
+  const n=F.days-(F.target-G.totalDays);
+  el.querySelector('span').textContent=`Simulating ${fmtDate()} · day ${Math.max(0,n)} of ${F.days}`;
+  el.querySelector('u').style.width=`${Math.round(100*Math.max(0,n)/F.days)}%`;
+}
+function nextMonthDone(){
+  const F=G._ffRun; if(!F) return; G._ffRun=null; document.getElementById('ff-chip')?.remove();
+  finishDayNow();
+  if(G._monthRolled){ G._monthRolled=false; onMonthEnd(); maybeAutosave(); }
+  const target=F.target, keepSpeed=F.keepSpeed;
   G._ff=false; G._ffMonth=false; G._ffHold=false;
   const done = G.totalDays>=target;
   if(G._pendingReview && done){ const r=G._pendingReview; G._pendingReview=null; showMonthReview(r); }
@@ -9276,7 +9451,10 @@ function tradePartnerWeights(p, partners){
   const sum = w.reduce((a,b)=>a+b,0) || 1;
   return w.map(x=>x/sum);
 }
-function processDayTickCore(){
+// One game day, as a list of steps. Live play runs it a few milliseconds at a time (dayPump), so drawing and
+// taps never wait on the simulation; fast-forward and tests run it straight through (processDayTickCore).
+function processDayTickCore(){ const g=processDayTickGen(); G._inDay=true; try{ while(!g.next().done){} } finally{ G._inDay=false; } dayFlushMap(); }
+function* processDayTickGen(){
   advanceDate();
   if(G.player){ G.player.flowPrev = G.player.flow || {}; G.player.flow = { domesticSales:0, fuelImports:0, freight:0 }; }
   if(G.day===1 && G.totalDays>1) G._monthRolled = true;   // report built at end of this tick
@@ -9294,6 +9472,7 @@ function processDayTickCore(){
   // ── DAILY FISCAL CASH FLOW (taxes, resources, expenses, bond financing) ──
   applyDailyFiscal(p);
 
+  yield;
   // ── POWER PLANT FUEL CONSUMPTION ──
   if(p.powerPlants){
     let fuelWarned = false;
@@ -9317,9 +9496,11 @@ function processDayTickCore(){
     });
   }
 
+  yield;
   // ── AGRICULTURE: local farming + state farms + imports feed the population (diet score) ──
   tickFood(p);
 
+  yield;
   // ── INTERNAL CONSUMPTION: population consumes industrial goods and NR commodities daily ──
   {
     const pop = p.pop || 1; // in millions
@@ -9348,6 +9529,7 @@ function processDayTickCore(){
     });
   }
 
+  yield;
   // GDP growth — realistic rates with hard annual cap
   // Base: 3%/yr structural growth
   // Factory bonus: logarithmic diminishing returns (619 factories ≈ +2.8%/yr extra)
@@ -9361,6 +9543,7 @@ function processDayTickCore(){
   { if(p._ytdYear!==G.year){ p._ytdYear=G.year; p._ytd=0; p._ytdInc=0; p._ytdExp=0; p._ytdDays=0; }
     const bd=computeBudget(p); p._ytd+=bd.net; p._ytdInc+=bd.totalIncome; p._ytdExp+=bd.totalExpenses; p._ytdDays++; }
 
+  yield;
   // ── TROOP DEPLOYMENTS TICK ──
   tickDeployedTroops(p);
   tickExpeditions(p);
@@ -9368,16 +9551,17 @@ function processDayTickCore(){
   if(G.totalDays%30===0) processVassalTributes();
 
   // ── WORLD ORDER: relations, wars, occupied territories, UN ──
-  tickRelations();
-  checkAlliances();
-  tickWars();
-  tickTerritories();
-  tickTotalSanctions();
+  tickRelations(); yield;
+  checkAlliances(); yield;
+  yield* tickWarsGen(); yield;
+  tickTerritories(); yield;
+  tickTotalSanctions(); yield;
   if(G.totalDays % 30 === 15) aiUNInitiatives();
   if(G.totalDays % 30 === 10) marketShakeout();
   if(G.totalDays > 0 && G.totalDays % 365 === 0) unAnnualSession();
   else if(G.totalDays % 7 === 3){ freeOrphanVassals(); unscPurgeVassals(); }
 
+  yield;
   // ── EMBASSY CONSTRUCTION TICK ──
   if(p.diplomacy){
     Object.entries(p.diplomacy).forEach(([iso3, d]) => {
@@ -9394,6 +9578,7 @@ function processDayTickCore(){
     });
   }
 
+  yield;
   // ── LAW CHANGE TIMER ──
   if(p.pendingLaw && p.lawChangeTimer > 0){
     p.lawChangeTimer--;
@@ -9405,6 +9590,7 @@ function processDayTickCore(){
       renderGovPanel();
     }
   }
+  yield;
   // ── HAPPINESS (player) ──
   calcHappiness(p);
 
@@ -9482,6 +9668,7 @@ function processDayTickCore(){
   p.stability = Math.max(3, Math.min(100, p.stability + (p.appr > 50 ? 0.02 : -0.06)));
   calcMilStrength(p);
 
+  yield;
   // ── POPULATION GROWTH (player) ──
   const dailyGrowthRate = calcPopGrowth(p);
   p.pop = Math.max(0.01, p.pop * (1 + dailyGrowthRate));
@@ -9496,19 +9683,18 @@ function processDayTickCore(){
     if(hasDiploActivity || G.totalDays % 5 === 0) renderDiplo();
   }
 
+  yield;
   // Recompute global power ranking every 5 game days
   if(G.totalDays % 5 === 0) computePowerRankings();
 
   // ── AI NATIONS ──
-  CLIST.forEach(c=>{
-    if(c===p) return;
-    aiDay(c);
-  });
+  for(const c of [...CLIST]){ if(c===p) continue; aiDay(c); yield; }
 
   // ── FISCAL REVIEW: ratings, borrowing costs, defaults, AI budget policy ──
-  CLIST.forEach(c=>{ if(c.fiscal && !c.annexedBy && (G.totalDays + c.id) % 30 === 0) fiscalMonthly(c); });
-  CLIST.forEach(c=>{ if(c!==p && (G.totalDays + c.id) % 30 === 15){ leaderTurnover(c); aiDiplomaticRow(c); } });
+  for(const c of [...CLIST]){ if(c.fiscal && !c.annexedBy && (G.totalDays + c.id) % 30 === 0){ fiscalMonthly(c); yield; } }
+  for(const c of [...CLIST]){ if(c!==p && (G.totalDays + c.id) % 30 === 15){ leaderTurnover(c); aiDiplomaticRow(c); yield; } }
 
+  yield;
   // ── WAR EFFECTS (daily) ──
   G.wars.forEach(w=>{
     const a=CTRY[w.a],b=CTRY[w.b]; if(!a||!b) return;
@@ -9545,10 +9731,11 @@ function processDayTickCore(){
     }
   });
 
+  yield;
   // ── LOANS ──
   tickLoans(p);
   tickStateBank(p);
-  tickMarkets();
+  tickMarkets(); yield;
   tickInvestments(p);
   tickFX(p);
   if(p.intel) tickEmbeds(p);
@@ -9557,21 +9744,24 @@ function processDayTickCore(){
   tickMilParts(p);
   tickAtomic(p); tickFallout(p);
   tickNeglect(p);
-  tickSportEvents();
+  tickSportEvents(); yield;
   aiDiplomaticRequests(p);
   leaderPeaceTick(p);
-  aiCovertOps(p);
+  aiCovertOps(p); yield;
   tickShipments(p);
-  processDailyExports(p);
+  processDailyExports(p); yield;
   (p.goodsValueHist = p.goodsValueHist || []).push(goodsStockValue(p));
   if(p.goodsValueHist.length > 30) p.goodsValueHist.shift();
 
+  yield;
   // ── NATURAL DISASTERS ──
   checkNaturalDisasters(p);
 
+  yield;
   // ── HEALTH EVENTS ──
   checkHealthEvents(p);
 
+  yield;
   // ── RANDOM EVENTS (every ~15 days) ──
   if(G.totalDays%11===0 && Math.random()<.45 && !document.getElementById('evov').classList.contains('open')){   // ~1 event every 3–4 weeks
     const ev=EVENTS[Math.floor(Math.random()*EVENTS.length)];
@@ -9580,11 +9770,13 @@ function processDayTickCore(){
     else triggerEv(ev);
   }
 
+  yield;
   // ── WORLD NEWS EVENTS (every ~3 days) ──
   if(G.totalDays%3===0 && Math.random()<0.8){
     generateWorldEvents();
   }
 
+  yield;
   // ── TRADE REFRESH (every 60 days) ──
   if(G.totalDays%60===0){
     // Retire the oldest AI-to-AI routes; never touch the player's own deals
@@ -9602,6 +9794,7 @@ function processDayTickCore(){
     buildTicker();
   }
 
+  yield;
   // ── APPROVAL RATING EFFECTS ──
   processApprovalEffects(p);
 
@@ -9611,9 +9804,9 @@ function processDayTickCore(){
 
   // UI updates (skipped while fast-forwarding a month — refreshed once at the end)
   if(G._ff) return;
-  colorMap();
-  rpRender();
-  liveRefreshPane();
+  yield; G._inDay=false; colorMap(); G._cmDirty=false; G._inDay=true;
+  yield; rpRender();
+  yield; liveRefreshPane();
 }
 // Every tab is live: the open panel redraws each game day (typed values, focus and scroll are kept),
 // except while the player is mid-gesture — an open dropdown, a slider being dragged, or a pressed button
@@ -9778,7 +9971,7 @@ function declareWar(a,b,log,defensive,defendingId){
   a.wars.add(b.id); b.wars.add(a.id);
   a.allies.delete(b.id); b.allies.delete(a.id);
   a.rels[b.id]=0; b.rels[a.id]=0;
-  G.wars.push({a:a.id,b:b.id,startDay:G.totalDays});
+  G.wars.push({a:a.id,b:b.id,startDay:G.totalDays}); try{ rtPeek(a,b); }catch(e){}
   G.trades=G.trades.filter(t=>!(t.from===a.id&&t.to===b.id)&&!(t.from===b.id&&t.to===a.id));
   a.trades.delete(b.id); b.trades.delete(a.id);
   // War cuts every diplomatic tie: embassies closed, ambassadors recalled, pacts and alliances void, envoys turned back
@@ -9887,8 +10080,19 @@ function addEv(type,title,text,act){
   const el=document.createElement('div'); el.className=`ev ${type}${act?' ev-act':''}`;
   el.innerHTML=`<div class="ev-t">${title}</div><div class="ev-b">${text}${act?' <span class="ev-go">Tap to review ›</span>':''}</div>`;
   if(act) el.setAttribute('onclick', act);
-  const log=document.getElementById('evlog');
-  if(log){ log.insertBefore(el,log.firstChild); while(log.children.length>40) log.removeChild(log.lastChild); }
+  evlogAdd(el);
+}
+let _evPend=[], _evRaf=0;
+function evlogAdd(el){
+  _evPend.push(el); if(_evPend.length>40) _evPend.shift();
+  if(!_evRaf) _evRaf=requestAnimationFrame(evlogFlush);
+  if(document.hidden) evlogFlush();
+}
+function evlogFlush(){
+  if(_evRaf){ cancelAnimationFrame(_evRaf); _evRaf=0; }
+  const log=document.getElementById('evlog'); if(!log || !_evPend.length){ _evPend=[]; return; }
+  const f=document.createDocumentFragment(); for(let i=_evPend.length-1;i>=0;i--) f.appendChild(_evPend[i]); _evPend=[];
+  log.insertBefore(f, log.firstChild); while(log.children.length>40) log.removeChild(log.lastChild);
 }
 // Flashes a construction/military completion as a topbar toast — not in world news
 function flashBuildComplete(item, isMil){
@@ -10041,8 +10245,7 @@ function addWorldEv(type, title, body, flag1, flag2){
   const el = document.createElement('div');
   el.className = `ev ${type}`;
   el.innerHTML = `<div class="ev-t"><span class="fe">${flag1||''}${flag2||''}</span> ${title}</div><div class="ev-b">${body}</div>`;
-  const log = document.getElementById('evlog');
-  if(log){ log.insertBefore(el, log.firstChild); while(log.children.length > 40) log.removeChild(log.lastChild); applyTwemoji(el); }
+  evlogAdd(el);
   // Breaking news ticker — filter to significant events only
   const cat = classifyBreaking(type, title, body);
   if(cat){
@@ -10435,9 +10638,10 @@ function fmtN(n){ // same as fmtM
   const sign = raw < 0 ? '-' : '';
   return sign + Math.abs(raw).toLocaleString();
 }
+const _NUMF = (()=>{ try{ return new Intl.NumberFormat(); }catch(e){ return null; } })();
 function fmtNum(n){ // raw integer with commas
   if(!isFinite(n)||isNaN(n)) return '0';
-  return Math.round(n).toLocaleString();
+  return _NUMF ? _NUMF.format(Math.round(n)) : Math.round(n).toLocaleString();
 }
 function fmtDollars(n){ // raw dollars → full integer with commas and $ prefix
   if(!isFinite(n)||isNaN(n)) return '$0';
@@ -12324,7 +12528,10 @@ function callRefuseCost(c, kind){
 let _call=null, _ringT=null;
 function callRing(on){
   clearInterval(_ringT); _ringT=null; if(!on || !ATLAS_VOICE.on) return;
-  const beep=()=>{ try{ _chimeCtx=_chimeCtx||new (window.AudioContext||window.webkitAudioContext)(); const ac=_chimeCtx, t=ac.currentTime;
+  const beep=()=>{
+    if(!document.getElementById('diplo-req') || !_call || _call.phase!=='ring'){ clearInterval(_ringT); _ringT=null; return; }   // no call on screen: no ringing
+    if(document.hidden) return;                                                         // app in the background or closed: silent
+    try{ _chimeCtx=_chimeCtx||new (window.AudioContext||window.webkitAudioContext)(); const ac=_chimeCtx, t=ac.currentTime;
     [[0,.4],[.55,.95]].forEach(([s,e])=>[440,480].forEach(f=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=f;
       g.gain.setValueAtTime(0,t+s); g.gain.linearRampToValueAtTime(.022,t+s+.03); g.gain.setValueAtTime(.022,t+e-.05); g.gain.linearRampToValueAtTime(0,t+e);
       o.connect(g).connect(ac.destination); o.start(t+s); o.stop(t+e+.02); })); }catch(e){} };
@@ -12337,6 +12544,7 @@ function leaderCall(c, kind, opts={}){
   if(document.getElementById('diplo-req')) return false;
   const K=CALL_KIND[kind]; if(!K) return false;
   _call={ cid:c.id, kind, amt:opts.amt||0, phase:'ring', done:false, timers:[], t0:0, callback:!!opts.callback, outgoing:kind==='open', asked:[] };
+  bbAct(`call from ${c.name}`, true);
   try{ _call.first=callFirstLine(c, _call); hdvPrefetchLeader(c, ..._call.first); }catch(e){}   // their opening line is ready by the time you answer
   if(!opts.callback && !['protest','threat','open'].includes(kind)) noteProposal(p, c, kind);   // on record until answered, so a call that never reaches you isn't lost
   pauseForModal();
@@ -13158,7 +13366,7 @@ function strikeSpot(c, spread){
 }
 // Where a carrier group would sit: on the sea lane, near the enemy's coast
 function strikeSeaSpot(att, def){
-  let r=null; try{ r=getTradeRoute(att, def); }catch(e){}
+  let r=null; try{ r=rtPeek(att, def); }catch(e){}
   if(!r || !r.segs.some(s=>s.mode==='sea')) return null;
   for(let t=0.97;t>=0.55;t-=0.03){ const q=rtPointAt(r,t); if(q.mode==='sea') return [rtNormLon(q.ll[0]), q.ll[1]]; }
   return null;
@@ -16264,7 +16472,8 @@ function aiBattle(att, def){
 }
 
 // Weekly war simulation + AI peace-seeking
-function tickWars(){
+function tickWars(){ const g=tickWarsGen(); while(!g.next().done){} }
+function* tickWarsGen(){
   const p=G.player;
   // Armies that have arrived, or whose war ended, leave the map
   if(G.aiMoves?.length) G.aiMoves=G.aiMoves.filter(m=>G.totalDays < m.depart+m.days+1 && CTRY[m.from]?.wars?.has(m.to));
@@ -16280,8 +16489,8 @@ function tickWars(){
     if(a===p) addEv('w','🎖️ Mandate Expired',`Your UN mandate against ${b.name} has ended. Continuing the war now counts as aggression: infamy +${INFAMY.war} and relations fall worldwide.`);
     else addWorldEv('w','🎖️ Mandate Expired',`${a.flag}${a.name} fights on in ${b.flag}${b.name} without UN approval.`,a.flag,'⚔️');
   });
-  [...G.wars].forEach(w=>{
-    const a=CTRY[w.a], b=CTRY[w.b]; if(!a||!b||!a.wars.has(b.id)) return;
+  for(const w of [...G.wars]){ yield;
+    const a=CTRY[w.a], b=CTRY[w.b]; if(!a||!b||!a.wars.has(b.id)) continue;
     // AI armies march like yours: the first offensive lands only after the real route time (overland / by sea),
     // then one a month. The army sets off visibly on the map before each offensive.
     const att0 = (a.mil_strength||0)>=(b.mil_strength||0) ? a : b, def0 = att0===a ? b : a;
@@ -16293,19 +16502,19 @@ function tickWars(){
       if(def0===p && since===5) addEv('w','🪖 Enemy Mobilising',`${att0.name}'s army has set off. It reaches you in about ${td} days.`);
       aiCallAllies(def0, att0);
     }
-    if(since<first || (since-first)%30!==0) return;   // one major offensive a month, once the army has arrived
+    if(since<first || (since-first)%30!==0) continue;   // one major offensive a month, once the army has arrived
     // The side with the stronger available force takes the offensive (player only via Deploy)
     const aStr=a.mil_strength||0, bStr=b.mil_strength||0;
     const att = aStr>=bStr ? a : b, def = att===a ? b : a;
-    if(att===p) return;
-    if(aiConsiderNuke(def, att, 'pre')) return;   // it struck first: the offensive is broken up this month
+    if(att===p) continue;
+    if(aiConsiderNuke(def, att, 'pre')) continue;   // it struck first: the offensive is broken up this month
     aiBattle(att, def);
     // AI peace: the weaker side sends aid to soften relations, then sues for peace
     if(a.wars.has(b.id)){
       const weak = (a.mil_strength||0) < (b.mil_strength||0) ? a : b, strong = weak===a ? b : a;
       if(weak!==p) aiSeekPeace(weak, strong);
     }
-  });
+  }
 }
 function settlePeace(winner, loser, repPct){
   gainXP(winner, null, VET.warWinXP);
@@ -17927,7 +18136,7 @@ const CLOUD_CHUNK = 180000;                         // chars per cloud document 
 const G_SAVE_KEYS = ['unBlocks','sport','unActive','climateAccord','year','month','day','totalDays','wars','trades','market','foodPriceMultiplier','unResolutions','unHistory','unLastProposal','worldGdp0',
   'imfLoans','playerLoans','aiLoanRequests','un','customDissolved','customInvites','coalitions','coalitionApps','markets',
   'goodsMarket','monthStart','autoPauseMonthly','_budgetPeriod','intelTargetId','playerTitle','ceasefires','_rivalsV186'];
-const COUNTRY_SKIP = new Set(['_ports','_bud','_budDay']);           // rebuilt on demand
+const COUNTRY_SKIP = new Set(['_ports','_bud','_budDay','_pv','_pvV']);           // rebuilt on demand
 
 // ═══ A.T.L.A.S ACCOUNTS — username + password, saves kept in the cloud (Supabase) so a game moves
 //     between phone, PC and browser. The game only calls the atlas_* database functions (see cloud/atlas-cloud.sql). ═══
@@ -18059,6 +18268,8 @@ function worldSnapshot(countries, wars){
 // ── write ──
 async function saveGame(slot, quiet){
   const p=G.player; if(!p) return;
+  bbAct('saving');
+  finishDayNow();                                   // never save half a day
   const meta=saveMeta(), data=await packState(snapshotGame());
   let local=false, cloud=false;
   try{ localStorage.setItem(LS_PREFIX+slot, JSON.stringify({meta,data})); local=true; }catch(e){}
@@ -18111,6 +18322,7 @@ async function deleteSave(slot){
 async function loadGame(slot, fromObj){
   const rec = fromObj || await readSave(slot);
   if(!rec){ addEv('w','📂 Load','That save could not be found.'); return; }
+  dayReset(); bbAct('loading a save', true);
   const st = await unpackState(rec.data);
   for(let i=0;i<60 && !WB_READY;i++) await sleep(250);   // world data must be ready before starting
   // Start the chosen country normally (map, timers, UI), then overwrite the world with the save
@@ -18153,6 +18365,7 @@ async function loadGame(slot, fromObj){
   setSpd(0); G._loadingSave = false;
   setTimeout(()=>atlasLinkUp('resume'), 500);
   addEv('d','📂 Game Loaded',`${G.player.flag}${G.player.name} · ${fmtDate()}. Paused — press 1× to resume.`);
+  setTimeout(bbOfferReport, 2500);
   setTimeout(()=>{ syncMobileTop(); mobileFocusPlayer(); },600);
 }
 
@@ -18396,7 +18609,7 @@ function mobConfirmWar(id){
 }
 
 // ── 5. pop-ups: bottom sheets, swipe down to close, one at a time ──
-const MSHEET_SKIP=new Set(['welcome','intro','game','mnav','csheet','loading','intro-sel']);
+const MSHEET_SKIP=new Set(['welcome','intro','game','mnav','csheet','loading','intro-sel','ff-chip']);
 let _mobLastTouch=0, _mobQueue=[];
 document.addEventListener('pointerdown', ()=>{ _mobLastTouch=performance.now(); }, true);
 document.addEventListener('keydown', ()=>{ _mobLastTouch=performance.now(); }, true);
@@ -18498,7 +18711,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 200;
+const ATLAS_BUILD = 201;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -19177,7 +19390,13 @@ function doRestart(){
 }
 
 // ── TICKER ──
-function buildTicker(){
+let _tkT=0, _tkLast=-1e9;
+function buildTicker(now){
+  if(now===true || !G.player){ clearTimeout(_tkT); _tkT=0; _tkLast=performance.now(); buildTickerNow(); return; }
+  if(_tkT) return;
+  _tkT=setTimeout(()=>{ _tkT=0; _tkLast=performance.now(); buildTickerNow(); }, Math.max(60, 3000-(performance.now()-_tkLast)));
+}
+function buildTickerNow(){
   const inner = document.getElementById('ticker'); if(!inner) return;
   const catIco = { war:'⚔️', peace:'🕊️', ally:'🤝', disaster:'🌍', health:'🦠', intel:'🕵️', trade:'📦', troops:'🪖' };
   // Build from BREAKING_NEWS queue; fall back to placeholder if empty
@@ -19225,9 +19444,98 @@ function reportInfo(){
 function reportLog(){
   const ev=GAME_LOG.slice(-80).map(e=>`[${e.d}] ${e.t}: ${e.x}`).join('\n');
   const world=WORLD_EVENTS_LOG.slice(0,30).map(e=>`• ${noFlags(e.title||'')}: ${noFlags(String(e.body||'')).replace(/<[^>]+>/g,'').slice(0,160)}`).join('\n');
-  return `── DEVICE & GAME ──\n${reportInfo()}\n\n── ERRORS (${ERR_LOG.length}) ──\n${ERR_LOG.join('\n')||'none'}\n\n── YOUR EVENTS (latest last) ──\n${ev||'none'}\n\n── WORLD NEWS (latest first) ──\n${world||'none'}`;
+  return `── DEVICE & GAME ──\n${reportInfo()}\n${bbReport()}\n── ERRORS (${ERR_LOG.length}) ──\n${ERR_LOG.join('\n')||'none'}\n\n── YOUR EVENTS (latest last) ──\n${ev||'none'}\n\n── WORLD NEWS (latest first) ──\n${world||'none'}`;
 }
-function openReport(){
+// ═══ SAFETY NETS ═══
+// Black box: every couple of seconds a small record of what the game is doing is kept on the device. If the game
+// stops responding and gets closed, the next launch offers to send the developer what was going on at the time.
+const BB_KEY='atlas_bb', BB_STALLS=[];
+let _bbPrev=null; try{ _bbPrev=JSON.parse(localStorage.getItem(BB_KEY)||'null'); }catch(e){}
+let _bbBeat=performance.now(), _bbVisAt=performance.now();
+function bbAct(what, keep){ G._act=what; G._actAt=Date.now(); if(keep) bbWrite(false); }
+function topPopupName(){
+  const el=[...document.body.children].reverse().find(e=>e.id && getComputedStyle(e).position==='fixed' && (e.classList.contains('hud-modal-wrap') || e.classList.contains('ov') || /popup|modal|review|req|offer/.test(e.id)) && e.offsetWidth>0);
+  return el ? el.id : '';
+}
+function bbWrite(clean){
+  try{
+    const p=G.player;
+    localStorage.setItem(BB_KEY, JSON.stringify({ t:Date.now(), v:ATLAS_BUILD, clean:!!clean, vis:!document.hidden, act:G._act||'', actAt:G._actAt||0,
+      day:p?fmtDate():'', spd:G.speed??0, pop:topPopupName(), wars:p?p.wars.size:0, plat:(()=>{ try{ return reportPlatform(); }catch(e){ return ''; } })(),
+      stalls:BB_STALLS.slice(-8), slow:_daySlowStep, err:ERR_LOG.slice(-6), log:GAME_LOG.slice(-40) }));
+  }catch(e){}
+}
+function bbStall(ms, how){
+  const r={ at:new Date().toISOString().slice(11,19), day:G.player?fmtDate():'', ms:Math.round(ms), act:G._act||'', pop:topPopupName(), how };
+  BB_STALLS.push(r); if(BB_STALLS.length>20) BB_STALLS.shift();
+  try{ GAME_LOG.push({ d:r.day||'—', k:'w', t:'⚠ Screen stalled', x:`${(ms/1000).toFixed(1)} s ${how} · last: ${r.act||'—'}${r.pop?' · popup: '+r.pop:''}` }); }catch(e){}
+  bbWrite(false);
+}
+function bbReport(){
+  let out='';
+  if(BB_STALLS.length) out+=`\n── STALLS THIS SESSION ──\n${BB_STALLS.map(x=>`${x.at} [${x.day}] ${(x.ms/1000).toFixed(1)} s (${x.how}) last: ${x.act||'—'}${x.pop?' · popup '+x.pop:''}`).join('\n')}\n`;
+  const b=_bbPrev; if(b && (!b.clean || b.stalls?.length)){
+    out+=`\n── PREVIOUS SESSION ──\nEnded ${new Date(b.t).toISOString().replace('T',' ').slice(0,19)} UTC · ${b.clean?'closed normally':b.vis?'NOT closed normally (was on screen: likely froze)':'not closed normally (was in the background)'} · v${b.v}\n`
+      + `Game date ${b.day||'—'} · speed ${b.spd} · wars ${b.wars} · popup ${b.pop||'none'} · last activity: ${b.act||'—'}${b.actAt?` (${Math.round((b.t-b.actAt)/1000)} s before the end)`:''}\n`
+      + (b.plat?`${b.plat}\n`:'') + (b.slow?`Slowest day step: ${b.slow.ms} ms on ${b.slow.at}\n`:'')
+      + (b.stalls?.length?`Stalls: ${b.stalls.map(x=>`${(x.ms/1000).toFixed(1)}s ${x.how} (${x.act||'—'})`).join(' · ')}\n`:'')
+      + (b.err?.length?`Errors: ${b.err.join(' | ')}\n`:'')
+      + (b.log?.length?`Last events:\n${b.log.map(e=>`[${e.d}] ${e.t}: ${e.x}`).join('\n')}\n`:'');
+  }
+  return out;
+}
+// Heartbeat: notices when the page couldn't run for a while (the screen would have looked frozen)
+setInterval(()=>{
+  const now=performance.now(), gap=now-_bbBeat; _bbBeat=now;
+  if(!document.hidden && now-_bbVisAt>3000 && gap>4500) bbStall(gap-2000, 'page busy');
+  if(G.player) bbWrite(false);
+}, 2000);
+document.addEventListener('visibilitychange', ()=>{ _bbBeat=performance.now(); _bbVisAt=performance.now(); if(document.hidden) bbWrite(false); });
+addEventListener('pagehide', ()=>{ try{ callRing(false); hdvStop(); }catch(e){} bbWrite(true); });
+try{ new PerformanceObserver(l=>l.getEntries().forEach(e=>{ if(e.duration>=1500 && !document.hidden) bbStall(e.duration, 'long task'); })).observe({ type:'longtask', buffered:false }); }catch(e){}
+// Last time the game stopped responding while on screen and had to be closed: offer to send what happened
+function bbOfferReport(){
+  const b=_bbPrev; if(!b || b.clean || !b.vis || !(Date.now()-b.t < 3*86400e3) || !b.day) return;
+  try{ if(localStorage.getItem('atlas_bb_offered')===String(b.t)) return; localStorage.setItem('atlas_bb_offered', String(b.t)); }catch(e){}
+  const t=document.createElement('div'); t.className='bb-offer';
+  t.innerHTML=`<b>⚠ A.T.L.A.S stopped responding last time</b><span>${mEsc(b.day)}${b.act?` · during: ${mEsc(b.act)}`:''}. Send the developer a report so it gets fixed?</span>
+    <div><button class="eab primary" onclick="this.closest('.bb-offer').remove(); openReport('crash','The game froze last session.')">Send report</button><button class="eab" onclick="this.closest('.bb-offer').remove()">Dismiss</button></div>`;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 30000);
+}
+// The game is held for a pop-up but none can be seen, or a call rings with nothing on screen: put it right
+let _stuckN=0, _blockN=0, _blockEl=null;
+function bbVisible(el){
+  if(!el || !el.isConnected) return false; const cs=getComputedStyle(el);
+  if(cs.display==='none' || cs.visibility==='hidden' || +cs.opacity<0.05) return false;
+  const r=el.getBoundingClientRect(); return r.width>20 && r.height>20 && r.bottom>0 && r.right>0 && r.top<innerHeight && r.left<innerWidth;
+}
+setInterval(()=>{
+  if(!G.player || document.hidden || G._ffRun){ _stuckN=0; _blockN=0; return; }
+  const call=document.getElementById('diplo-req'), dlg=call?.querySelector('.vc,.hud-modal,[role=dialog]')||call;
+  const pops=[...document.querySelectorAll('.hud-modal-wrap, #crisis-popup, #month-review, .ov.open, #evov.open')].concat([...document.body.children].filter(e=>/-modal$|^un-|^peace-|^pact-|^imf-/.test(e.id||'')));
+  const held = G.speed===0 && G._preModalSpeed!=null, anyVis = pops.some(bbVisible);
+  const hiddenCall = call && _call?.phase==='ring' && !bbVisible(dlg);
+  if((held && !anyVis) || hiddenCall){
+    if(++_stuckN>=2){ _stuckN=0;
+      document.querySelectorAll('.msheet-wrap.mq').forEach(el=>el.classList.remove('mq'));
+      if(hiddenCall){ call.classList.remove('mq'); call.style.zIndex='19990'; call.style.display='flex'; call.style.opacity='1'; }
+      else resumeFromModal();
+      try{ GAME_LOG.push({ d:fmtDate(), k:'w', t:'⚠ Recovered', x: hiddenCall ? 'a call was ringing but not on screen: brought it forward' : 'the game was held for a pop-up that was not on screen: resumed' }); }catch(e){}
+      bbWrite(false);
+    }
+  } else _stuckN=0;
+  // An invisible layer over the middle of the screen swallowing every tap
+  const hit=document.elementFromPoint(innerWidth/2, innerHeight/2);
+  let top=hit; while(top && top.parentElement && top.parentElement!==document.body) top=top.parentElement;
+  if(top && top!==document.body && top.parentElement===document.body && !['game','mapwrap','welcome','intro','loading'].includes(top.id)){
+    const cs=getComputedStyle(top), r=top.getBoundingClientRect();
+    const invisible = cs.position==='fixed' && r.width>=innerWidth*0.9 && r.height>=innerHeight*0.9 && (+cs.opacity<0.05 || cs.visibility==='hidden');
+    if(invisible && top===_blockEl){ if(++_blockN>=2){ top.style.pointerEvents='none'; _blockN=0;
+      try{ GAME_LOG.push({ d:fmtDate(), k:'w', t:'⚠ Recovered', x:`an invisible layer (${top.id||top.className||top.tagName}) was blocking taps: cleared` }); }catch(e){} } }
+    else { _blockEl=invisible?top:null; _blockN=invisible?1:0; }
+  } else { _blockEl=null; _blockN=0; }
+}, 2000);
+function openReport(kind, msg){
   document.getElementById('report-ov')?.remove();
   let mail=''; try{ mail=localStorage.getItem('atlas_report_email')||''; }catch(e){}
   const d=document.createElement('div'); d.id='report-ov'; d.className='ov open';
@@ -19250,7 +19558,7 @@ function openReport(){
       <button class="ombt rep-send" id="rep-send" onclick="sendReport()">Send report</button>
     </div>
   </div>`;
-  document.body.appendChild(d);
+  document.body.appendChild(d); if(kind){ d.querySelectorAll('.rep-k').forEach(b=>b.classList.toggle('on', b.dataset.k===kind)); } if(msg){ const m=d.querySelector('#rep-msg'); if(m && !m.value) m.value=msg; };
   setTimeout(()=>document.getElementById('rep-msg')?.focus({ preventScroll:true }), 80);
 }
 function downloadReportLog(){
