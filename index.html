@@ -321,9 +321,9 @@ body{font-family:'IBM Plex Sans Condensed',sans-serif;color:var(--text);font-siz
 #ui-panel.open{display:block;}
 #atlas-meter{display:none;align-items:flex-end;gap:2px;height:14px;margin-left:6px;}
 body.atlas-speaking #atlas-meter{display:inline-flex;}
-#atlas-meter i{width:3px;background:var(--teal);border-radius:1px;animation:atlasbar .5s ease-in-out infinite alternate;box-shadow:0 0 6px rgba(var(--acc-rgb),.7);}
+#atlas-meter i{width:3px;height:14px;transform-origin:50% 100%;background:var(--teal);border-radius:1px;animation:atlasbar .5s ease-in-out infinite alternate;box-shadow:0 0 6px rgba(var(--acc-rgb),.7);}
 #atlas-meter i:nth-child(2){animation-delay:.12s} #atlas-meter i:nth-child(3){animation-delay:.24s} #atlas-meter i:nth-child(4){animation-delay:.08s}
-@keyframes atlasbar{from{height:3px}to{height:14px}}
+@keyframes atlasbar{from{transform:scaleY(.22)}to{transform:scaleY(1)}}   /* transform, not height: no page re-layout every frame while ATLAS talks */
 .uip-title{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:600;letter-spacing:.03em;font-size:11px;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
 .uip-row{margin-bottom:9px;}
 .uip-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;display:flex;justify-content:space-between;}
@@ -432,7 +432,7 @@ body.atlas-speaking #atlas-meter{display:inline-flex;}
 .cp:hover{fill:#1a2d45!important;}
 .cp.player{fill:#0c2014!important;stroke:transparent!important;stroke-width:1.6px!important;vector-effect:non-scaling-stroke!important;}
 .cp.ally{fill:#0d2a4a!important;stroke:#00aaff!important;stroke-width:1.8px!important;vector-effect:non-scaling-stroke!important;}
-.cp.war{fill:#2a0d0d!important;stroke:#ff5555!important;stroke-width:1.4px!important;vector-effect:non-scaling-stroke!important;animation:warflash 1.4s ease-in-out infinite alternate;}
+.cp.war{fill:#2a0d0d!important;stroke:#ff5555!important;stroke-width:1.4px!important;vector-effect:non-scaling-stroke!important;}
 .cp.annexed{fill:#0c2014!important;stroke:transparent!important;stroke-width:0.8px!important;vector-effect:non-scaling-stroke!important;}
 .cp.vassal{fill:#0a1e14!important;stroke:#1a9a44!important;stroke-width:0.8px!important;vector-effect:non-scaling-stroke!important;}
 .cp.sel{stroke:transparent!important;}
@@ -1188,7 +1188,7 @@ body.radar .cp.player, body.radar .cp.annexed{ fill:rgba(240,200,96,.16) !import
 body.radar .cp.ally{ fill:rgba(60,255,200,.15) !important; stroke:rgba(80,255,210,.8) !important; }
 body.radar .cp.war{ fill:rgba(255,70,60,.18) !important; }
 body.radar .cp.vassal{ fill:rgba(60,255,120,.14) !important; stroke:rgba(60,255,120,.7) !important; }
-body.radar #country-mesh{ stroke:rgba(70,255,130,.62) !important; filter:drop-shadow(0 0 1.5px rgba(60,255,120,.7)); }
+body.radar #country-mesh{ stroke:rgba(90,255,140,.75) !important; }
 body.radar #terrain-grat{ stroke:rgba(40,255,110,.13) !important; }
 body.radar #terrain-img{ display:none; }
 body.radar #mc-terrain{ color:#7dffa0; border-color:#3cff78; box-shadow:0 0 8px rgba(60,255,120,.5); }
@@ -1795,10 +1795,6 @@ body.mob .rrow{ min-height:36px; }
       <button class="ombt cnt" onclick="mreset();closeOv('menuov')">🗺️ Reset Map</button>
       <button class="ombt cnt" id="menu-mapstyle" onclick="toggleTerrain()">🗺️ Map style: Political</button>
       <button class="ombt cnt" id="menu-warfx" onclick="toggleWarFx()">💥 War effects: On</button>
-      <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=goods]'),'goods');closeOv('menuov')">💰 Economy</button>
-      <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=resources]'),'resources');closeOv('menuov')">⚙️ Industry</button>
-      <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=diplo]'),'diplo');closeOv('menuov')">🌐 Foreign Affairs</button>
-      <button class="ombt cnt" onclick="showLP(document.querySelector('[data-p=intel]'),'intel');closeOv('menuov')">🕵️ Intelligence</button>
       <button class="ombt cnt" onclick="closeOv('menuov');openReport()">🐞 Report an Issue</button>
       <button class="ombt cnt install-app-btn" hidden onclick="closeOv('menuov');installApp()">💻 Install as PC app</button>
       <button class="ombt rst" style="margin-top:4px;" onclick="doRestart()">↺ New Game</button>
@@ -5202,6 +5198,13 @@ function setPublicServices(pct){
 }
 
 function computeBudget(p){
+  // AI countries: once per game day is enough (it's asked for several times a day). Yours is always fresh.
+  if(p && p!==G.player && p._budDay===G.totalDays && p._bud) return p._bud;
+  const out=computeBudgetFresh(p);
+  if(p && p!==G.player){ p._bud=out; p._budDay=G.totalDays; }
+  return out;
+}
+function computeBudgetFresh(p){
   const B = 1e9, R = BUDGET_RATES;
   const tax = calcTaxRevenue(p);
 
@@ -7164,7 +7167,7 @@ function initMap(){
   mapHome(false);
 
   const cv=document.getElementById('animcvs');
-  cv.width=W; cv.height=H;
+  G.animS=animScale(W,H); cv.width=Math.round(W*G.animS); cv.height=Math.round(H*G.animS);
   G.canvasCtx=cv.getContext('2d');
 
   // Resize handler — keeps canvas pixel buffer in sync when window/panel size changes
@@ -7174,8 +7177,8 @@ function initMap(){
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(()=>{
       const nw=Math.max(wrap.offsetWidth,200), nh=Math.max(wrap.offsetHeight,200);
-      if(nw===cv.width && nh===cv.height) return; // nothing changed
-      cv.width=nw; cv.height=nh;
+      if(nw===G.W && nh===G.H) return; // nothing changed
+      G.animS=animScale(nw,nh); cv.width=Math.round(nw*G.animS); cv.height=Math.round(nh*G.animS);
       // Update viewBox so SVG coordinate space stays in sync
       d3.select('#mapsvg').attr('viewBox',`0 0 ${nw} ${nh}`);
       // Rescale projection to new container
@@ -8087,9 +8090,13 @@ const LABEL_SHORT = { GBR:'Britain', USA:'USA', ARE:'UAE', CAF:'C.A.R.', COD:'DR
   PNG:'P.N.G.', TTO:'Trinidad', GNQ:'Eq. Guinea', SLB:'Solomon Is.', CZE:'Czechia', PRK:'N. Korea', KOR:'S. Korea', SAU:'Saudi', ZAF:'S. Africa',
   NZL:'N. Zealand', KGZ:'Kyrgyz', TKM:'Turkmen.', AFG:'Afghan.', MRT:'Maurit.', BFA:'B. Faso', CIV:'Ivory C.', GNB:'G.-Bissau', SSD:'S. Sudan' };
 let animTs=0;
+let _animLast=0, _animMob=null;
 function animFrame(ts){
   requestAnimationFrame(animFrame);
   if(!G.canvasCtx||!G.player) return;
+  if(_animMob===null || ts-(_animMob.t||0)>2000) _animMob={ v:isMobile(), t:ts };
+  if(_animMob.v && !(G.nukeAnims||[]).length && ts-_animLast<30) return;
+  _animLast=ts;
   const cv=document.getElementById('animcvs');
   const ctx=G.canvasCtx;
   const p=G.player;
@@ -8116,6 +8123,7 @@ function animFrame(ts){
   // Always use identity transform — all positions computed manually
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,cv.width,cv.height);
+  if(G.animS && G.animS!==1) ctx.setTransform(G.animS,0,0,G.animS,0,0);   // very large screens: smaller buffer, same picture
 
   // Visual radius in canvas pixels (consistent regardless of zoom or container size)
   const DOT = 4;
@@ -8475,8 +8483,10 @@ function animFrame(ts){
   animTs=ts;
 }
 
+// Ultra-wide and 4K screens: the map's animation layer keeps to ~2.2 MP (CSS scales it to fit)
+function animScale(w,h){ const px=w*h, max=2.2e6; return px>max ? Math.sqrt(max/px) : 1; }
 function spawnP(lat,lon,col){
-  if(!G.proj) return;
+  if(!G.proj || G.particles.length>600) return;                      // a burst of completions can't flood the map with sparks
   const raw=G.proj([lon,lat]); if(!raw) return;
   const svgEl=document.getElementById('mapsvg');
   const zt=svgEl?d3.zoomTransform(svgEl):d3.zoomIdentity;
@@ -9616,6 +9626,7 @@ document.addEventListener('pointerup', ()=>{ _lpPointerDown=false; }, true);
 document.addEventListener('pointercancel', ()=>{ _lpPointerDown=false; }, true);
 function liveRefreshPane(){
   const pane=document.querySelector('.lppane.on'); if(!pane) return;
+  if(pane.checkVisibility && !pane.checkVisibility()) return;             // panel closed (phone sheet down, side panel hidden)
   const ae=document.activeElement;
   if(_lpPointerDown) return;
   // typing in a box (or a dropdown / slider in use): leave the panel alone until the player is done
@@ -17916,7 +17927,7 @@ const CLOUD_CHUNK = 180000;                         // chars per cloud document 
 const G_SAVE_KEYS = ['unBlocks','sport','unActive','climateAccord','year','month','day','totalDays','wars','trades','market','foodPriceMultiplier','unResolutions','unHistory','unLastProposal','worldGdp0',
   'imfLoans','playerLoans','aiLoanRequests','un','customDissolved','customInvites','coalitions','coalitionApps','markets',
   'goodsMarket','monthStart','autoPauseMonthly','_budgetPeriod','intelTargetId','playerTitle','ceasefires','_rivalsV186'];
-const COUNTRY_SKIP = new Set(['_ports']);           // rebuilt on demand
+const COUNTRY_SKIP = new Set(['_ports','_bud','_budDay']);           // rebuilt on demand
 
 // ═══ A.T.L.A.S ACCOUNTS — username + password, saves kept in the cloud (Supabase) so a game moves
 //     between phone, PC and browser. The game only calls the atlas_* database functions (see cloud/atlas-cloud.sql). ═══
@@ -18487,7 +18498,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 199;
+const ATLAS_BUILD = 200;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -18591,7 +18602,9 @@ setTimeout(appSetup, 0);
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState==='hidden' && G.player && document.getElementById('game')?.style.display!=='none') saveGame('auto', true);
 });
-function maybeAutosave(){ if(G.player && G.day===1 && G.totalDays>1) saveGame('auto', true); }
+// Saving packs the whole world, so it waits for a moment when the browser is idle (never inside a game tick)
+function whenIdle(fn, maxWait=4000){ if(window.requestIdleCallback) requestIdleCallback(()=>fn(), { timeout:maxWait }); else setTimeout(fn, 200); }
+function maybeAutosave(){ if(G.player && G.day===1 && G.totalDays>1) whenIdle(()=>{ if(G.player) saveGame('auto', true); }); }
 // Rolling cloud autosave: every 3 real minutes while a game is open and the date has moved,
 // so switching to another device never loses more than a few minutes (a phone may be suspended before its hide-save uploads)
 let _lastRollingSave=-1;
@@ -18599,7 +18612,7 @@ setInterval(()=>{ try{
   if(!G.player || G._ff || document.visibilityState!=='visible') return;
   if(document.getElementById('game')?.style.display==='none') return;
   if(G.totalDays===_lastRollingSave) return;
-  _lastRollingSave=G.totalDays; saveGame('auto', true);
+  _lastRollingSave=G.totalDays; whenIdle(()=>{ if(G.player) saveGame('auto', true); });
 }catch(e){} }, 180000);
 
 // ── Save / Load modal ──

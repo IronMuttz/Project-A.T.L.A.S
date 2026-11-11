@@ -1,7 +1,7 @@
 {
-  "version": 199,
+  "version": 200,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v199: Report an Issue \u2014 in the Menu and in Settings. Pick a kind (bug, crash, balance, idea), describe it, optionally leave an email for a reply, and send. The game log (recent events, world news, errors and device info, no personal data) is attached; you can preview it or save it as a text file. Reports go straight to the developer; if that can't get through (offline), your email app opens with the report and the log is saved to attach."
+  "notes": "v200: Smoother play and fewer freezes. The map's effects layer is capped on very wide or high-resolution screens, autosaves wait for an idle moment instead of pausing the game, AI budgets are worked out once per day, panels that aren't visible no longer refresh every tick, and phones draw effects at 30 fps outside nuclear strikes. Removed the Economy, Industry, Foreign Affairs and Intelligence shortcuts from the Menu (they're still in the side panel)."
 }
