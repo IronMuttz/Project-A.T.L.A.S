@@ -1,7 +1,7 @@
 {
-  "version": 202,
+  "version": 203,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v202: Country names stay glued to the map while you drag or pinch on a phone (no more wobble), and they're drawn at your screen's full sharpness. Everything on the map also runs at full frame rate while you move it."
+  "notes": "v203: Two new events to host, every year (Economy tab \u2192 Sporting Events & Summits). The Champions League Final, for European (UEFA) countries: ticket and broadcast earnings, tourism and a lift in national mood. The G20 Leaders' Summit, for the world's 20 largest economies (annexed land counts): every G20 member's relations with you rise, approval goes up. Bid a year ahead; hosts rotate, so a recent host rarely wins again straight away."
 }

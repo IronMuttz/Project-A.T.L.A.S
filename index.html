@@ -14148,7 +14148,27 @@ const MEGA_EVENTS = [
     req:{ sports:15, infra:30, gdp:30, commonwealth:true } },
   { id:'asiangames', name:'Asian Games', ico:'🎌', every:4, first:2014, prepYears:3, bid:0.02, cost:3, revenue:1.0, tourism:0.06, happy:4, appr:3, sports:3, infra:2,
     req:{ sports:15, infra:30, gdp:30, asia:true } },
+  // Every year: one host, chosen a year ahead
+  { id:'uclfinal', name:'Champions League Final', ico:'🏆', annual:true, every:1, first:2011, prepYears:1, hostDayOfYear:148, bid:0.01, cost:0.15, revenue:0.12, tourism:0.03, happy:2, appr:1, sports:1, infra:0,
+    req:{ sports:22, infra:32, gdp:40, uefa:true } },
+  { id:'g20', name:'G20 Leaders\' Summit', ico:'🤝', annual:true, summit:true, every:1, first:2011, prepYears:1, hostDayOfYear:318, bid:0.01, cost:0.25, revenue:0.05, tourism:0.02, happy:1, appr:3, sports:0, infra:1,
+    req:{ infra:30, g20:true },
+    // the host sets the agenda: every member warms to it, the rest of the world a little
+    onHost(c, mult){ const m=new Set(g20Members().map(x=>x.id)); CLIST.forEach(o=>{ if(o===c || o.annexedBy) return; const d=(m.has(o.id)?4:1)*mult;
+      o.rels[c.id]=Math.min(100,(o.rels[c.id]??50)+d); c.rels[o.id]=Math.min(100,(c.rels[o.id]??50)+d*0.5); }); },
+    hostText:(c,mult)=>`World leaders gather in ${c.name}. Every G20 member's relations with you +${Math.round(4*mult)}, everyone else +${Math.round(mult)}, approval +${Math.round(3*mult)}, tourism +${Math.round(2*mult)}% for a year.` },
 ];
+// UEFA members (they host the Champions League Final): Europe plus Turkey, Israel, Cyprus and the Caucasus/Kazakhstan
+const UEFA_EXTRA = new Set(['TUR','ISR','CYP','AZE','ARM','GEO','KAZ']);
+function isUEFA(c){ return ['W.Europe','E.Europe','S.Europe'].includes(c.region) || UEFA_EXTRA.has(c.abbr); }
+// The G20: the world's 20 largest economies right now (annexed land counts for its owner), refreshed daily
+let _g20={ day:-1, list:[] };
+function g20Members(){
+  if(_g20.day===G.totalDays && _g20.list.length) return _g20.list;
+  const own={}; CLIST.forEach(t=>{ if(t.annexedBy) own[t.annexedBy]=(own[t.annexedBy]||0)+(t.gdp||0); });   // annexed land counts for its owner
+  _g20={ day:G.totalDays, list:CLIST.filter(c=>!c.annexedBy && !c.vassalOf).map(c=>[c,(c.gdp||0)+(own[c.abbr]||0)]).sort((a,b)=>b[1]-a[1]).slice(0,20).map(x=>x[0]) };
+  return _g20.list;
+}
 // Annual contracts: yearly fee, yearly revenue, small yearly boosts
 const ANNUAL_EVENTS = [
   { id:'f1',     name:'Formula 1 Grand Prix',     ico:'🏎️', build:0.5,  fee:0.05, revenue:0.07, tourism:0.02, happy:1.5, req:{ infra:40, gdp:100 } },
@@ -14165,6 +14185,8 @@ function sportReqCheck(c, ev){
   if(r.cricket && !CRICKET_NATIONS.has(c.abbr)) out.push('a cricket nation');
   if(r.commonwealth && !COMMONWEALTH.has(c.abbr)) out.push('Commonwealth membership');
   if(r.asia && !ASIA_REGIONS.has(c.region)) out.push('an Asian country');
+  if(r.uefa && !isUEFA(c)) out.push('a European (UEFA) country');
+  if(r.g20 && !g20Members().includes(c)) out.push('a top-20 economy (G20)');
   if(r.golf && ((c.minInvest?.sports?.golf_course)||0)<2) out.push('2+ golf courses (Sports Minister)');
   if(c.wars?.size) out.push('peace (not at war)');
   if(isSanctioned(c)) out.push('no UN sanctions');
@@ -14180,9 +14202,10 @@ function ensureSportCycles(){
 }
 // Day the bidding for this edition closes (1 Jan of year − prepYears), in game days
 function sportDecideDay(ev, s){ return (s.year-ev.prepYears-2010)*365; }
-function sportHostDay(ev, s){ return (s.year-2010)*365 + 180; }      // mid-year
+function sportHostDay(ev, s){ return (s.year-2010)*365 + (ev.hostDayOfYear??180); }      // mid-year (Champions League Final late May, G20 in November)
 function sportBidChance(c, ev){
   const rel=CLIST.filter(o=>o!==c && !o.annexedBy).reduce((sum,o)=>sum+(o.rels[c.id]??50),0)/Math.max(1,CLIST.length-1);
+  if(ev?.summit) return Math.max(0.05,Math.min(0.85, 0.25 + idxInfra(c)/400 + (rel-50)/90 - (c.infamy||0)/150));   // a summit goes to the country the others like
   return Math.max(0.05,Math.min(0.85, 0.25 + idxSports(c)/250 + idxInfra(c)/250 + (rel-50)/150 - (c.infamy||0)/200));
 }
 function bidForEvent(id){
@@ -14215,12 +14238,16 @@ function tickSportEvents(){
     const s=S[ev.id];
     if(!s.host && G.totalDays>=sportDecideDay(ev,s)){
       // AI candidates: a few eligible countries that fit the event
-      const ai=CLIST.filter(c=>c!==p && !c.annexedBy && !sportReqCheck(c,ev).length).sort((a,b)=>sportBidChance(b,ev)-sportBidChance(a,ev)).slice(0,4);
+      // Yearly events rotate: a recent host rarely gets it again, and the field changes from year to year
+      const recent=c=>(c.hosting||[]).some(h=>h.id===ev.id && h.year>=s.year-3);
+      let ai=CLIST.filter(c=>c!==p && !c.annexedBy && !sportReqCheck(c,ev).length).sort((a,b)=>sportBidChance(b,ev)-sportBidChance(a,ev));
+      if(ev.annual){ ai=ai.filter(c=>!recent(c)).slice(0,10); for(let i=ai.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [ai[i],ai[j]]=[ai[j],ai[i]]; } }
+      ai=ai.slice(0,4);
       ai.forEach(c=>{ if(!s.bidders.includes(c.id) && Math.random()<0.7) s.bidders.push(c.id); });
       if(!s.bidders.length && ai[0]) s.bidders.push(ai[0].id);
       const pool=s.bidders.map(id=>CTRY[id]).filter(c=>c && !c.annexedBy);
       if(pool.length){
-        const w=pool.map(c=>sportBidChance(c,ev)), tot=w.reduce((a,b)=>a+b,0); let r=Math.random()*tot, win=pool[0];
+        const w=pool.map(c=>sportBidChance(c,ev)*(ev.annual && recent(c) ? 0.15 : 1)), tot=w.reduce((a,b)=>a+b,0); let r=Math.random()*tot, win=pool[0];
         for(let i=0;i<pool.length;i++){ if((r-=w[i])<=0){ win=pool[i]; break; } }
         s.host=win.id;
         (win.hosting=win.hosting||[]).push({ id:ev.id, year:s.year, awardDay:G.totalDays, hostDay:sportHostDay(ev,s), cost:ev.cost });
@@ -14245,7 +14272,9 @@ function tickSportEvents(){
       c.happiness=Math.min(100,(c.happiness||50)+hb); c.eventModifier=(c.eventModifier||0)+ev.appr*mult;
       (c.tourBoosts=c.tourBoosts||[]).push({ mult:ev.tourism*mult, until:G.totalDays+365 });
       c.sportsLegacy=(c.sportsLegacy||0)+ev.sports; c.infraLegacy=(c.infraLegacy||0)+ev.infra;
-      addWorldEv('d',`${ev.ico} ${ev.name} Opens`,`The ${h.year} ${ev.name} gets under way in ${c.name}.`,ev.ico,'');
+      try{ ev.onHost?.(c, mult); }catch(e){}
+      addWorldEv('d',`${ev.ico} ${ev.name} Opens`,ev.summit?`World leaders meet in ${c.name} for the ${h.year} ${ev.name}.`:`The ${h.year} ${ev.name} gets under way in ${c.name}.`,ev.ico,'');
+      if(c===p && ev.hostText){ showCrisisPopup(ev.ico,`The ${h.year} ${ev.name} is here!`,ev.hostText(c,mult)+(ev.revenue?` Earnings: ${fmtShort(ev.revenue*mult)}.`:''),'var(--gold)'); return; }
       if(c===p) showCrisisPopup(ev.ico,`The ${h.year} ${ev.name} is here!`,`The world comes to ${p.name}. Ticket and broadcast earnings: ${fmtShort(ev.revenue*mult)}. Happiness +${Math.round(hb)}, approval +${Math.round(ev.appr*mult)}, tourism +${Math.round(ev.tourism*mult*100)}% for a year, and a lasting boost to your sports and infrastructure standing.`,'var(--gold)');
     });
   });
@@ -14263,8 +14292,10 @@ function renderSportEventsSection(p){
   const mega=MEGA_EVENTS.map(ev=>{ const s=S[ev.id], miss=sportReqCheck(p,ev), dd=Math.max(0,sportDecideDay(ev,s)-G.totalDays), mine=s.bidders.includes(p.id);
     return `<div style="display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px;">
       <span style="font-size:20px;">${ev.ico}</span>
-      <span><b style="color:#e8fbff">${s.year} ${ev.name}</b><br>
-        <span style="color:var(--text3)">Bid ${fmtShort(ev.bid)} · build ~${fmtShort(ev.cost)} over ${ev.prepYears}y · earns ${fmtShort(ev.revenue)} · happiness +${ev.happy}, tourism +${Math.round(ev.tourism*100)}%</span><br>
+      <span><b style="color:#e8fbff">${s.year} ${ev.name}</b>${ev.annual?' <span style="color:var(--text3)">(new host every year)</span>':''}<br>
+        <span style="color:var(--text3)">${ev.summit
+          ? `Bid ${fmtShort(ev.bid)} · security and venues ~${fmtShort(ev.cost)} over a year · G20 relations +4, world +1, approval +${ev.appr}`
+          : `Bid ${fmtShort(ev.bid)} · build ~${fmtShort(ev.cost)} over ${ev.prepYears}y · earns ${fmtShort(ev.revenue)} · happiness +${ev.happy}, tourism +${Math.round(ev.tourism*100)}%`}</span><br>
         <span style="color:${miss.length?'var(--red2)':'var(--teal)'}">${miss.length?'Needs '+miss.join(', '):`Decision in ${dd} days · your chance ~${Math.round(sportBidChance(p,ev)*100)}%${s.bidders.length?` · ${s.bidders.length} bid${s.bidders.length>1?'s':''} so far`:''}`}</span></span>
       <button class="eab ${mine?'success':'gold'}" ${miss.length||mine?'disabled':''} onclick="bidForEvent('${ev.id}')">${mine?'✓ Bid in':'Bid'}</button></div>`; }).join('');
   const hosting=(p.hosting||[]).filter(h=>!h.done).map(h=>{ const ev=MEGA_EVENTS.find(e=>e.id===h.id); const left=h.hostDay-G.totalDays, pr=1-left/Math.max(1,h.hostDay-h.awardDay);
@@ -14277,7 +14308,7 @@ function renderSportEventsSection(p){
         <span style="color:var(--text3)">Venue ${fmtShort(ev.build)} once · fee ${fmtShort(ev.fee)}/yr · earns ${fmtShort(ev.revenue)}/yr · happiness +${ev.happy}/yr</span>
         ${miss.length&&!on?`<br><span style="color:var(--red2)">Needs ${miss.join(', ')}</span>`:''}</span>
       <button class="eab ${on?'':'primary'}" ${miss.length&&!on?'disabled':''} onclick="signAnnualEvent('${ev.id}')">${on?'End contract':'Host'}</button></div>`; }).join('');
-  return `<div class="sec">🏟️ Sporting Events <span style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:400;">sports ${Math.round(idxSports(p))}/100 · infrastructure ${Math.round(idxInfra(p))}/100</span></div>
+  return `<div class="sec">🏟️ Sporting Events & Summits <span style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:400;">sports ${Math.round(idxSports(p))}/100 · infrastructure ${Math.round(idxInfra(p))}/100</span></div>
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:8px 10px;margin-bottom:8px;">
       ${hosting}${mega}
       <div style="font-size:12px;color:var(--teal);margin:8px 0 2px;">Annual events</div>${annual}</div>`;
@@ -18725,7 +18756,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 202;
+const ATLAS_BUILD = 203;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
