@@ -1,7 +1,7 @@
 {
-  "version": 206,
+  "version": 207,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v206: You can now repay the IMF to end a programme early (Finance tab, IMF Programmes). You pay back the debt relief that covers the time still left, plus 5%, and every condition lifts the same day: public services, military budget and readiness, unit orders and minister salaries. Paying early also improves your credit history."
+  "notes": "v207: Better on iPad. Pinching the panels no longer zooms the whole page, tapping a money box no longer zooms in and gets stuck, and long-pressing the map or a button no longer brings up the text magnifier. Sound (phone rings, ATLAS and leader voices) now starts from your first tap and comes back after the iPad sleeps or takes a call. iPads are recognised as iPads in reports (Safari calls them a Mac)."
 }

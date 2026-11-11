@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <!-- iPhone / iPad: launch full screen from the home screen; don't turn big numbers into phone links -->
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1208,6 +1208,9 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 body.mob{ --m-nav:64px; --fs-xs:12px; --fs-sm:13px; --fs-md:14.5px; --fs-lg:16px; --fs-xl:18px; --fs-2xl:22px;
   --card:rgba(12,30,46,.78); --cardline:rgba(var(--acc-rgb),.16); -webkit-tap-highlight-color:transparent; }
 body.mob button, body.mob .lpt, body.mob .eab, body.mob [onclick]{ touch-action:manipulation; }
+body.mob{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* manipulation: no double-tap page zoom */
+body.mob input, body.mob textarea, body.mob select, body.mob [contenteditable]{ -webkit-user-select:text; user-select:text; -webkit-touch-callout:default; }
+body.mob #mapwrap, body.mob #mapsvg{ touch-action:none; }
 body.nofs #fs-btn, body.nofs #wl-fs, body.nofs .mtile[data-act="fs"]{ display:none !important; }
 
 /* ── 1. HUD: one compact row + swipeable stat chips ── */
@@ -6172,8 +6175,8 @@ function atlasSay(line, opts={}){
     if(wasIdle || (opts.interrupt!==false && !opts.alert)){ ATLAS_VOICE.speaking=true; atlasChime(); const g=ATLAS_VOICE.gen; setTimeout(()=>{ if(g===ATLAS_VOICE.gen) atlasSpeakNext(); }, 260); }
   };
   if(navigator.userActivation && !navigator.userActivation.hasBeenActive){
-    const once=()=>{ ['pointerdown','keydown'].forEach(e=>document.removeEventListener(e,once,true)); go(); };
-    ['pointerdown','keydown'].forEach(e=>document.addEventListener(e,once,true)); return;
+    const once=()=>{ ['pointerdown','touchend','click','keydown'].forEach(e=>document.removeEventListener(e,once,true)); go(); };
+    ['pointerdown','touchend','click','keydown'].forEach(e=>document.addEventListener(e,once,true)); return;
   }
   go();
 }
@@ -18369,7 +18372,7 @@ const CLOUD_ERR = {
   too_big:'This save is too large for the cloud.', too_many:'Your account has too many saves.', bad_slot:'That save slot is not allowed.',
   network:'Can’t reach the cloud. Check your internet connection.', off:'Cloud accounts aren’t switched on in this version yet.', mismatch:'The two passwords don’t match.' };
 function cloudErrText(e){ return CLOUD_ERR[e?.code] || `Something went wrong (${e?.code||e?.message||'error'}).`; }
-function deviceLabel(){ return window.AtlasApp ? 'Android app' : (typeof IS_INSTALLED!=='undefined' && IS_INSTALLED) ? 'PC app' : /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone / iPad' : 'Browser'; }
+function deviceLabel(){ return window.AtlasApp ? 'Android app' : (typeof IS_INSTALLED!=='undefined' && IS_INSTALLED) ? 'PC app' : (typeof IS_IPAD!=='undefined' && IS_IPAD) ? 'iPad' : /iPhone/.test(navigator.userAgent) ? 'iPhone' : 'Browser'; }
 async function cloudRpc(fn, args){
   if(!cloudOn()) throw Object.assign(new Error('off'),{code:'off'});
   const h={ 'Content-Type':'application/json', apikey:CLOUD_CFG.key };
@@ -18606,6 +18609,23 @@ function importSave(file){
 //   MOBILE UI v2 — phones, landscape phones, foldables, iPhone and iPad
 //   (layout classes are set in applyFoldMode; styles live in the MOBILE UI v2 CSS block)
 // ══════════════════════════════════════════════════════════════════════════
+// iPadOS Safari reports itself as a Mac: a "Mac" with a touch screen is an iPad
+const IS_IPAD = /iPad/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+const IS_IOS = IS_IPAD || /iPhone|iPod/.test(navigator.userAgent);
+if(IS_IOS){
+  // Safari ignores "no zoom" for pinches: stop the page itself zooming (the map's own pinch-zoom is unaffected)
+  ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t, e=>e.preventDefault(), { passive:false }));
+}
+// Sound on iPhone/iPad starts only from a tap, and stops after the app goes to the background or a phone call:
+// every tap (touchend/click count on iOS) wakes it with a silent blip, so rings and voices are never silent
+function audioWake(){
+  try{
+    _chimeCtx=_chimeCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(_chimeCtx.state!=='running'){ _chimeCtx.resume().catch(()=>{}); const b=_chimeCtx.createBuffer(1,1,22050), s=_chimeCtx.createBufferSource(); s.buffer=b; s.connect(_chimeCtx.destination); s.start(0); }
+  }catch(e){}
+}
+['touchend','click','keydown'].forEach(t=>document.addEventListener(t, ()=>{ if(!_chimeCtx || _chimeCtx.state!=='running') audioWake(); }, true));
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && _chimeCtx && _chimeCtx.state!=='running') _chimeCtx.resume?.().catch(()=>{}); });
 const isMob = () => document.body.classList.contains('mob');
 const isPh  = () => document.body.classList.contains('ph');
 const mEsc = s => String(s??'').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -18925,7 +18945,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 206;
+const ATLAS_BUILD = 207;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -19643,7 +19663,7 @@ window.addEventListener('error', e=>{ try{ ERR_LOG.push(`${new Date().toISOStrin
 window.addEventListener('unhandledrejection', e=>{ try{ ERR_LOG.push(`${new Date().toISOString().slice(11,19)} (promise) ${String(e.reason?.message||e.reason).slice(0,200)}`); if(ERR_LOG.length>25) ERR_LOG.shift(); }catch(_){} });
 function reportPlatform(){
   const ua=navigator.userAgent, where = location.hostname==='appassets.androidplatform.net' ? 'Android app' : IS_WEBAPP ? (matchMedia('(display-mode: standalone)').matches ? 'Installed web app' : 'Website') : window.claude?.use ? 'Claude artifact' : location.protocol==='file:' ? 'Local file' : location.hostname;
-  const os = /iPhone|iPad/.test(ua) ? 'iOS '+((ua.match(/OS (\d+[_\d]*)/)||[])[1]||'').replace(/_/g,'.') : /Android/.test(ua) ? 'Android '+((ua.match(/Android ([\d.]+)/)||[])[1]||'') : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'Other';
+  const os = (typeof IS_IPAD!=='undefined' && IS_IPAD && !/iPad/.test(ua)) ? 'iPadOS (desktop Safari)' : /iPhone|iPad/.test(ua) ? 'iOS '+((ua.match(/OS (\d+[_\d]*)/)||[])[1]||'').replace(/_/g,'.') : /Android/.test(ua) ? 'Android '+((ua.match(/Android ([\d.]+)/)||[])[1]||'') : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'Other';
   const br = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : /Firefox\//.test(ua) ? 'Firefox' : 'Browser';
   return `${where} · ${os} · ${br} · ${innerWidth}×${innerHeight} @${(devicePixelRatio||1).toFixed(1)}x`;
 }
