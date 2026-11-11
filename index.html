@@ -17893,6 +17893,7 @@ const RESERVE_KEYS = ['copper','wood','iron_ore','aluminum','fruits','veggies','
 const RESERVE_BASE = 5000, RESERVE_MAX_LEVEL = 20;
 const reserveCap = lvl => RESERVE_BASE*(lvl+1);
 const reserveUpgradeCost = lvl => 0.1*(lvl+1);                  // $100M → level 1 … $2B → level 20
+const STOCK_SPLIT_AT = 1000;
 const STOCKS = [
   { id:'ARAMCO', name:'Saudi Aramco',     ico:'🛢️', sector:'oil',     price:8,   vol:0.016, drift:0.06, div:0.045 },
   { id:'XOM',    name:'ExxonMobil',       ico:'⛽', sector:'oil',     price:70,  vol:0.015, drift:0.05, div:0.035 },
@@ -17900,6 +17901,7 @@ const STOCKS = [
   { id:'RTX',    name:'Raytheon',         ico:'🚀', sector:'defence', price:50,  vol:0.015, drift:0.08, div:0.025 },
   { id:'BA',     name:'Boeing',           ico:'🛫', sector:'aero',    price:65,  vol:0.020, drift:0.08, div:0.025 },
   { id:'SPACEX', name:'SpaceX (private)', ico:'🌌', sector:'space',   price:20,  vol:0.030, drift:0.25, div:0     },
+  { id:'NVDA',   name:'Nvidia',           ico:'🖥️', sector:'tech',    price:15,  vol:0.030, drift:0.24, div:0.001 },
   { id:'PFE',    name:'Pfizer',           ico:'💊', sector:'pharma',  price:17,  vol:0.012, drift:0.06, div:0.045 },
   { id:'JNJ',    name:'Johnson & Johnson',ico:'🧴', sector:'pharma',  price:63,  vol:0.010, drift:0.06, div:0.035 },
 ];
@@ -17936,6 +17938,7 @@ function ensureInvest(p){
   if(!G.markets) G.markets = { btc:{ price:BTC.start, fair:BTC.start, prem:0, hist:[BTC.start], flow:0, lastRet:0 },
     stocks:Object.fromEntries(STOCKS.map(s=>[s.id,{ price:s.price, hist:[s.price] }])), oilRef:marketPrice('crude_oil') };
   btcFix(G.markets.btc);
+  STOCKS.forEach(s=>{ if(!G.markets.stocks[s.id]){ let f=s.price*Math.exp(s.drift*(G.totalDays||0)/365), sp=1; while(f>STOCK_SPLIT_AT){ f/=10; sp*=10; } G.markets.stocks[s.id]={ price:f, hist:[f], split:sp }; } });
   if(!p.invest) p.invest = { surveys:[], earlyWarning:0, btc:0, btcCost:0, stocks:{}, bondsIssued:[], bondsHeld:[] };
   if(!p.reserves) p.reserves = { level:0, stock:Object.fromEntries(RESERVE_KEYS.map(k=>[k,RESERVE_BASE])) };
 }
@@ -17957,19 +17960,24 @@ function tickMarkets(){
   const oilNow=marketPrice('crude_oil'), oilChg=(oilNow-(M.oilRef||oilNow))/Math.max(1,M.oilRef||oilNow); M.oilRef=oilNow;
   const wars=G.wars?.length||0, health=CLIST.reduce((s,c)=>s+((c.healthEvents||[]).length),0);
   STOCKS.forEach(s=>{
-    const st=M.stocks[s.id];
+    const st=M.stocks[s.id] || (M.stocks[s.id]={ price:s.price*Math.exp(s.drift*G.totalDays/365), hist:[], split:1 });
     let r = s.drift/365 + s.vol*gauss();
     // Sector news moves prices on CHANGES (a new war, a new outbreak), and every stock is pulled back
     // toward its long-run fair value so nothing runs away to 0 or to the moon over a decade
-    const fair = s.price*Math.exp(s.drift*G.totalDays/365);
+    const fair = s.price*Math.exp(s.drift*G.totalDays/365)/(st.split||1);
     if(s.sector==='oil') r += 0.5*oilChg;
     if(s.sector==='defence') r += 0.004*(wars-(M.warsRef??wars));
     if(s.sector==='pharma') r += 0.003*(health-(M.healthRef??health));
     if(s.sector==='aero') r += 0.3*(((G.goodsMarket?.aviation?.mult||1))-(M.aeroRef??(G.goodsMarket?.aviation?.mult||1)));
+    if(s.sector==='tech') r += 0.35*(((G.goodsMarket?.tech?.mult||1))-(M.techRef??(G.goodsMarket?.tech?.mult||1)));
     r -= 0.004*Math.log(st.price/fair);
     st.price=Math.max(0.5, st.price*Math.exp(r)); st.hist.push(st.price); if(st.hist.length>180) st.hist.shift();
+    // A share past $1,000 splits 10-for-1, as real companies do: ten times the shares at a tenth of the price, same value
+    if(st.price>STOCK_SPLIT_AT){ st.price/=10; st.hist=st.hist.map(v=>v/10); st.split=(st.split||1)*10;
+      const h=G.player?.invest?.stocks?.[s.id]; if(h?.shares>0){ h.shares*=10; addEv('d',`📈 ${s.name} Stock Split`,`${s.name} split 10-for-1: you now hold ten times as many shares at a tenth of the price. Your holding is worth the same.`); }
+      addWorldEv('i',`📈 ${s.name} Splits Its Stock`,`${s.name} shares split 10-for-1 after passing $1,000.`,s.ico,''); }
   });
-  M.warsRef=wars; M.healthRef=health; M.aeroRef=G.goodsMarket?.aviation?.mult||1;
+  M.warsRef=wars; M.healthRef=health; M.aeroRef=G.goodsMarket?.aviation?.mult||1; M.techRef=G.goodsMarket?.tech?.mult||1;
 }
 
 // ── Daily per-player: surveys, reserves top-up, dividends, bond maturities ──
@@ -18897,7 +18905,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 204;
+const ATLAS_BUILD = 205;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
