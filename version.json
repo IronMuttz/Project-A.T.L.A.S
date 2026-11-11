@@ -1,7 +1,7 @@
 {
-  "version": 208,
+  "version": 209,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v208: Nukes look nothing like ordinary missiles now. A big ICBM with a red nose cone, a yellow-and-black hazard band and a \u2622 emblem, glowing radioactive yellow, with a long blue-white flame and a '\u2622 ICBM' tag. Its whole path to the target is marked in yellow, and a spinning radiation marker on the target counts down to impact. The blast is about twice as big, with a taller mushroom cloud and scorched ground that glows for a while."
+  "notes": "v209: iPad crash fixes. The glow around the selected country made Safari use more and more memory the further you zoomed in, until the iPad restarted the game: on iPhone and iPad the selected country now gets a bold white outline instead. The map's name layer uses less memory on Apple devices. And if a device ever runs out of memory while loading the HD voices, the next launch skips them (with a note) instead of crashing again."
 }

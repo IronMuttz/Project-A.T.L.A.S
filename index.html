@@ -931,6 +931,7 @@ body{ font-weight:500; }
 .cp.annexed{ fill:rgba(240,200,96,.18)!important; stroke:#c8a84b!important; }
 .cp.vassal{ fill:rgba(255,179,71,.14)!important; stroke:#ffb347!important; }
 .cp.sel{ stroke:#ffffff!important; stroke-width:2px!important; filter:drop-shadow(0 0 4px rgba(var(--acc-rgb),.9)); }
+html.ios .cp.sel{ filter:none!important; stroke-width:2.6px!important; }   /* Safari: an outline instead of a glow (its filter memory grows with zoom) */
 .theme-row{ display:flex; flex-wrap:wrap; gap:4px; margin:4px 0 2px; }
 .theme-sw{ display:flex; align-items:center; gap:5px; background:var(--bg3); border:1px solid var(--border2); color:var(--text2); font:inherit; font-size:11.5px; padding:3px 7px; border-radius:12px; cursor:pointer; }
 .theme-sw i{ width:10px; height:10px; border-radius:50%; display:inline-block; box-shadow:0 0 6px currentColor; }
@@ -6326,6 +6327,8 @@ function hdvStart(user){
   try{ w=new Worker(URL.createObjectURL(new Blob(['('+hdvWorkerMain.toString()+')()'],{type:'text/javascript'})), { type:'module' }); }
   catch(e){ HDV.state='error'; HDV.err='This browser can\'t run the voice engine. Try Chrome, Edge or the A.T.L.A.S app.'; hdvRender(); return; }
   HDV.worker=w; HDV.state='loading'; HDV.pct=0; HDV.msg='Starting'; HDV.err=''; hdvRender();
+  try{ localStorage.setItem('atlas_hd_booting', String(Date.now())); }catch(e){}
+  bbAct('loading HD voices', true);
   w.onmessage=e=>hdvMsg(e.data||{});
   w.onerror=e=>{ e.preventDefault?.(); hdvFail(e.message||'worker error'); };
   let threads=0; try{ threads=+localStorage.getItem('atlas_hd_threads')||0; }catch(e){}
@@ -6334,6 +6337,7 @@ function hdvStart(user){
 function hdvMsg(m){
   if(m.type==='progress'){ HDV.pct=m.pct; HDV.msg=m.msg; HDV.mb=m.mb; HDV.total=m.total; hdvRender(); }
   else if(m.type==='ready'){
+    try{ localStorage.removeItem('atlas_hd_booting'); }catch(e){}
     let fresh=true; try{ fresh=!localStorage.getItem(HDV_DONE_KEY); localStorage.setItem(HDV_DONE_KEY,'1'); }catch(e){}
     HDV.state='ready'; HDV.pct=100; HDV.threads=m.threads||1; hdvRender();
     if(fresh || HDV.user){
@@ -6359,6 +6363,7 @@ function hdvErrText(msg){
   return 'The voice pack couldn\'t start ('+msg.slice(0,80)+').';
 }
 function hdvFail(msg){
+  try{ localStorage.removeItem('atlas_hd_booting'); }catch(e){}
   if(!HDV.single && window.crossOriginIsolated && HDV.state==='loading'){   // multi-core start failed: try again on one core
     HDV.single=true; try{ HDV.worker?.terminate(); }catch(e){} HDV.worker=null; HDV.state='off'; hdvStart(false); return; }
   const user=HDV.user;
@@ -6558,7 +6563,16 @@ function hdvOfferClose(a){
   else hdvSetPref('later:'+Date.now());
 }
 // Later sessions: load the installed pack in the background (also resumes an unfinished download)
-function hdvAutoStart(){ if(hdvPref()==='on' && hdvSupported()) setTimeout(()=>hdvStart(false), 1200); }
+function hdvAutoStart(){
+  if(hdvPref()!=='on' || !hdvSupported()) return;
+  let crashed=false; try{ crashed=!!localStorage.getItem('atlas_hd_booting'); }catch(e){}   // set while loading; cleared when ready, on failure, or when the page closes normally
+  if(crashed){                                         // last time the device gave up while loading them: don't loop
+    try{ localStorage.removeItem('atlas_hd_booting'); }catch(e){}
+    setTimeout(()=>addEv('w','🔊 HD Voices Paused',`Last time this device ran out of memory while loading the HD voices and had to restart the game, so they weren't loaded this time. Leaders use the device voice instead. You can try again from ☰ Menu → Settings → Voice.`), 4000);
+    return;
+  }
+  setTimeout(()=>hdvStart(false), 1200);
+}
 // Fit the globe between the title (and the update card) and the bottom block, and keep the side panels
 // beside it rather than over it. Recomputed on resize and whenever the title or bottom block changes size.
 function wlLayout(){
@@ -8227,7 +8241,7 @@ function ovlBuild(cv, toCP, k, tx, ty, W, H, p, ts){
   if(!dom && OVL.war && OVL.war.isConnected){ OVL.war.remove(); OVL.war=null; }
   const c=OVL.war=OVL.war||document.createElement('canvas'); OVL.dom=dom; c.style.transform=''; OVL.css='';
   let bw=cv.width, bh=cv.height;
-  if(dom){ const cw=cv.clientWidth||W, ch=cv.clientHeight||H, dpr=Math.min(3, window.devicePixelRatio||1), cap=Math.min(1, Math.sqrt(3.2e6/(cw*ch*dpr*dpr)));
+  if(dom){ const cw=cv.clientWidth||W, ch=cv.clientHeight||H, dpr=Math.min(3, window.devicePixelRatio||1), cap=Math.min(1, Math.sqrt((IS_IOS?1.8e6:3.2e6)/(cw*ch*dpr*dpr)));
     bw=Math.round(cw*dpr*cap); bh=Math.round(ch*dpr*cap); }
   if(c.width!==bw) c.width=bw; if(c.height!==bh) c.height=bh;
   const sx=bw/W, sy=bh/H;
@@ -18660,6 +18674,7 @@ function importSave(file){
 const IS_IPAD = /iPad/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 const IS_IOS = IS_IPAD || /iPhone|iPod/.test(navigator.userAgent);
 if(IS_IOS){
+  document.documentElement.classList.add('ios');
   // Safari ignores "no zoom" for pinches: stop the page itself zooming (the map's own pinch-zoom is unaffected)
   ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t, e=>e.preventDefault(), { passive:false }));
 }
@@ -18992,7 +19007,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 208;
+const ATLAS_BUILD = 209;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -19772,7 +19787,7 @@ setInterval(()=>{
   if(G.player) bbWrite(false);
 }, 2000);
 document.addEventListener('visibilitychange', ()=>{ _bbBeat=performance.now(); _bbVisAt=performance.now(); if(document.hidden) bbWrite(false); });
-addEventListener('pagehide', ()=>{ try{ callRing(false); hdvStop(); }catch(e){} bbWrite(true); });
+addEventListener('pagehide', ()=>{ try{ callRing(false); hdvStop(); if(HDV.state==='loading') localStorage.removeItem('atlas_hd_booting'); }catch(e){} bbWrite(true); });
 try{ new PerformanceObserver(l=>l.getEntries().forEach(e=>{ if(e.duration>=1500 && !document.hidden) bbStall(e.duration, 'long task'); })).observe({ type:'longtask', buffered:false }); }catch(e){}
 // Last time the game stopped responding while on screen and had to be closed: offer to send what happened
 function bbOfferReport(){
