@@ -1,7 +1,7 @@
 {
-  "version": 205,
+  "version": 206,
   "file": "index.html",
   "minApp": 1,
   "apk": "https://github.com/IronMuttz/Project-A.T.L.A.S/raw/main/ATLAS.apk",
-  "notes": "v205: Nvidia is now on the BOI stock market (tech): fast-growing, small dividend, and its price follows the world market for technology goods. Stocks now split 10-for-1 when a share passes $1,000, like real companies: ten times the shares at a tenth of the price, same value."
+  "notes": "v206: You can now repay the IMF to end a programme early (Finance tab, IMF Programmes). You pay back the debt relief that covers the time still left, plus 5%, and every condition lifts the same day: public services, military budget and readiness, unit orders and minister salaries. Paying early also improves your credit history."
 }

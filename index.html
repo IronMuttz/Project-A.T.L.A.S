@@ -5137,6 +5137,26 @@ function answerIMFRestructure(yes){
   addEv('d',`🏦 Restructuring #${round} Agreed`,`${fmtShort(cut)} of debt written off. Markets reopen within 90 days. For ${(T.days/365).toFixed(1).replace('.0','')} years: public services ≤${Math.round(T.psCap*100)}%, military budget −${100-Math.round(T.milSpend*100)}%, max ${T.ordersPer30} unit orders per 30 days, minister salaries −${100-Math.round(T.salary*100)}%.`);
   renderFinance?.(); topbarUpdate();
 }
+// Leave an IMF programme early: pay back the debt relief that covers the time still to run (plus 5%), and the
+// conditions end the same day. Paying out early shows creditors you're back on your feet.
+function imfExitCost(p){
+  if(!imfActive(p)) return 0;
+  const T=imfCond(p), H=(p.imfHistory||[]).filter(h=>h.until>G.totalDays).slice(-1)[0];
+  const left=Math.max(0,p.imfProgramUntil-G.totalDays), span=Math.max(1,T.days||730);
+  return Math.max(0.1, (H?.writeOff||0)*left/span*1.05);
+}
+function repayIMF(){
+  const p=G.player; if(!p || !imfActive(p)) return;
+  const cost=imfExitCost(p), left=p.imfProgramUntil-G.totalDays;
+  if(p.treasury<cost){ addEv('w','🏦 IMF',`Ending the programme early costs ${fmtShort(cost)}; the treasury has ${fmtShort(Math.max(0,p.treasury))}.`); return; }
+  p.treasury-=cost;
+  (p.imfHistory||[]).forEach(h=>{ if(h.until>G.totalDays){ h.until=G.totalDays; h.repaid=true; h.repaidAmt=cost; } });
+  p.imfProgramUntil=G.totalDays; p.imfOrders=[];
+  creditHistory(p, 4, 'Repaid the IMF early');
+  calcMilStrength(p);
+  addEv('d','🏦 IMF Programme Ended Early',`${fmtShort(cost)} repaid to the IMF with ${left} days still to run. The conditions are lifted: public services, military budget and readiness, unit orders and minister salaries are back under your control.`);
+  renderFinance?.(); topbarUpdate();
+}
 function declareDefault(c){
   const F = c.fiscal;
   c.debt *= 0.7;                                 // 30% haircut
@@ -18905,7 +18925,7 @@ document.addEventListener('DOMContentLoaded', mobileSetup);
 // ═══ ANDROID APP: version stamp and self-update ═══
 // The same page runs on claude.ai and inside the Android app (window.AtlasApp). In the app it checks the
 // update server on start (and from the menu), downloads a newer game file and offers to restart into it.
-const ATLAS_BUILD = 205;
+const ATLAS_BUILD = 206;
 // ── PC / Mac app: the game's own website (GitHub Pages) installs as a desktop app from Chrome or Edge ──
 const IS_WEBAPP = /\.github\.io$/i.test(location.hostname);
 const IS_INSTALLED = (()=>{ try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } })();
@@ -20074,8 +20094,11 @@ function nationalDebtCard(p){
       <b style="color:var(--gold)">Programme #${T.round} — ${p.imfProgramUntil-G.totalDays} days left</b> (ends in ${(((p.imfProgramUntil-G.totalDays)/365)).toFixed(1)} years)
       <div style="height:4px;background:var(--bg4);border-radius:2px;margin:4px 0;"><div style="height:100%;width:${Math.min(100,(1-(p.imfProgramUntil-G.totalDays)/T.days)*100)}%;background:var(--gold);border-radius:2px;"></div></div>
       Public services ≤${pc(T.psCap)}% · military budget −${100-pc(T.milSpend)}% (readiness −${100-pc(T.readiness)}%) ·
-      unit orders ${Math.max(0,T.ordersPer30-(p.imfOrders||[]).filter(d=>G.totalDays-d<30).length)}/${T.ordersPer30} left this 30 days · minister salaries −${100-pc(T.salary)}%</div>`:''}
-    ${H.length?`<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">${H.map(h=>`#${h.round}: ${h.date} · ${fmtShort(h.writeOff)} written off · ${h.until>G.totalDays?`<span style="color:var(--gold)">active</span>`:h.replaced?'replaced':'completed'}`).join('<br>')}
+      unit orders ${Math.max(0,T.ordersPer30-(p.imfOrders||[]).filter(d=>G.totalDays-d<30).length)}/${T.ordersPer30} left this 30 days · minister salaries −${100-pc(T.salary)}%
+      ${(()=>{ const ec=imfExitCost(p), ok=p.treasury>=ec; return `<div style="display:flex;gap:8px;align-items:center;margin-top:7px;border-top:1px solid var(--gold3);padding-top:7px;">
+        <span style="flex:1;font-size:12px;color:var(--text3);">End it now: repay the IMF the relief for the ${p.imfProgramUntil-G.totalDays} days left (+5%). All conditions lift today.</span>
+        <button class="eab gold" style="font-size:var(--fs-xs);white-space:nowrap;" ${ok?'':'disabled'} onclick="repayIMF()" title="${ok?'':`Treasury has ${fmtShort(Math.max(0,p.treasury))}`}">Repay ${fmtShort(ec)} &amp; exit</button></div>`; })()}</div>`:''}
+    ${H.length?`<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">${H.map(h=>`#${h.round}: ${h.date} · ${fmtShort(h.writeOff)} written off · ${h.until>G.totalDays?`<span style="color:var(--gold)">active</span>`:h.replaced?'replaced':h.repaid?`repaid early (${fmtShort(h.repaidAmt||0)})`:'completed'}`).join('<br>')}
       <br><span style="color:var(--text2);">A ${(H.length+1)===2?'second':(H.length+1)===3?'third':'further'} programme would cut only ${pc(imfTerms(H.length+1).writeOff)}% of debt with harsher conditions.</span></div>`:''}` : '';
   return `${imf}<div class="sec">🏛️ National Debt</div>
   <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:9px 11px;margin-bottom:8px;">
